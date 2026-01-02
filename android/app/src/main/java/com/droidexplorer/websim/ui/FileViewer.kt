@@ -357,15 +357,14 @@ fun ImageViewerSheet(
         ) {
             when {
                 isLoading -> CircularProgressIndicator()
-                bitmap != null -> bitmap?.let { loaded ->
+                else -> bitmap?.let { loaded ->
                     Image(
                         bitmap = loaded.asImageBitmap(),
                         contentDescription = file.name,
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.Fit
                     )
-                }
-                else -> Text("Unable to load image")
+                } ?: Text("Unable to load image")
             }
         }
     }
