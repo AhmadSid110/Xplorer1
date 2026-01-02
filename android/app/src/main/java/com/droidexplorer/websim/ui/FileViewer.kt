@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
+import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -23,11 +24,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SafRequired
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -321,6 +325,46 @@ fun PdfViewerSheet(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next")
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageViewerSheet(
+    file: File,
+    onDismiss: () -> Unit
+) {
+    var bitmap by remember(file.absolutePath) { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember(file.absolutePath) { mutableStateOf(true) }
+
+    LaunchedEffect(file.absolutePath) {
+        isLoading = true
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
+        }
+        isLoading = false
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 200.dp)
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isLoading -> CircularProgressIndicator()
+                else -> bitmap?.let { loaded ->
+                    Image(
+                        bitmap = loaded.asImageBitmap(),
+                        contentDescription = file.name,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.Fit
+                    )
+                } ?: Text("Unable to load image")
             }
         }
     }

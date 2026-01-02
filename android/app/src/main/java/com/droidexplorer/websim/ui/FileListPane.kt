@@ -24,6 +24,7 @@ import com.droidexplorer.websim.file.SafRequired
 import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
+import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.util.ZipUtils
 import java.io.File
 
@@ -43,11 +44,11 @@ fun FileListPane(
     val context = LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var viewerFile by remember { mutableStateOf<File?>(null) }
     var editorFile by remember { mutableStateOf<File?>(null) }
     var pdfFile by remember { mutableStateOf<File?>(null) }
+    var imageFile by remember { mutableStateOf<File?>(null) }
     
     // Context menu state
     var selectedFile by remember { mutableStateOf<File?>(null) }
@@ -61,15 +62,16 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     
     // Load files
-    val files = remember(paneState.path, sortType, sortOrder, searchQuery, refreshTrigger) {
-        isLoading = true
-        val result = if (searchQuery.isNotEmpty()) {
-            FileManager.search(paneState.path, searchQuery)
+    val allFiles = remember(paneState.path, sortType, sortOrder, refreshTrigger) {
+        FileManager.list(paneState.path, sortType, sortOrder)
+    }
+
+    val files = remember(searchQuery, allFiles) {
+        if (searchQuery.isBlank()) {
+            allFiles
         } else {
-            FileManager.list(paneState.path, sortType, sortOrder)
+            allFiles.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
-        isLoading = false
-        result
     }
 
     // Show snackbar when message is set
@@ -94,30 +96,34 @@ fun FileListPane(
         } else false
     }
 
-    fun openFile(file: File) {
-        onRequestFocus()
-        when (file.extension.lowercase()) {
-            "txt", "md", "json", "xml", "csv", "log" -> viewerFile = file
-            "pdf" -> pdfFile = file
-            else -> {
-                try {
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider",
-                        file
-                    )
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, "*/*")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Open with"))
-                } catch (_: ActivityNotFoundException) {
-                    snackbarMessage = "No compatible app found"
-                } catch (_: Exception) {
-                    snackbarMessage = "Unable to open file"
-                }
+    val openOther: (File) -> Unit = { file ->
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "*/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
+            context.startActivity(Intent.createChooser(intent, "Open with"))
+        } catch (_: ActivityNotFoundException) {
+            snackbarMessage = "No compatible app found"
+        } catch (_: Exception) {
+            snackbarMessage = "Unable to open file"
         }
+    }
+
+    fun handleOpen(file: File) {
+        onRequestFocus()
+        openFile(
+            file = file,
+            openText = { viewerFile = it },
+            openImage = { imageFile = it },
+            openPdf = { pdfFile = it },
+            openOther = openOther
+        )
     }
 
     Box(modifier = modifier) {
@@ -202,15 +208,8 @@ fun FileListPane(
                     }
                 }
                 
-                // Loading indicator
-                if (isLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
                 // File list or empty state
-                if (files.isEmpty() && !isLoading) {
+                if (files.isEmpty()) {
                     // Empty state
                     Box(
                         modifier = Modifier
@@ -265,8 +264,9 @@ fun FileListPane(
                                     onRequestFocus()
                                     if (file.isDirectory) {
                                         paneState.navigateTo(file.absolutePath)
+                                        searchQuery = ""
                                     }
-                                    else openFile(file)
+                                    else handleOpen(file)
                                 },
                                 onLongClick = {
                                     selectedFile = file
@@ -303,7 +303,7 @@ fun FileListPane(
             onDismiss = { 
                 showContextMenu = false
             },
-            onOpen = { openFile(selectedFile!!) },
+            onOpen = { handleOpen(selectedFile!!) },
             onEdit = {
                 editorFile = selectedFile
             },
@@ -384,6 +384,13 @@ fun FileListPane(
             fileOperator = fileOperator,
             onDismiss = { pdfFile = null },
             onSafRequired = onSafRequired
+        )
+    }
+
+    imageFile?.let { target ->
+        ImageViewerSheet(
+            file = target,
+            onDismiss = { imageFile = null }
         )
     }
 
