@@ -5,12 +5,12 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -82,21 +82,26 @@ fun TextViewerSheet(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else if (error != null) {
                 Text(
-                    text = error ?: "",
+                    text = error!!,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
             } else {
                 SelectionContainer {
-                    Text(
-                        text = content,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodyMedium,
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)
-                            .verticalScroll(rememberScrollState())
-                    )
+                    ) {
+                        item {
+                            Text(
+                                text = content,
+                                fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -146,7 +151,7 @@ fun TextEditorSheet(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else if (error != null) {
                 Text(
-                    text = error ?: "",
+                    text = error!!,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -180,15 +185,16 @@ fun TextEditorSheet(
                         saving = true
                         fileOperator.writeText(file, content).fold(
                             onSuccess = {
+                                saving = false
                                 onSaved()
                                 onDismiss()
                             },
                             onFailure = {
                                 error = it.message
                                 if (it is SafRequired) onSafRequired(it.directory)
+                                saving = false
                             }
                         )
-                        saving = false
                     },
                     enabled = !saving
                 ) {
@@ -218,22 +224,23 @@ fun PdfViewerSheet(
         isLoading = true
         fileOperator.openDescriptor(file, ParcelFileDescriptor.MODE_READ_ONLY).fold(
             onSuccess = { descriptor ->
-                PdfRenderer(descriptor).use { renderer ->
-                    pageCount = renderer.pageCount
-                    if (renderer.pageCount == 0) return@use
-                    val index = pageIndex.coerceIn(0, renderer.pageCount - 1)
-                    if (index != pageIndex) pageIndex = index
-                    renderer.openPage(index).use { page ->
-                        val bitmap = Bitmap.createBitmap(
-                            page.width * 2,
-                            page.height * 2,
-                            Bitmap.Config.ARGB_8888
-                        )
-                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        pageImage = bitmap
+                descriptor.use { fd ->
+                    PdfRenderer(fd).use { renderer ->
+                        pageCount = renderer.pageCount
+                        if (renderer.pageCount == 0) return@use
+                        val index = pageIndex.coerceIn(0, renderer.pageCount - 1)
+                        if (index != pageIndex) pageIndex = index
+                        renderer.openPage(index).use { page ->
+                            val bitmap = Bitmap.createBitmap(
+                                page.width * 2,
+                                page.height * 2,
+                                Bitmap.Config.ARGB_8888
+                            )
+                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            pageImage = bitmap
+                        }
                     }
                 }
-                descriptor.close()
             },
             onFailure = {
                 error = it.message
@@ -273,7 +280,7 @@ fun PdfViewerSheet(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else if (error != null) {
                 Text(
-                    text = error ?: "",
+                    text = error!!,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -331,6 +338,7 @@ private fun openPdfExternal(context: Context, file: File) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "Open PDF"))
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.e("PdfViewer", "Unable to open PDF externally: ${file.absolutePath}", e)
     }
 }

@@ -3,12 +3,12 @@ package com.droidexplorer.websim.file
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.droidexplorer.websim.data.ClipboardItem
 import com.droidexplorer.websim.data.ClipboardOperation
 import com.droidexplorer.websim.storage.SafPermissionManager
 import java.io.File
-import java.io.FileInputStream
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -167,7 +167,9 @@ class FileOperator(
             src.name
         )
         if (targetDoc == null) throw FileWriteFailed("Unable to create file via SAF")
-        streamCopy(FileInputStream(src), context.contentResolver.openOutputStream(targetDoc.uri))
+        src.inputStream().use { input ->
+            streamCopy(input, context.contentResolver.openOutputStream(targetDoc.uri))
+        }
     }
 
     private fun deleteInternal(target: File) {
@@ -195,21 +197,22 @@ class FileOperator(
 
     private fun streamCopy(input: InputStream, output: OutputStream?) {
         if (output == null) throw FileWriteFailed("Unable to open output stream")
-        input.use { inputStream ->
-            output.use { outputStream ->
-                inputStream.copyTo(outputStream)
-            }
+        output.use { outputStream ->
+            input.copyTo(outputStream)
         }
     }
 
     companion object {
         fun canWrite(dir: File): Boolean {
+            if (dir.canWrite()) return true
+            val probe = File(dir, ".probe_${java.util.UUID.randomUUID()}")
             return try {
-                val probe = File(dir, ".probe")
-                if (probe.exists()) probe.delete()
-                probe.createNewFile().also { probe.delete() }
-            } catch (_: Exception) {
+                probe.createNewFile()
+            } catch (e: Exception) {
+                Log.w("FileOperator", "Write probe failed for ${dir.absolutePath}", e)
                 false
+            } finally {
+                if (probe.exists()) probe.delete()
             }
         }
     }

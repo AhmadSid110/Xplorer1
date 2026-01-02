@@ -38,10 +38,8 @@ class PaneNavigator(startPath: String) {
     }
 
     fun navigateToPath(path: String) {
-        if (path != currentPath) {
-            backStack.addLast(currentPath)
-            forwardStack.clear()
-            currentPath = path
+        if (path != navigator.currentPath) {
+            navigateTo(path)
         }
     }
 }

@@ -42,6 +42,7 @@ fun FileRow(
     } else {
         Color.Transparent
     }
+    val iconSize = 20.dp
 
     Row(
         modifier = modifier
@@ -60,7 +61,7 @@ fun FileRow(
             imageVector = if (file.isDirectory) Icons.Outlined.Folder else Icons.Outlined.Description,
             contentDescription = if (file.isDirectory) "Folder" else "File",
             tint = if (file.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(iconSize)
         )
         
         Spacer(modifier = Modifier.width(12.dp))
@@ -97,7 +98,7 @@ fun FileRow(
                 imageVector = Icons.Outlined.Lock,
                 contentDescription = "Permission required",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(iconSize)
             )
         }
     }

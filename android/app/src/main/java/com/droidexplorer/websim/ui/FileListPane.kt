@@ -1,6 +1,7 @@
 package com.droidexplorer.websim.ui
 
 import android.content.Intent
+import android.content.ActivityNotFoundException
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -53,6 +54,7 @@ fun FileListPane(
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
     
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,8 +111,10 @@ fun FileListPane(
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     context.startActivity(Intent.createChooser(intent, "Open with"))
-                } catch (_: Exception) {
+                } catch (_: ActivityNotFoundException) {
                     snackbarMessage = "No compatible app found"
+                } catch (_: Exception) {
+                    snackbarMessage = "Unable to open file"
                 }
             }
         }
@@ -243,7 +247,15 @@ fun FileListPane(
                             key = { it.absolutePath }
                         ) { file ->
                             val requiresSaf = remember(file.absolutePath) {
-                                file.isDirectory && !FileOperator.canWrite(file)
+                                if (!file.isDirectory) {
+                                    false
+                                } else {
+                                    val cached = writeProbeCache[file.absolutePath]
+                                    val writable = cached ?: FileOperator.canWrite(file).also {
+                                        writeProbeCache[file.absolutePath] = it
+                                    }
+                                    !writable
+                                }
                             }
                             FileRow(
                                 file = file,
