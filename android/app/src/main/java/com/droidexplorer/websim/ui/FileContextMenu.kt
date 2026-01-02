@@ -24,6 +24,8 @@ import java.io.File
 fun FileContextMenu(
     file: File,
     onDismiss: () -> Unit,
+    onOpen: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onCopy: () -> Unit,
@@ -53,11 +55,25 @@ fun FileContextMenu(
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
-            if (!file.isDirectory) {
+            if (!file.isDirectory && onOpen != null) {
                 ContextMenuItem(
                     icon = Icons.AutoMirrored.Filled.OpenInNew,
                     text = "Open",
-                    onClick = { onDismiss() }
+                    onClick = { 
+                        onOpen()
+                        onDismiss() 
+                    }
+                )
+            }
+
+            if (!file.isDirectory && onEdit != null && file.isTextLike()) {
+                ContextMenuItem(
+                    icon = Icons.Filled.Edit,
+                    text = "Edit",
+                    onClick = {
+                        onEdit()
+                        onDismiss()
+                    }
                 )
             }
             
@@ -132,6 +148,11 @@ fun FileContextMenu(
             )
         }
     }
+}
+
+private fun File.isTextLike(): Boolean {
+    val ext = extension.lowercase()
+    return ext in setOf("txt", "md", "json", "xml", "csv", "log")
 }
 
 @Composable

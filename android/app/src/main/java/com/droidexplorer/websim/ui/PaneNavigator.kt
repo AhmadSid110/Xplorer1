@@ -1,5 +1,9 @@
 package com.droidexplorer.websim.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 enum class PaneMode { SINGLE, DUAL }
 
 class PaneNavigator(startPath: String) {
@@ -39,5 +43,33 @@ class PaneNavigator(startPath: String) {
             forwardStack.clear()
             currentPath = path
         }
+    }
+}
+
+class PaneState(startPath: String) {
+    val navigator = PaneNavigator(startPath)
+    var path: String by mutableStateOf(startPath)
+
+    fun canGoBack() = navigator.canGoBack()
+    fun canGoForward() = navigator.canGoForward()
+
+    fun navigateTo(newPath: String) {
+        navigator.navigateTo(newPath)
+        path = navigator.currentPath
+    }
+
+    fun navigateToPath(newPath: String) {
+        navigator.navigateToPath(newPath)
+        path = navigator.currentPath
+    }
+
+    fun goBack() {
+        navigator.goBack()
+        path = navigator.currentPath
+    }
+
+    fun goForward() {
+        navigator.goForward()
+        path = navigator.currentPath
     }
 }
