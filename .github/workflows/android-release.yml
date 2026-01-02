@@ -47,19 +47,19 @@ jobs:
       # Android SDK (MANUAL, STABLE)
       # -------------------------
       - name: Install Android SDK
-        run: |
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT
+  run: |
+    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+    cd $ANDROID_SDK_ROOT/cmdline-tools
 
-          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-          unzip tools.zip
-          mv cmdline-tools cmdline-tools/latest
+    curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+    unzip tools.zip
+    mv cmdline-tools latest
 
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-            --sdk_root=$ANDROID_SDK_ROOT \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
+    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+      --sdk_root=$ANDROID_SDK_ROOT \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;34.0.0"
 
       # -------------------------
       # Local properties (CRITICAL)
