@@ -39,7 +39,7 @@ fun BreadcrumbBar(
         ) {
             Text(
                 text = "Internal Storage",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -69,7 +69,7 @@ fun BreadcrumbBar(
             ) {
                 Text(
                     text = segment,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     color = if (isLast) 
                         MaterialTheme.colorScheme.primary 

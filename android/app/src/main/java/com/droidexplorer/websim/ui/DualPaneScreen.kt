@@ -1,10 +1,17 @@
 package com.droidexplorer.websim.ui
 
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.ViewWeek
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -12,8 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.SnackbarResult
+import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
+import com.droidexplorer.websim.storage.DataStoreSafStore
+import com.droidexplorer.websim.storage.SafPermissionManager
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +33,13 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
+    val safStore = remember { DataStoreSafStore(context) }
+    val safManager = remember { SafPermissionManager(context, safStore) }
+    val fileOperator = remember { FileOperator(context, safManager) }
+    val leftPaneState = remember { PaneState("/storage/emulated/0") }
+    val rightPaneState = remember { PaneState("/storage/emulated/0") }
+    var activePane by remember { mutableStateOf(leftPaneState) }
+    var pendingSafDir by remember { mutableStateOf<File?>(null) }
     
     // Use rememberSaveable to persist pane mode across configuration changes
     var paneMode by rememberSaveable { 
@@ -34,6 +53,16 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     
     val snackbarHostState = remember { SnackbarHostState() }
     var cleanerResult by remember { mutableStateOf<String?>(null) }
+
+    val safLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        val dir = pendingSafDir
+        if (uri != null && dir != null) {
+            safManager.persist(uri, dir.absolutePath)
+        }
+        pendingSafDir = null
+    }
     
     // Show cleaner result
     LaunchedEffect(cleanerResult) {
@@ -42,48 +71,77 @@ fun DualPaneScreen(singlePane: Boolean = false) {
             cleanerResult = null
         }
     }
+
+    LaunchedEffect(pendingSafDir) {
+        pendingSafDir?.let {
+            val result = snackbarHostState.showSnackbar(
+                message = "Android requires permission to write here. Select this folder once.",
+                actionLabel = "Grant"
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                safLauncher.launch(null)
+            } else {
+                pendingSafDir = null
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Xplorer")
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Xplorer", style = MaterialTheme.typography.titleMedium)
+                        BreadcrumbBar(
+                            currentPath = activePane.path,
+                            onNavigateToPath = { newPath ->
+                                activePane.navigateToPath(newPath)
+                            }
+                        )
+                    }
+                },
+                navigationIcon = {
+                    Row {
+                        IconButton(
+                            onClick = { activePane.goBack() },
+                            enabled = activePane.canGoBack()
                         ) {
-                            Text(
-                                text = if (paneMode == PaneMode.DUAL) "DUAL" else "SINGLE",
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                        IconButton(
+                            onClick = { activePane.goForward() },
+                            enabled = activePane.canGoForward()
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                                contentDescription = "Forward"
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
                 actions = {
-                    // Toggle pane mode
-                    IconButton(onClick = {
-                        paneMode = if (paneMode == PaneMode.DUAL) PaneMode.SINGLE else PaneMode.DUAL
-                    }) {
+                    IconToggleButton(
+                        checked = paneMode == PaneMode.DUAL,
+                        onCheckedChange = { checked ->
+                            paneMode = if (checked) PaneMode.DUAL else PaneMode.SINGLE
+                            if (!checked) {
+                                activePane = leftPaneState
+                            }
+                        }
+                    ) {
                         Icon(
-                            imageVector = if (paneMode == PaneMode.DUAL) 
-                                Icons.Filled.Splitscreen 
-                                else Icons.Filled.ViewAgenda,
-                            contentDescription = "Toggle pane mode"
+                            imageVector = if (paneMode == PaneMode.DUAL)
+                                Icons.Outlined.ViewWeek else Icons.Outlined.ViewAgenda,
+                            contentDescription = "Toggle view mode"
                         )
                     }
-                    
-                    // Sort menu
+
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.Filled.Sort, contentDescription = "Sort")
+                            Icon(Icons.Outlined.Sort, contentDescription = "Sort")
                         }
                         SortMenu(
                             currentSortType = sortType,
@@ -96,10 +154,9 @@ fun DualPaneScreen(singlePane: Boolean = false) {
                             onDismiss = { showSortMenu = false }
                         )
                     }
-                    
-                    // Cleaner
+
                     IconButton(onClick = { showCleanerDialog = true }) {
-                        Icon(Icons.Filled.CleaningServices, contentDescription = "Cleaner")
+                        Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
                     }
                 }
             )
@@ -118,7 +175,13 @@ fun DualPaneScreen(singlePane: Boolean = false) {
                     .weight(1f)
                     .fillMaxHeight()
                     .background(MaterialTheme.colorScheme.surface),
-                startPath = "/storage/emulated/0",
+                paneState = leftPaneState,
+                fileOperator = fileOperator,
+                onSafRequired = { pendingSafDir = it },
+                onRequestFocus = { activePane = leftPaneState },
+                isActive = activePane == leftPaneState,
+                sortType = sortType,
+                sortOrder = sortOrder,
                 showDivider = paneMode == PaneMode.DUAL
             )
             
@@ -129,7 +192,13 @@ fun DualPaneScreen(singlePane: Boolean = false) {
                         .weight(1f)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
-                    startPath = "/storage/emulated/0",
+                    paneState = rightPaneState,
+                    fileOperator = fileOperator,
+                    onSafRequired = { pendingSafDir = it },
+                    onRequestFocus = { activePane = rightPaneState },
+                    isActive = activePane == rightPaneState,
+                    sortType = sortType,
+                    sortOrder = sortOrder,
                     showDivider = false
                 )
             }

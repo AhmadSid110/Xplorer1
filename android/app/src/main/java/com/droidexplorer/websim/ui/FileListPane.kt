@@ -1,7 +1,7 @@
 package com.droidexplorer.websim.ui
 
-import android.content.Context
 import android.content.Intent
+import android.content.ActivityNotFoundException
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -9,8 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,10 +16,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.droidexplorer.websim.data.FileClipboard
+import com.droidexplorer.websim.file.FileOperator
+import com.droidexplorer.websim.file.SafRequired
 import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
@@ -32,36 +31,42 @@ import java.io.File
 @Composable
 fun FileListPane(
     modifier: Modifier,
-    startPath: String,
+    paneState: PaneState,
+    fileOperator: FileOperator,
+    onSafRequired: (File) -> Unit,
+    onRequestFocus: () -> Unit,
+    isActive: Boolean,
+    sortType: SortType,
+    sortOrder: SortOrder,
     showDivider: Boolean = false
 ) {
     val context = LocalContext.current
-    val navigator = remember { PaneNavigator(startPath) }
-    var path by rememberSaveable { mutableStateOf(startPath) }
-    var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
-    var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var refreshTrigger by remember { mutableStateOf(0) }
+    var viewerFile by remember { mutableStateOf<File?>(null) }
+    var editorFile by remember { mutableStateOf<File?>(null) }
+    var pdfFile by remember { mutableStateOf<File?>(null) }
     
     // Context menu state
     var selectedFile by remember { mutableStateOf<File?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
     
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     
     // Load files
-    val files = remember(path, sortType, sortOrder, searchQuery, refreshTrigger) {
+    val files = remember(paneState.path, sortType, sortOrder, searchQuery, refreshTrigger) {
         isLoading = true
         val result = if (searchQuery.isNotEmpty()) {
-            FileManager.search(path, searchQuery)
+            FileManager.search(paneState.path, searchQuery)
         } else {
-            FileManager.list(path, sortType, sortOrder)
+            FileManager.list(paneState.path, sortType, sortOrder)
         }
         isLoading = false
         result
@@ -75,61 +80,61 @@ fun FileListPane(
         }
     }
 
-    BackHandler(enabled = navigator.canGoBack()) {
-        navigator.goBack()
-        path = navigator.currentPath
+    BackHandler(enabled = paneState.canGoBack() && isActive) {
+        paneState.goBack()
+    }
+
+    val permissionMessage = "Android requires permission to write here.\nSelect this folder once."
+    
+    fun handleSaf(e: Throwable): Boolean {
+        return if (e is SafRequired) {
+            onSafRequired(e.directory)
+            snackbarMessage = permissionMessage
+            true
+        } else false
+    }
+
+    fun openFile(file: File) {
+        onRequestFocus()
+        when (file.extension.lowercase()) {
+            "txt", "md", "json", "xml", "csv", "log" -> viewerFile = file
+            "pdf" -> pdfFile = file
+            else -> {
+                try {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        file
+                    )
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "*/*")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Open with"))
+                } catch (_: ActivityNotFoundException) {
+                    snackbarMessage = "No compatible app found"
+                } catch (_: Exception) {
+                    snackbarMessage = "Unable to open file"
+                }
+            }
+        }
     }
 
     Box(modifier = modifier) {
         Row {
             Column(modifier = Modifier.weight(1f)) {
-                // Top bar with navigation and search
+                // Top bar with search only (breadcrumbs moved to scaffold)
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     tonalElevation = 2.dp
                 ) {
                     Column {
-                        // Navigation row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
-                                onClick = {
-                                    navigator.goBack()
-                                    path = navigator.currentPath
-                                },
-                                enabled = navigator.canGoBack()
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = if (navigator.canGoBack()) 
-                                        MaterialTheme.colorScheme.onSurfaceVariant 
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                )
-                            }
-                            
-                            IconButton(
-                                onClick = {
-                                    navigator.goForward()
-                                    path = navigator.currentPath
-                                },
-                                enabled = navigator.canGoForward()
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = "Forward",
-                                    tint = if (navigator.canGoForward()) 
-                                        MaterialTheme.colorScheme.onSurfaceVariant 
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.weight(1f))
-                            
                             // Search toggle
                             IconButton(onClick = { isSearching = !isSearching }) {
                                 Icon(
@@ -138,19 +143,28 @@ fun FileListPane(
                                 )
                             }
                             
+                            Spacer(modifier = Modifier.weight(1f))
+                            
                             // Paste button
                             if (FileClipboard.hasItem()) {
                                 IconButton(
                                     onClick = {
                                         FileClipboard.item?.let { item ->
-                                            val result = FileManager.paste(item, path)
+                                            val result = fileOperator.performClipboard(
+                                                item,
+                                                File(paneState.path)
+                                            )
                                             result.fold(
                                                 onSuccess = { 
                                                     snackbarMessage = "Pasted successfully"
                                                     FileClipboard.clear()
                                                     refreshTrigger++
                                                 },
-                                                onFailure = { snackbarMessage = "Failed to paste: ${it.message}" }
+                                                onFailure = { 
+                                                    if (!handleSaf(it)) {
+                                                        snackbarMessage = "Failed to paste: ${it.message}"
+                                                    }
+                                                }
                                             )
                                         }
                                     }
@@ -185,16 +199,6 @@ fun FileListPane(
                                 shape = RoundedCornerShape(8.dp)
                             )
                         }
-                        
-                        // Breadcrumb navigation
-                        BreadcrumbBar(
-                            currentPath = path,
-                            onNavigateToPath = { newPath ->
-                                navigator.navigateToPath(newPath)
-                                path = navigator.currentPath
-                            },
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
                     }
                 }
                 
@@ -242,18 +246,32 @@ fun FileListPane(
                             items = files,
                             key = { it.absolutePath }
                         ) { file ->
+                            val requiresSaf = remember(file.absolutePath) {
+                                if (!file.isDirectory) {
+                                    false
+                                } else {
+                                    val cached = writeProbeCache[file.absolutePath]
+                                    val writable = cached ?: FileOperator.canWrite(file).also {
+                                        writeProbeCache[file.absolutePath] = it
+                                    }
+                                    !writable
+                                }
+                            }
                             FileRow(
                                 file = file,
                                 isSelected = selectedFile?.absolutePath == file.absolutePath && showContextMenu,
+                                requiresPermission = requiresSaf,
                                 onClick = {
+                                    onRequestFocus()
                                     if (file.isDirectory) {
-                                        navigator.navigateTo(file.absolutePath)
-                                        path = navigator.currentPath
+                                        paneState.navigateTo(file.absolutePath)
                                     }
+                                    else openFile(file)
                                 },
                                 onLongClick = {
                                     selectedFile = file
                                     showContextMenu = true
+                                    onRequestFocus()
                                 }
                             )
                         }
@@ -284,6 +302,10 @@ fun FileListPane(
             file = selectedFile!!,
             onDismiss = { 
                 showContextMenu = false
+            },
+            onOpen = { openFile(selectedFile!!) },
+            onEdit = {
+                editorFile = selectedFile
             },
             onRename = { showRenameDialog = true },
             onDelete = { showDeleteDialog = true },
@@ -333,18 +355,54 @@ fun FileListPane(
         )
     }
     
+    // Text viewer
+    viewerFile?.let { target ->
+        TextViewerSheet(
+            file = target,
+            fileOperator = fileOperator,
+            onDismiss = { viewerFile = null },
+            onEdit = { editorFile = target },
+            onSafRequired = onSafRequired
+        )
+    }
+
+    // Text editor
+    editorFile?.let { target ->
+        TextEditorSheet(
+            file = target,
+            fileOperator = fileOperator,
+            onDismiss = { editorFile = null },
+            onSaved = { refreshTrigger++ },
+            onSafRequired = onSafRequired
+        )
+    }
+
+    // PDF viewer
+    pdfFile?.let { target ->
+        PdfViewerSheet(
+            file = target,
+            fileOperator = fileOperator,
+            onDismiss = { pdfFile = null },
+            onSafRequired = onSafRequired
+        )
+    }
+
     // Rename dialog
     if (showRenameDialog && selectedFile != null) {
         RenameDialog(
             file = selectedFile!!,
             onDismiss = { showRenameDialog = false },
             onRename = { newName ->
-                FileManager.rename(selectedFile!!, newName).fold(
+                fileOperator.rename(selectedFile!!, newName).fold(
                     onSuccess = { 
                         snackbarMessage = "Renamed successfully"
                         refreshTrigger++
                     },
-                    onFailure = { snackbarMessage = "Failed to rename: ${it.message}" }
+                    onFailure = { 
+                        if (!handleSaf(it)) {
+                            snackbarMessage = "Failed to rename: ${it.message}"
+                        }
+                    }
                 )
             }
         )
@@ -356,12 +414,16 @@ fun FileListPane(
             file = selectedFile!!,
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
-                FileManager.delete(selectedFile!!).fold(
+                fileOperator.delete(selectedFile!!).fold(
                     onSuccess = { 
                         snackbarMessage = "Deleted successfully"
                         refreshTrigger++
                     },
-                    onFailure = { snackbarMessage = "Failed to delete: ${it.message}" }
+                    onFailure = { 
+                        if (!handleSaf(it)) {
+                            snackbarMessage = "Failed to delete: ${it.message}"
+                        }
+                    }
                 )
             }
         )
