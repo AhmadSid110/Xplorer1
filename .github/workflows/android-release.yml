@@ -56,22 +56,28 @@ jobs:
           java-version: 17
 
       # -------------------------
-      # Android SDK (NO /sdk, NO PERMISSION ISSUE)
-      # -------------------------
-      - name: Install Android SDK
-        run: |
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT
+# Android SDK (FIXED)
+# -------------------------
+- name: Install Android SDK
+  run: |
+    mkdir -p $ANDROID_SDK_ROOT
+    cd $ANDROID_SDK_ROOT
 
-          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-          unzip -q tools.zip
-          mv cmdline-tools cmdline-tools/latest
+    curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
 
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-            --sdk_root=$ANDROID_SDK_ROOT \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
+    rm -rf cmdline-tools-temp
+    unzip -q tools.zip -d cmdline-tools-temp
+
+    mkdir -p cmdline-tools/latest
+    mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest/
+
+    rm -rf cmdline-tools-temp tools.zip
+
+    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+      --sdk_root=$ANDROID_SDK_ROOT \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;34.0.0"
 
       # -------------------------
       # local.properties (CRITICAL)
