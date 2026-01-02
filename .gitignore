@@ -1,0 +1,18 @@
+# Gradle build files
+.gradle/
+build/
+local.properties
+
+# IDE files
+.idea/
+*.iml
+
+# Android build outputs
+*.apk
+*.aab
+*.dex
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
