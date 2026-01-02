@@ -1,17 +1,13 @@
 name: Android Release Build
 
 on:
-  # 🔹 Automatic trigger via version tags
+  # Manual trigger
+  workflow_dispatch:
+
+  # Auto trigger on version tags
   push:
     tags:
-      - "v*.*.*"
-
-  # 🔹 Manual trigger from GitHub UI
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version name (e.g. 1.0.2). Leave empty to use tag."
-        required: false
+      - "v*.*.*"   # v1.0.0, v1.2.3 etc
 
 permissions:
   contents: write
@@ -21,30 +17,30 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
     steps:
       # -------------------------
-      # Checkout (tags REQUIRED)
+      # Checkout
       # -------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # REQUIRED for tags
 
       # -------------------------
-      # Resolve Version (TAG or MANUAL)
+      # Extract version from tag (if exists)
       # -------------------------
-      - name: Resolve version
+      - name: Extract version
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="dev-${GITHUB_RUN_NUMBER}"
           fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Version = $VERSION"
+          echo "Using version: $VERSION"
 
       # -------------------------
       # Java 17 (MATCHES MODAL)
@@ -56,28 +52,28 @@ jobs:
           java-version: 17
 
       # -------------------------
-# Android SDK (FIXED)
-# -------------------------
-- name: Install Android SDK
-  run: |
-    mkdir -p $ANDROID_SDK_ROOT
-    cd $ANDROID_SDK_ROOT
+      # Android SDK (FIXED – NO SELF MOVE)
+      # -------------------------
+      - name: Install Android SDK
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT"
+          cd "$ANDROID_SDK_ROOT"
 
-    curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
 
-    rm -rf cmdline-tools-temp
-    unzip -q tools.zip -d cmdline-tools-temp
+          rm -rf cmdline-tools-temp
+          unzip -q tools.zip -d cmdline-tools-temp
 
-    mkdir -p cmdline-tools/latest
-    mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest/
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest/
 
-    rm -rf cmdline-tools-temp tools.zip
+          rm -rf cmdline-tools-temp tools.zip
 
-    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-      --sdk_root=$ANDROID_SDK_ROOT \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;34.0.0"
+          yes | cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       # -------------------------
       # local.properties (CRITICAL)
@@ -87,14 +83,14 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       # -------------------------
-      # gradle.properties (ANDROIDX FIX)
+      # gradle.properties (ANDROIDX + MEMORY FIX)
       # -------------------------
-      - name: Ensure gradle.properties
+      - name: Write gradle.properties
         run: |
           cat <<EOF > android/gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2g
+          org.gradle.jvmargs=-Xmx3g -XX:+UseParallelGC
           EOF
 
       # -------------------------
@@ -105,12 +101,13 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug \
-            -PversionName=$APP_VERSION
+            -PversionName=$APP_VERSION \
+            --no-daemon
 
       # -------------------------
       # Verify APK
       # -------------------------
-      - name: Verify APK
+      - name: Verify APK output
         run: |
           ls -lh android/app/build/outputs/apk/debug/
           test -f android/app/build/outputs/apk/debug/app-debug.apk
@@ -118,7 +115,10 @@ jobs:
       # -------------------------
       # Upload to GitHub Release
       # -------------------------
-      - name: Upload APK to Release
+      - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: Xplorer v${{ env.APP_VERSION }}
+          prerelease: true
           files: android/app/build/outputs/apk/debug/app-debug.apk
