@@ -1,9 +1,17 @@
 name: Android Release Build
 
 on:
+  # 🔹 Automatic trigger via version tags
   push:
     tags:
-      - "v*.*.*"   # v1.0.0, v1.2.3, etc
+      - "v*.*.*"
+
+  # 🔹 Manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name (e.g. 1.0.2). Leave empty to use tag."
+        required: false
 
 permissions:
   contents: write
@@ -15,11 +23,10 @@ jobs:
     env:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
 
     steps:
       # -------------------------
-      # Checkout (tags required)
+      # Checkout (tags REQUIRED)
       # -------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,11 +34,15 @@ jobs:
           fetch-depth: 0
 
       # -------------------------
-      # Extract version from tag
+      # Resolve Version (TAG or MANUAL)
       # -------------------------
-      - name: Extract version
+      - name: Resolve version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
           echo "Version = $VERSION"
 
@@ -45,19 +56,19 @@ jobs:
           java-version: 17
 
       # -------------------------
-      # Android SDK (WORKSPACE SAFE)
+      # Android SDK (NO /sdk, NO PERMISSION ISSUE)
       # -------------------------
       - name: Install Android SDK
         run: |
-          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-          cd "$ANDROID_SDK_ROOT"
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
 
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-          unzip tools.zip
+          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+          unzip -q tools.zip
           mv cmdline-tools cmdline-tools/latest
 
-          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            --sdk_root="$ANDROID_SDK_ROOT" \
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=$ANDROID_SDK_ROOT \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0"
@@ -72,12 +83,12 @@ jobs:
       # -------------------------
       # gradle.properties (ANDROIDX FIX)
       # -------------------------
-      - name: Write gradle.properties
+      - name: Ensure gradle.properties
         run: |
           cat <<EOF > android/gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2g -Dkotlin.daemon.jvm.options=-Xmx2g
+          org.gradle.jvmargs=-Xmx2g
           EOF
 
       # -------------------------
@@ -93,7 +104,7 @@ jobs:
       # -------------------------
       # Verify APK
       # -------------------------
-      - name: Verify APK output
+      - name: Verify APK
         run: |
           ls -lh android/app/build/outputs/apk/debug/
           test -f android/app/build/outputs/apk/debug/app-debug.apk
