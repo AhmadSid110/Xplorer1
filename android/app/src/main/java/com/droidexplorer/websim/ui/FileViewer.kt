@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
+import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -322,6 +324,38 @@ fun PdfViewerSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageViewerSheet(
+    file: File,
+    onDismiss: () -> Unit
+) {
+    val bitmap by remember(file.absolutePath) {
+        mutableStateOf(
+            runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
+        )
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 200.dp)
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = file.name,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.Fit
+                )
+            } ?: Text("Unable to load image")
         }
     }
 }
