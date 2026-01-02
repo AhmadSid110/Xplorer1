@@ -19,7 +19,10 @@ class FileOperator(
 
     fun copy(src: File, destDir: File): Result<File> {
         val dest = File(destDir, src.name)
-        return runCatching { copyInternal(src, dest, destDir) }
+        return runCatching {
+            copyInternal(src, dest, destDir)
+            dest
+        }
     }
 
     fun move(src: File, destDir: File): Result<File> {

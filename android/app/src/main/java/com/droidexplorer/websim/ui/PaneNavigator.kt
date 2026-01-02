@@ -38,7 +38,7 @@ class PaneNavigator(startPath: String) {
     }
 
     fun navigateToPath(path: String) {
-        if (path != navigator.currentPath) {
+        if (path != currentPath) {
             navigateTo(path)
         }
     }
