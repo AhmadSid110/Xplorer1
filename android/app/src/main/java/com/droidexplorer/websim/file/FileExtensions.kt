@@ -4,7 +4,7 @@ import java.io.File
 
 private val textExtensions = setOf(
     "txt", "md", "json", "xml", "html", "css",
-    "js", "srt", "log", "ini", "yaml", "yml"
+    "js", "srt", "log", "ini", "yaml", "yml", "csv"
 )
 
 private val imageExtensions = setOf("png", "jpg", "jpeg", "webp", "gif")

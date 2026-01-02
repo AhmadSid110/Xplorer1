@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SafRequired
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -334,10 +336,15 @@ fun ImageViewerSheet(
     file: File,
     onDismiss: () -> Unit
 ) {
-    val bitmap by remember(file.absolutePath) {
-        mutableStateOf(
+    var bitmap by remember(file.absolutePath) { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember(file.absolutePath) { mutableStateOf(true) }
+
+    LaunchedEffect(file.absolutePath) {
+        isLoading = true
+        bitmap = withContext(Dispatchers.IO) {
             runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
-        )
+        }
+        isLoading = false
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -348,14 +355,16 @@ fun ImageViewerSheet(
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
-            bitmap?.let {
-                Image(
-                    bitmap = it.asImageBitmap(),
+            when {
+                isLoading -> CircularProgressIndicator()
+                bitmap != null -> Image(
+                    bitmap = bitmap!!.asImageBitmap(),
                     contentDescription = file.name,
                     modifier = Modifier.fillMaxWidth(),
                     contentScale = ContentScale.Fit
                 )
-            } ?: Text("Unable to load image")
+                else -> Text("Unable to load image")
+            }
         }
     }
 }
