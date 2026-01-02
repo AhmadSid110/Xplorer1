@@ -51,10 +51,29 @@ object ZipUtils {
             if (!destFolder.exists()) {
                 destFolder.mkdirs()
             }
+            val destFolderCanonicalPath = destFolder.canonicalPath
+            
             ZipInputStream(FileInputStream(zipFile)).use { zis ->
                 var entry = zis.nextEntry
                 while (entry != null) {
-                    val file = File(destFolder, entry.name)
+                    // Security: Validate entry name to prevent Zip Slip attacks
+                    val entryName = entry.name
+                    if (entryName.contains("..") || entryName.startsWith("/") || entryName.startsWith("\\")) {
+                        zis.closeEntry()
+                        entry = zis.nextEntry
+                        continue // Skip malicious entries
+                    }
+                    
+                    val file = File(destFolder, entryName)
+                    val fileCanonicalPath = file.canonicalPath
+                    
+                    // Verify the file is within the destination folder (Zip Slip protection)
+                    if (!fileCanonicalPath.startsWith(destFolderCanonicalPath)) {
+                        zis.closeEntry()
+                        entry = zis.nextEntry
+                        continue // Skip entries that would escape destination
+                    }
+                    
                     if (entry.isDirectory) {
                         file.mkdirs()
                     } else {

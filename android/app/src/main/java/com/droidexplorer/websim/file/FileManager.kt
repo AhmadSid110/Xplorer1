@@ -92,6 +92,24 @@ object FileManager {
         }
     }
 
+    // Protected directories that should never be cleaned
+    private val PROTECTED_PATHS = listOf(
+        "/Android/obb",
+        "/Android/data",
+        "/DCIM",
+        "/Pictures",
+        "/Download",
+        "/Documents",
+        "/Music",
+        "/Movies"
+    )
+    
+    private fun isProtectedPath(path: String): Boolean {
+        return PROTECTED_PATHS.any { protected -> 
+            path.contains(protected, ignoreCase = true) 
+        }
+    }
+
     fun deleteEmptyFolders(rootPath: String): Int {
         var count = 0
         try {
@@ -99,7 +117,8 @@ object FileManager {
             if (root.isDirectory) {
                 root.walkBottomUp().forEach { file ->
                     if (file.isDirectory && file.listFiles()?.isEmpty() == true) {
-                        if (!file.absolutePath.contains("/Android/obb")) {
+                        // Skip protected directories
+                        if (!isProtectedPath(file.absolutePath)) {
                             if (file.delete()) count++
                         }
                     }

@@ -54,9 +54,17 @@ class MainActivity : ComponentActivity() {
     
     private fun checkAndRequestPermissions() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ uses more granular permissions
+            // Android 13+ uses granular media permissions
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_AUDIO
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11-12 - READ_EXTERNAL_STORAGE only
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         } else {
+            // Android 10 and below
             arrayOf(
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
