@@ -25,6 +25,9 @@ import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.ui.viewer.PdfViewerScreen
+import com.droidexplorer.websim.ui.viewer.Viewer
+import com.droidexplorer.websim.ui.viewer.ZipViewerScreen
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +43,7 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     val rightPaneState = remember { PaneState("/storage/emulated/0") }
     var activePane by remember { mutableStateOf(leftPaneState) }
     var pendingSafDir by remember { mutableStateOf<File?>(null) }
+    var viewer by remember { mutableStateOf<Viewer?>(null) }
     
     // Use rememberSaveable to persist pane mode across configuration changes
     var paneMode by rememberSaveable { 
@@ -86,121 +90,129 @@ fun DualPaneScreen(singlePane: Boolean = false) {
         }
     }
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Xplorer", style = MaterialTheme.typography.titleMedium)
-                        BreadcrumbBar(
-                            currentPath = activePane.path,
-                            onNavigateToPath = { newPath ->
-                                activePane.navigateToPath(newPath)
+    when (val currentViewer = viewer) {
+        is Viewer.Pdf -> PdfViewerScreen(currentViewer.file) { viewer = null }
+        is Viewer.Zip -> ZipViewerScreen(currentViewer.file) { viewer = null }
+        null -> {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("Xplorer", style = MaterialTheme.typography.titleMedium)
+                                BreadcrumbBar(
+                                    currentPath = activePane.path,
+                                    onNavigateToPath = { newPath ->
+                                        activePane.navigateToPath(newPath)
+                                    }
+                                )
                             }
-                        )
-                    }
-                },
-                navigationIcon = {
-                    Row {
-                        IconButton(
-                            onClick = { activePane.goBack() },
-                            enabled = activePane.canGoBack()
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                        IconButton(
-                            onClick = { activePane.goForward() },
-                            enabled = activePane.canGoForward()
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                                contentDescription = "Forward"
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    IconToggleButton(
-                        checked = paneMode == PaneMode.DUAL,
-                        onCheckedChange = { checked ->
-                            paneMode = if (checked) PaneMode.DUAL else PaneMode.SINGLE
-                            if (!checked) {
-                                activePane = leftPaneState
+                        },
+                        navigationIcon = {
+                            Row {
+                                IconButton(
+                                    onClick = { activePane.goBack() },
+                                    enabled = activePane.canGoBack()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { activePane.goForward() },
+                                    enabled = activePane.canGoForward()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                                        contentDescription = "Forward"
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            IconToggleButton(
+                                checked = paneMode == PaneMode.DUAL,
+                                onCheckedChange = { checked ->
+                                    paneMode = if (checked) PaneMode.DUAL else PaneMode.SINGLE
+                                    if (!checked) {
+                                        activePane = leftPaneState
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (paneMode == PaneMode.DUAL)
+                                        Icons.Outlined.ViewWeek else Icons.Outlined.ViewAgenda,
+                                    contentDescription = "Toggle view mode"
+                                )
+                            }
+
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(Icons.Outlined.Sort, contentDescription = "Sort")
+                                }
+                                SortMenu(
+                                    currentSortType = sortType,
+                                    currentSortOrder = sortOrder,
+                                    onSortChange = { type, order ->
+                                        sortType = type
+                                        sortOrder = order
+                                    },
+                                    expanded = showSortMenu,
+                                    onDismiss = { showSortMenu = false }
+                                )
+                            }
+
+                            IconButton(onClick = { showCleanerDialog = true }) {
+                                Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
                             }
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (paneMode == PaneMode.DUAL)
-                                Icons.Outlined.ViewWeek else Icons.Outlined.ViewAgenda,
-                            contentDescription = "Toggle view mode"
+                    )
+                },
+                snackbarHost = { SnackbarHost(snackbarHostState) }
+            ) { paddingValues ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    // Left pane (always visible)
+                    FileListPane(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surface),
+                        paneState = leftPaneState,
+                        fileOperator = fileOperator,
+                        onSafRequired = { pendingSafDir = it },
+                        onRequestFocus = { activePane = leftPaneState },
+                        isActive = activePane == leftPaneState,
+                        sortType = sortType,
+                        sortOrder = sortOrder,
+                        showDivider = paneMode == PaneMode.DUAL,
+                        onOpenViewer = { viewer = it }
+                    )
+                    
+                    // Right pane (only in dual mode)
+                    if (paneMode == PaneMode.DUAL) {
+                        FileListPane(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            paneState = rightPaneState,
+                            fileOperator = fileOperator,
+                            onSafRequired = { pendingSafDir = it },
+                            onRequestFocus = { activePane = rightPaneState },
+                            isActive = activePane == rightPaneState,
+                            sortType = sortType,
+                            sortOrder = sortOrder,
+                            showDivider = false,
+                            onOpenViewer = { viewer = it }
                         )
-                    }
-
-                    Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.Outlined.Sort, contentDescription = "Sort")
-                        }
-                        SortMenu(
-                            currentSortType = sortType,
-                            currentSortOrder = sortOrder,
-                            onSortChange = { type, order ->
-                                sortType = type
-                                sortOrder = order
-                            },
-                            expanded = showSortMenu,
-                            onDismiss = { showSortMenu = false }
-                        )
-                    }
-
-                    IconButton(onClick = { showCleanerDialog = true }) {
-                        Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
                     }
                 }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            // Left pane (always visible)
-            FileListPane(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.surface),
-                paneState = leftPaneState,
-                fileOperator = fileOperator,
-                onSafRequired = { pendingSafDir = it },
-                onRequestFocus = { activePane = leftPaneState },
-                isActive = activePane == leftPaneState,
-                sortType = sortType,
-                sortOrder = sortOrder,
-                showDivider = paneMode == PaneMode.DUAL
-            )
-            
-            // Right pane (only in dual mode)
-            if (paneMode == PaneMode.DUAL) {
-                FileListPane(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    paneState = rightPaneState,
-                    fileOperator = fileOperator,
-                    onSafRequired = { pendingSafDir = it },
-                    onRequestFocus = { activePane = rightPaneState },
-                    isActive = activePane == rightPaneState,
-                    sortType = sortType,
-                    sortOrder = sortOrder,
-                    showDivider = false
-                )
             }
         }
     }

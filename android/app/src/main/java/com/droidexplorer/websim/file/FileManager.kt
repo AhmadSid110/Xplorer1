@@ -32,6 +32,36 @@ object FileManager {
         }
     }
 
+    fun searchRecursive(
+        root: File,
+        query: String,
+        maxResults: Int = 500
+    ): List<File> {
+        val results = mutableListOf<File>()
+
+        fun walk(dir: File) {
+            if (results.size >= maxResults) return
+            val files = dir.listFiles() ?: return
+
+            for (file in files) {
+                if (file.name.contains(query, ignoreCase = true)) {
+                    results.add(file)
+                    if (results.size >= maxResults) return
+                }
+                if (file.isDirectory && !file.isHidden) {
+                    walk(file)
+                }
+            }
+        }
+
+        try {
+            walk(root)
+        } catch (_: Exception) {
+            // Ignore traversal errors
+        }
+        return results
+    }
+
     fun rename(file: File, newName: String): Result<File> {
         return try {
             val newFile = File(file.parent, newName)
