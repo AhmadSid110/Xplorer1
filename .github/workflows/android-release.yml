@@ -1,77 +1,70 @@
-name: Android Release Build
+name: Android Debug APK (Release)
 
 on:
   push:
     tags:
-      - "v*.*.*"   # v1.0.0, v1.2.3 etc
+      - "debug-*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
+  build-debug-apk:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_SDK_ROOT: /opt/android-sdk
+      ANDROID_SDK_ROOT: /sdk
+      ANDROID_HOME: /sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
     steps:
-      # -------------------------
-      # Checkout
-      # -------------------------
-      - name: Checkout repository
+      # -----------------------------
+      # Checkout (FULL HISTORY NEEDED)
+      # -----------------------------
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # REQUIRED for tags
+          fetch-depth: 0
 
-      # -------------------------
-      # Extract version from tag
-      # -------------------------
-      - name: Extract version from tag
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Version: $VERSION"
-
-      # -------------------------
-      # Java 17 (MATCHES MODAL)
-      # -------------------------
+      # -----------------------------
+      # Java 17 (MATCH MODAL)
+      # -----------------------------
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      # -------------------------
+      # -----------------------------
       # Android SDK (MANUAL, STABLE)
-      # -------------------------
+      # -----------------------------
       - name: Install Android SDK
-  run: |
-    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-    cd $ANDROID_SDK_ROOT/cmdline-tools
+        run: |
+          mkdir -p /sdk/cmdline-tools
+          cd /sdk
 
-    curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-    unzip tools.zip
-    mv cmdline-tools latest
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip tools.zip
+          mv cmdline-tools cmdline-tools/latest
 
-    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-      --sdk_root=$ANDROID_SDK_ROOT \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;34.0.0"
+          yes | /sdk/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=/sdk \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
-      # -------------------------
-      # Local properties (CRITICAL)
-      # -------------------------
+      # -----------------------------
+      # local.properties (CRITICAL)
+      # -----------------------------
       - name: Write local.properties
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          echo "sdk.dir=/sdk" > android/local.properties
 
-      # -------------------------
-      # Gradle properties (ANDROIDX FIX)
-      # -------------------------
-      - name: Ensure gradle.properties
+      # -----------------------------
+      # gradle.properties (ANDROIDX FIX)
+      # -----------------------------
+      - name: Write gradle.properties
         run: |
           cat <<EOF > android/gradle.properties
           android.useAndroidX=true
@@ -79,28 +72,32 @@ jobs:
           org.gradle.jvmargs=-Xmx2g
           EOF
 
-      # -------------------------
-      # Build APK (NO CLEAN)
-      # -------------------------
+      # -----------------------------
+      # Permissions
+      # -----------------------------
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      # -----------------------------
+      # BUILD APK (NO CLEAN)
+      # -----------------------------
       - name: Build Debug APK
         working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew :app:assembleDebug \
-            -PversionName=$APP_VERSION
+          ./gradlew :app:assembleDebug
 
-      # -------------------------
-      # Verify APK
-      # -------------------------
-      - name: Verify APK output
+      # -----------------------------
+      # VERIFY APK
+      # -----------------------------
+      - name: Verify APK
         run: |
           ls -lh android/app/build/outputs/apk/debug/
           test -f android/app/build/outputs/apk/debug/app-debug.apk
 
-      # -------------------------
-      # Upload to GitHub Release
-      # -------------------------
-      - name: Upload APK to Release
+      # -----------------------------
+      # UPLOAD TO GITHUB RELEASE
+      # -----------------------------
+      - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: android/app/build/outputs/apk/debug/app-debug.apk
