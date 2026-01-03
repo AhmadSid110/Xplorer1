@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -35,7 +36,10 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DualPaneScreen(singlePane: Boolean = false) {
+fun DualPaneScreen(
+    singlePane: Boolean = false,
+    onOpenSettings: () -> Unit = {}
+) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
@@ -61,6 +65,7 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     
     var showSortMenu by remember { mutableStateOf(false) }
     var showCleanerDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
     
@@ -215,6 +220,24 @@ fun DualPaneScreen(singlePane: Boolean = false) {
 
                             IconButton(onClick = { showCleanerDialog = true }) {
                                 Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
+                            }
+
+                            Box {
+                                IconButton(onClick = { showOverflowMenu = true }) {
+                                    Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
+                                }
+                                DropdownMenu(
+                                    expanded = showOverflowMenu,
+                                    onDismissRequest = { showOverflowMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Settings") },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onOpenSettings()
+                                        }
+                                    )
+                                }
                             }
                         }
                     )
