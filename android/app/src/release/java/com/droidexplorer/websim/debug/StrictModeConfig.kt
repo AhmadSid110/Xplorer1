@@ -4,6 +4,6 @@ import android.content.Context
 
 object StrictModeConfig {
     fun install(context: Context) {
-        // No-op in release/main builds
+        // No-op for release
     }
 }
