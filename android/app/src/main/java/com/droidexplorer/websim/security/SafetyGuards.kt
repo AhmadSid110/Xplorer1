@@ -10,8 +10,8 @@ object SafetyGuards {
         return when (operation) {
             is FileOperation.Copy -> guardPaths(operation.source.asFile(), operation.destinationDir.asFile())
             is FileOperation.Move -> guardPaths(operation.source.asFile(), operation.destinationDir.asFile())
-            is FileOperation.Delete -> guardDelete(operation.target.asFile())
-            is FileOperation.Rename -> guardDelete(operation.target.asFile())
+            is FileOperation.Delete -> guardTarget(operation.target.asFile())
+            is FileOperation.Rename -> guardTarget(operation.target.asFile())
         }
     }
 
@@ -22,7 +22,7 @@ object SafetyGuards {
         return GuardResult(true)
     }
 
-    private fun guardDelete(target: File): GuardResult {
+    private fun guardTarget(target: File): GuardResult {
         if (isCriticalRoot(target)) {
             return GuardResult(false, "Refusing to operate on system root")
         }

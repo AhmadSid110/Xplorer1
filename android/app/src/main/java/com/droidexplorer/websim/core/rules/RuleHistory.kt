@@ -2,6 +2,7 @@ package com.droidexplorer.websim.core.rules
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.remove
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -75,7 +76,10 @@ class RuleHistoryStore(private val context: Context) {
             ObjectInputStream(ByteArrayInputStream(bytes)).use { input ->
                 input.readObject() as? List<RuleHistoryEntry>
             }
-        }.getOrNull() ?: emptyList()
+        }.getOrElse {
+            Log.w("RuleHistoryStore", "Failed to deserialize rule history", it)
+            emptyList()
+        } ?: emptyList()
     }
 
     companion object {

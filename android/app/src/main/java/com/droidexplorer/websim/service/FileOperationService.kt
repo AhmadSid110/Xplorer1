@@ -115,25 +115,35 @@ class FileOperationService : Service() {
             )
         )
         currentJob = serviceScope.launch {
-            executor.execute(operation, cancellationToken).collect { progress ->
-                _progressFlow.value = progress
-                when (progress) {
-                    is OperationProgress.Started -> updateNotification(
-                        progress.label ?: "Starting",
-                        true,
-                        0,
-                        0
-                    )
+            runCatching {
+                executor.execute(operation, cancellationToken).collect { progress ->
+                    _progressFlow.value = progress
+                    when (progress) {
+                        is OperationProgress.Started -> updateNotification(
+                            progress.label ?: "Starting",
+                            true,
+                            0,
+                            0
+                        )
 
-                    is OperationProgress.Running -> updateNotification(
-                        progress.label ?: "Working",
-                        false,
-                        progress.current,
-                        progress.total
-                    )
+                        is OperationProgress.Running -> updateNotification(
+                            progress.label ?: "Working",
+                            false,
+                            progress.current,
+                            progress.total
+                        )
 
-                    is OperationProgress.Completed -> handleCompletion(operation.id, progress.result)
+                        is OperationProgress.Completed -> handleCompletion(operation.id, progress.result)
+                    }
                 }
+            }.onFailure {
+                _progressFlow.value = OperationProgress.Completed(
+                    operation.id,
+                    OperationResult.Failure(it.message ?: "Operation failed")
+                )
+                persistence.clearAsync(operation.id)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
             }
         }
     }

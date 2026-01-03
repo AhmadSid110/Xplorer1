@@ -101,24 +101,26 @@ class RuleExecutor(
         action: RuleAction,
         operation: FileOperation
     ): FileOperation? {
-        val backing = file.asFile()
         return when (action) {
             is RuleAction.Move -> {
-                val movedFile = File(operation.destinationDir.asFile(), backing.name)
-                val originalParent = backing.parentFile ?: movedFile.parentFile
+                val originalSource = operation.source.asFile()
+                val movedFile = File(operation.destinationDir.asFile(), originalSource.name)
+                val originalParent = originalSource.parentFile ?: movedFile.parentFile
                 if (originalParent != null) {
                     FileOperation.Move(NodeRef.from(movedFile), NodeRef.from(originalParent))
                 } else null
             }
 
             is RuleAction.Copy -> {
-                val copiedFile = File(operation.destinationDir.asFile(), backing.name)
+                val originalSource = operation.source.asFile()
+                val copiedFile = File(operation.destinationDir.asFile(), originalSource.name)
                 FileOperation.Delete(NodeRef.from(copiedFile))
             }
 
             is RuleAction.Rename -> {
-                val renamedFile = File(backing.parentFile, action.pattern.applyTo(backing))
-                FileOperation.Rename(NodeRef.from(renamedFile), backing.name)
+                val renameOp = operation as? FileOperation.Rename ?: return null
+                val renamedFile = File(renameOp.target.asFile().parentFile, renameOp.newName)
+                FileOperation.Rename(NodeRef.from(renamedFile), renameOp.target.asFile().name)
             }
 
             is RuleAction.Tag -> null
