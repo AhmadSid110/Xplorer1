@@ -60,8 +60,8 @@ fun SettingsScreen(
         Divider()
 
         ListItem(
-            headlineText = { Text("Storage") },
-            supportingText = { Text("View storage usage") },
+            headlineContent = { Text("Storage") },
+            supportingContent = { Text("View storage usage") },
             modifier = Modifier.clickable { onOpenStorage() }
         )
     }
