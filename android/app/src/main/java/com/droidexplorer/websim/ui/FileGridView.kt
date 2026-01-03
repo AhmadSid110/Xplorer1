@@ -102,8 +102,9 @@ fun FileGridView(
 
 @Composable
 fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
-    val key = remember(file) {
-        "${file.extensionKey()}_${file.isDirectory}"
+    val extension = remember(file.path) { file.extensionKey() }
+    val key = remember(extension, file.isDirectory) {
+        "${extension}_${file.isDirectory}"
     }
     val painter = FileIconCache.get(key) {
         resolveIconPainter(file)
@@ -115,7 +116,7 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     }
     Icon(
         painter = painter,
-        contentDescription = null,
+        contentDescription = if (file.isDirectory) "Folder" else "File",
         tint = iconTint,
         modifier = Modifier
             .padding(4.dp)
