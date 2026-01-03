@@ -17,6 +17,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.droidexplorer.websim.data.FileClipboard
@@ -28,6 +30,8 @@ import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,13 +68,10 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     
     // Load files
-    fun sortFiles(files: List<File>): List<File> {
-        val sorted = when (sortType) {
-            SortType.NAME -> files.sortedBy { it.name.lowercase() }
-            SortType.SIZE -> files.sortedBy { it.length() }
-            SortType.DATE -> files.sortedBy { it.lastModified() }
+    val sortFiles = remember(sortType, sortOrder) {
+        { files: List<File> ->
+            FileManager.sortFiles(files, sortType, sortOrder)
         }
-        return if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
     }
 
     val files by produceState<List<File>>(
@@ -81,15 +82,17 @@ fun FileListPane(
         key4 = sortOrder,
         key5 = refreshTrigger
     ) {
-        value = if (searchQuery.isBlank()) {
-            FileManager.list(paneState.path, sortType, sortOrder)
-        } else {
-            sortFiles(
-                FileManager.searchRecursive(
-                    root = File(paneState.path),
-                    query = searchQuery
+        value = withContext(Dispatchers.IO) {
+            if (searchQuery.isBlank()) {
+                FileManager.list(paneState.path, sortType, sortOrder)
+            } else {
+                sortFiles(
+                    FileManager.searchRecursive(
+                        root = File(paneState.path),
+                        query = searchQuery
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -231,7 +234,9 @@ fun FileListPane(
                                 Text(
                                     text = "Searching all subfolders…",
                                     style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                                    modifier = Modifier
+                                        .padding(start = 8.dp, bottom = 4.dp)
+                                        .semantics { contentDescription = "Search status: Searching all subfolders" }
                                 )
                             }
                         }

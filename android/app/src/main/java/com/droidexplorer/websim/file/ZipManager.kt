@@ -6,6 +6,7 @@ import java.util.zip.ZipFile
 object ZipManager {
 
     fun list(zip: File): List<String> {
+        if (!zip.extension.equals("zip", ignoreCase = true)) return emptyList()
         ZipFile(zip).use { z ->
             return z.entries().asSequence()
                 .map { it.name }
@@ -17,20 +18,16 @@ object ZipManager {
         zip: File,
         targetDir: File
     ) {
+        if (!zip.extension.equals("zip", ignoreCase = true)) return
         targetDir.mkdirs()
-        val targetCanonical = targetDir.canonicalPath
+        val targetCanonical = targetDir.canonicalPath.let {
+            if (it.endsWith(File.separator)) it else it + File.separator
+        }
         ZipFile(zip).use { z ->
             z.entries().asSequence().forEach { entry ->
                 val entryName = entry.name
-                if (entryName.contains("..") || entryName.startsWith("/") || entryName.startsWith("\\")) {
-                    return@forEach
-                }
-
-                val out = File(targetDir, entryName)
-                val outCanonical = out.canonicalPath
-                if (!outCanonical.startsWith(targetCanonical)) {
-                    return@forEach
-                }
+                val normalized = entryName.replace("\\", "/")
+                val out = resolveEntryFile(targetDir, normalized, targetCanonical) ?: return@forEach
 
                 if (entry.isDirectory) {
                     out.mkdirs()
@@ -44,5 +41,25 @@ object ZipManager {
                 }
             }
         }
+    }
+
+    private fun resolveEntryFile(
+        targetDir: File,
+        normalized: String,
+        targetCanonical: String
+    ): File? {
+        if (
+            normalized.isBlank() ||
+            normalized.contains("..") ||
+            normalized.startsWith("/") ||
+            normalized.contains(":") ||
+            normalized.contains('\u0000')
+        ) {
+            return null
+        }
+
+        val out = File(targetDir, normalized)
+        val outCanonical = out.canonicalPath
+        return if (outCanonical.startsWith(targetCanonical)) out else null
     }
 }

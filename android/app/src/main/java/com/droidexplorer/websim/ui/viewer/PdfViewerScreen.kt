@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,22 +25,35 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import java.io.File
 
+private const val PDF_SCALE_FACTOR = 0.75f
+
 @Composable
 fun PdfViewerScreen(
     file: File,
     onClose: () -> Unit
 ) {
     val rendererState = remember { mutableStateOf<PdfRenderer?>(null) }
+    val errorState = remember { mutableStateOf<String?>(null) }
     val pageCount = rendererState.value?.pageCount ?: 0
 
     DisposableEffect(file) {
-        val fd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        val renderer = PdfRenderer(fd)
-        rendererState.value = renderer
+        var fd: ParcelFileDescriptor? = null
+        var renderer: PdfRenderer? = null
+        try {
+            fd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            renderer = PdfRenderer(fd)
+            rendererState.value = renderer
+            errorState.value = null
+        } catch (e: Exception) {
+            errorState.value = e.message ?: "Unable to open PDF"
+            rendererState.value = null
+            renderer?.close()
+            fd?.close()
+        }
 
         onDispose {
-            renderer.close()
-            fd.close()
+            rendererState.value?.close()
+            fd?.close()
         }
     }
 
@@ -47,22 +63,37 @@ fun PdfViewerScreen(
                 title = { Text(file.name) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Text("←")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 }
             )
         }
     ) { padding ->
         val renderer = rendererState.value
-        if (renderer != null) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(pageCount) { index ->
-                    PdfPage(renderer, index)
+        val error = errorState.value
+        when {
+            renderer != null -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    items(pageCount) { index ->
+                        PdfPage(renderer, index)
+                    }
                 }
+            }
+
+            error != null -> {
+                Text(
+                    text = error,
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(16.dp)
+                )
             }
         }
     }
@@ -75,9 +106,11 @@ private fun PdfPage(
 ) {
     val bitmap = remember(renderer, index) {
         val page = renderer.openPage(index)
+        val width = (page.width * PDF_SCALE_FACTOR).toInt().coerceAtLeast(1)
+        val height = (page.height * PDF_SCALE_FACTOR).toInt().coerceAtLeast(1)
         val bmp = Bitmap.createBitmap(
-            page.width,
-            page.height,
+            width,
+            height,
             Bitmap.Config.ARGB_8888
         )
         page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
