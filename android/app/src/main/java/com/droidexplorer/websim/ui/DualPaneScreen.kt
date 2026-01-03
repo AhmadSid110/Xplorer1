@@ -1,5 +1,7 @@
 package com.droidexplorer.websim.ui
 
+import com.droidexplorer.websim.settings.ViewMode
+import com.droidexplorer.websim.settings.SettingsState
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
