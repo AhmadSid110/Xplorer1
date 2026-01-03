@@ -53,7 +53,12 @@ class FileOperationService : Service() {
         }
 
         val operation = intent?.getSerializableExtra(EXTRA_OPERATION) as? FileOperation
-        if (operation == null || currentJob != null) {
+            ?: return START_NOT_STICKY
+        if (currentJob != null) {
+            _progressFlow.value = OperationProgress.Completed(
+                operation.id,
+                OperationResult.Failure("Another operation is already running")
+            )
             return START_NOT_STICKY
         }
 

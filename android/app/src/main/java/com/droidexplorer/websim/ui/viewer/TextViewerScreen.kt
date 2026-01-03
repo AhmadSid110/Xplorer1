@@ -54,6 +54,10 @@ fun TextViewerScreen(
     var isLoading by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
     var reader by remember { mutableStateOf<BufferedReader?>(null) }
+    val gutterWidth = remember(lines.size) {
+        val digits = (lines.size + 1).toString().length.coerceAtLeast(3)
+        (digits * 8).dp.coerceAtLeast(32.dp)
+    }
 
     fun resetReader() {
         reader?.close()
@@ -137,7 +141,7 @@ fun TextViewerScreen(
                                 text = "${index + 1}",
                                 modifier = Modifier
                                     .padding(end = 8.dp)
-                                    .width(48.dp),
+                                    .width(gutterWidth),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
