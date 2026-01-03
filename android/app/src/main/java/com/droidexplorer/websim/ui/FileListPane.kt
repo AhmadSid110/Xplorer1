@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.droidexplorer.websim.ui
 
 import android.content.Intent
@@ -7,6 +9,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.droidexplorer.websim.data.ClipboardOperation
@@ -37,12 +43,17 @@ import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.asFile
 import com.droidexplorer.websim.file.isImage
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.settings.SettingsState
+import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+
+/** Minimum cell size for grid view mode. */
+private val GridCellMinSize = 140.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +62,7 @@ fun FileListPane(
     paneState: PaneState,
     fileOperator: FileOperator,
     safPermissionManager: SafPermissionManager,
+    settings: SettingsState,
     onSafRequired: (File) -> Unit,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
@@ -90,6 +102,8 @@ fun FileListPane(
         searchQuery,
         sortType,
         sortOrder,
+        settings.showHiddenFiles,
+        settings.searchIncludeSaf,
         refreshTrigger
     ) {
         value = withContext(Dispatchers.IO) {
@@ -98,18 +112,19 @@ fun FileListPane(
                     paneState.path,
                     sortType,
                     sortOrder,
+                    settings.showHiddenFiles,
                     safPermissionManager,
                     context
                 )
             } else {
-                sortFiles(
-                    FileManager.search(
-                        path = paneState.path,
-                        query = searchQuery,
-                        safPermissionManager = safPermissionManager,
-                        context = context
-                    )
+                val results = FileManager.search(
+                    path = paneState.path,
+                    query = searchQuery,
+                    showHidden = settings.showHiddenFiles,
+                    safPermissionManager = if (settings.searchIncludeSaf) safPermissionManager else null,
+                    context = if (settings.searchIncludeSaf) context else null
                 )
+                sortFiles(results)
             }
         }
     }
@@ -338,34 +353,23 @@ fun FileListPane(
                         }
                     }
                 }
-                
-                // File list or empty state
-                if (files.isEmpty()) {
-                    // Empty state
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.FolderOpen,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = if (searchQuery.isNotEmpty()) "No files found" else "No files here",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
+
+                fun requiresPermission(node: FsNode): Boolean {
+                    return when {
+                        node is FsNode.Saf -> true
+                        node is FsNode.Local && node.isDirectory -> {
+                            val cached = writeProbeCache[node.path]
+                            val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
+                                writeProbeCache[node.path] = it
+                            }
+                            !writable
                         }
+                        else -> false
                     }
-                } else {
+                }
+
+                @Composable
+                fun FileListContent(showDetails: Boolean) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -377,36 +381,95 @@ fun FileListPane(
                             key = { it.uniqueKey }
                         ) { node ->
                             val requiresSaf = remember(node.uniqueKey) {
-                                when {
-                                    node is FsNode.Saf -> true
-                                    node is FsNode.Local && node.isDirectory -> {
-                                        val cached = writeProbeCache[node.path]
-                                        val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
-                                            writeProbeCache[node.path] = it
+                                requiresPermission(node)
+                            }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                FileRow(
+                                    file = node,
+                                    isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
+                                    requiresPermission = requiresSaf,
+                                    onClick = {
+                                        onRequestFocus()
+                                        if (node.isDirectory) {
+                                            paneState.navigateTo(node.path)
+                                            searchQuery = ""
                                         }
-                                        !writable
+                                        else handleOpen(node.asFile())
+                                    },
+                                    onLongClick = {
+                                        selectedFile = node
+                                        showContextMenu = true
+                                        onRequestFocus()
                                     }
-                                    else -> false
+                                )
+                                if (showDetails) {
+                                    Text(
+                                        text = node.path,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .padding(start = 16.dp, end = 8.dp, bottom = 8.dp, top = 4.dp)
+                                    )
                                 }
                             }
-                            FileRow(
-                                file = node,
-                                isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
-                                requiresPermission = requiresSaf,
-                                onClick = {
-                                    onRequestFocus()
-                                    if (node.isDirectory) {
-                                        paneState.navigateTo(node.path)
-                                        searchQuery = ""
+                        }
+                    }
+                }
+
+                // File list or empty state
+                when (settings.defaultViewMode) {
+                    ViewMode.GRID -> {
+                        if (files.isEmpty()) {
+                            EmptyState(searchQuery.isNotEmpty())
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(GridCellMinSize),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 4.dp),
+                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)
+                            ) {
+                                items(
+                                    items = files,
+                                    key = { it.uniqueKey }
+                                ) { node ->
+                                    val requiresSaf = remember(node.uniqueKey) {
+                                        requiresPermission(node)
                                     }
-                                    else handleOpen(node.asFile())
-                                },
-                                onLongClick = {
-                                    selectedFile = node
-                                    showContextMenu = true
-                                    onRequestFocus()
+                                    FileGridItem(
+                                        file = node,
+                                        isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
+                                        requiresPermission = requiresSaf,
+                                        onClick = {
+                                            onRequestFocus()
+                                            if (node.isDirectory) {
+                                                paneState.navigateTo(node.path)
+                                                searchQuery = ""
+                                            }
+                                            else handleOpen(node.asFile())
+                                        },
+                                        onLongClick = {
+                                            selectedFile = node
+                                            showContextMenu = true
+                                            onRequestFocus()
+                                        }
+                                    )
                                 }
-                            )
+                            }
+                        }
+                    }
+                    ViewMode.LIST -> {
+                        if (files.isEmpty()) {
+                            EmptyState(searchQuery.isNotEmpty())
+                        } else {
+                            FileListContent(showDetails = false)
+                        }
+                    }
+                    ViewMode.DETAILS -> {
+                        if (files.isEmpty()) {
+                            EmptyState(searchQuery.isNotEmpty())
+                        } else {
+                            FileListContent(showDetails = true)
                         }
                     }
                 }
@@ -527,5 +590,78 @@ fun FileListPane(
                 snackbarMessage = "Deleting..."
             }
         )
+    }
+}
+
+@Composable
+private fun EmptyState(hasSearchQuery: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FolderOpen,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = if (hasSearchQuery) "No files found" else "No files here",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileGridItem(
+    file: FsNode,
+    isSelected: Boolean,
+    requiresPermission: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .padding(4.dp)
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        tonalElevation = if (isSelected) 4.dp else 0.dp,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description,
+                contentDescription = null,
+                tint = if (requiresPermission) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = file.name.ifBlank { file.path },
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (requiresPermission) {
+                Text(
+                    text = "Permission needed",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     }
 }

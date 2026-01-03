@@ -13,11 +13,15 @@ enum class SortOrder { ASC, DESC }
 
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
 
+private fun List<FsNode>.filterHidden(showHidden: Boolean): List<FsNode> =
+    if (showHidden) this else filter { !it.name.startsWith(".") }
+
 object FileManager {
     fun list(
         path: String,
         sortType: SortType = SortType.NAME,
         sortOrder: SortOrder = SortOrder.ASC,
+        showHidden: Boolean = false,
         safPermissionManager: SafPermissionManager? = null,
         context: Context? = null
     ): List<FsNode> {
@@ -40,7 +44,7 @@ object FileManager {
             } else {
                 root.listFiles()?.map { FsNode.Local(it) } ?: emptyList()
             }
-            sortFiles(nodes, sortType, sortOrder)
+            sortFiles(nodes.filterHidden(showHidden), sortType, sortOrder)
         } catch (e: SafRequired) {
             emptyList()
         } catch (e: Exception) {
@@ -54,6 +58,7 @@ object FileManager {
     fun search(
         path: String,
         query: String,
+        showHidden: Boolean = false,
         safPermissionManager: SafPermissionManager? = null,
         context: Context? = null,
         maxResults: Int = DEFAULT_MAX_SEARCH_RESULTS
@@ -66,13 +71,13 @@ object FileManager {
                 anchor != null && safPermissionManager?.has(anchor) == true -> anchor
                 else -> null
             }
-            if (permissionTarget != null && safPermissionManager != null && context != null) {
+            val results = if (permissionTarget != null && safPermissionManager != null && context != null) {
                 val uri = safPermissionManager.getOrRequest(permissionTarget)
                 val rootDoc = DocumentFile.fromTreeUri(context, uri) ?: return emptyList()
                 val targetDoc = resolveDocument(rootDoc, permissionTarget.absolutePath, path) ?: return emptyList()
-                val results = mutableListOf<FsNode>()
-                searchSafTree(targetDoc, query, path, results, maxResults)
-                results
+                val hits = mutableListOf<FsNode>()
+                searchSafTree(targetDoc, query, path, hits, maxResults)
+                hits
             } else {
                 File(path)
                     .walkTopDown()
@@ -81,6 +86,7 @@ object FileManager {
                     .map { FsNode.Local(it) }
                     .toList()
             }
+            results.filterHidden(showHidden)
         } catch (e: SafRequired) {
             emptyList()
         } catch (e: Exception) {
