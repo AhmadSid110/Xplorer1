@@ -106,7 +106,7 @@ fun FileRow(
     }
 }
 
-private fun formatFileSize(size: Long): String {
+fun formatFileSize(size: Long): String {
     return when {
         size < 1024 -> "$size B"
         size < 1024 * 1024 -> "${size / 1024} KB"

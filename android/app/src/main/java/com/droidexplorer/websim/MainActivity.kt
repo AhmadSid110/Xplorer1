@@ -33,9 +33,11 @@ import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.ui.DualPaneScreen
+import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import com.droidexplorer.websim.search.FileSearcher
 import com.droidexplorer.websim.search.SearchEngine
+import com.droidexplorer.websim.storage.StorageInfoProvider
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -68,7 +70,12 @@ class MainActivity : ComponentActivity() {
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
             var showSettings by rememberSaveable { mutableStateOf(false) }
+            var showStorage by rememberSaveable { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
+            val storageInfoProvider = remember { StorageInfoProvider() }
+            val storageInfo = remember(showStorage) {
+                storageInfoProvider.internalStorage()
+            }
 
             val safLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.OpenDocumentTree()
@@ -90,13 +97,25 @@ class MainActivity : ComponentActivity() {
             XplorerTheme {
                 if (hasStoragePermission) {
                     if (showSettings) {
-                        BackHandler { showSettings = false }
+                        BackHandler {
+                            if (showStorage) {
+                                showStorage = false
+                            } else {
+                                showSettings = false
+                            }
+                        }
                         Scaffold(
                             topBar = {
                                 TopAppBar(
-                                    title = { Text("Settings") },
+                                    title = { Text(if (showStorage) "Storage" else "Settings") },
                                     navigationIcon = {
-                                        IconButton(onClick = { showSettings = false }) {
+                                        IconButton(onClick = {
+                                            if (showStorage) {
+                                                showStorage = false
+                                            } else {
+                                                showSettings = false
+                                            }
+                                        }) {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                                 contentDescription = "Back"
@@ -106,13 +125,20 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         ) { paddingValues ->
-                            SettingsScreen(
-                                state = settingsState,
-                                onViewModeChange = viewModel::setViewMode,
-                                onToggleHidden = viewModel::setShowHidden,
-                                onToggleSafSearch = viewModel::onToggleSafSearch,
-                                modifier = Modifier.padding(paddingValues)
-                            )
+                            if (showStorage) {
+                                Box(modifier = Modifier.padding(paddingValues)) {
+                                    StorageScreen(info = storageInfo)
+                                }
+                            } else {
+                                SettingsScreen(
+                                    state = settingsState,
+                                    onViewModeChange = viewModel::setViewMode,
+                                    onToggleHidden = viewModel::setShowHidden,
+                                    onToggleSafSearch = viewModel::onToggleSafSearch,
+                                    onOpenStorage = { showStorage = true },
+                                    modifier = Modifier.padding(paddingValues)
+                                )
+                            }
                         }
                     } else {
                         DualPaneScreen(
