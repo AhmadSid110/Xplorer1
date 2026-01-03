@@ -84,6 +84,8 @@ jobs:
           ./gradlew :app:assembleDebug \
             -PversionName=$APP_VERSION \
             --no-daemon
+            --stacktrace \
+            --info
 
       - name: Verify APK output
         run: |
