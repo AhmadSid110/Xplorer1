@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -27,6 +28,7 @@ import java.io.File
 
 private const val PDF_SCALE_FACTOR = 0.75f
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PdfViewerScreen(
     file: File,
