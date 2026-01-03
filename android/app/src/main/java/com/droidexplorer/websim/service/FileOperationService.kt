@@ -16,9 +16,12 @@ import com.droidexplorer.websim.R
 import com.droidexplorer.websim.core.ops.FileOperation
 import com.droidexplorer.websim.core.ops.FileOperationExecutor
 import com.droidexplorer.websim.core.ops.OperationCancellationToken
+import com.droidexplorer.websim.core.ops.OperationPersistence
 import com.droidexplorer.websim.core.ops.OperationProgress
 import com.droidexplorer.websim.core.ops.OperationResult
+import com.droidexplorer.websim.core.ops.OperationId
 import com.droidexplorer.websim.file.FileOperator
+import com.droidexplorer.websim.security.SafetyGuards
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +38,7 @@ class FileOperationService : Service() {
 
     private val serviceScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var executor: FileOperationExecutor
+    private lateinit var persistence: OperationPersistence
     private var cancellationToken: OperationCancellationToken = OperationCancellationToken()
     private var currentJob: Job? = null
 
@@ -43,6 +47,7 @@ class FileOperationService : Service() {
         val safStore = DataStoreSafStore(this)
         val safManager = SafPermissionManager(this, safStore)
         executor = FileOperationExecutor(FileOperator(this, safManager))
+        persistence = OperationPersistence(this)
         createChannel()
     }
 
@@ -52,46 +57,21 @@ class FileOperationService : Service() {
             return START_NOT_STICKY
         }
 
-        val operation = intent?.getSerializableExtra(EXTRA_OPERATION) as? FileOperation
-            ?: return START_NOT_STICKY
-        if (currentJob != null) {
-            _progressFlow.value = OperationProgress.Completed(
-                operation.id,
-                OperationResult.Failure("Another operation is already running")
-            )
-            return START_NOT_STICKY
-        }
-
-        startForeground(NOTIFICATION_ID, buildNotification("Starting", true, 0, 0))
-        cancellationToken = OperationCancellationToken()
-
-        currentJob = serviceScope.launch {
-            executor.execute(operation, cancellationToken).collect { progress ->
-                _progressFlow.value = progress
-                when (progress) {
-                    is OperationProgress.Started -> updateNotification("Starting", true, 0, 0)
-                    is OperationProgress.Running -> updateNotification(
-                        progress.label ?: "Working",
-                        false,
-                        progress.current,
-                        progress.total
-                    )
-
-                    is OperationProgress.Completed -> {
-                        val message = when (progress.result) {
-                            is OperationResult.Success -> progress.result.message ?: "Completed"
-                            is OperationResult.Failure -> progress.result.message
-                            OperationResult.Cancelled -> "Cancelled"
-                        }
-                        updateNotification(message, false, 0, 0)
-                        currentJob = null
-                        stopForeground(STOP_FOREGROUND_REMOVE)
-                        stopSelf()
-                    }
+        if (intent?.action == ACTION_RESUME) {
+            serviceScope.launch {
+                val pending = persistence.snapshot()
+                if (pending != null) {
+                    startOperation(pending, resumed = true)
+                } else {
+                    stopSelf()
                 }
             }
+            return START_REDELIVER_INTENT
         }
 
+        val operation = intent?.getSerializableExtra(EXTRA_OPERATION) as? FileOperation
+            ?: return START_NOT_STICKY
+        startOperation(operation, resumed = false)
         return START_REDELIVER_INTENT
     }
 
@@ -102,6 +82,74 @@ class FileOperationService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun startOperation(operation: FileOperation, resumed: Boolean) {
+        if (currentJob != null) {
+            _progressFlow.value = OperationProgress.Completed(
+                operation.id,
+                OperationResult.Failure("Another operation is already running")
+            )
+            return
+        }
+
+        val guard = SafetyGuards.validate(operation)
+        if (!guard.allowed) {
+            persistence.clearAsync(operation.id)
+            _progressFlow.value = OperationProgress.Completed(
+                operation.id,
+                OperationResult.Failure(guard.reason ?: "Operation blocked")
+            )
+            stopSelf()
+            return
+        }
+
+        cancellationToken = OperationCancellationToken()
+        persistence.persistAsync(operation)
+        startForeground(
+            NOTIFICATION_ID,
+            buildNotification(
+                if (resumed) "Resuming" else "Starting",
+                true,
+                0,
+                0
+            )
+        )
+        currentJob = serviceScope.launch {
+            executor.execute(operation, cancellationToken).collect { progress ->
+                _progressFlow.value = progress
+                when (progress) {
+                    is OperationProgress.Started -> updateNotification(
+                        progress.label ?: "Starting",
+                        true,
+                        0,
+                        0
+                    )
+
+                    is OperationProgress.Running -> updateNotification(
+                        progress.label ?: "Working",
+                        false,
+                        progress.current,
+                        progress.total
+                    )
+
+                    is OperationProgress.Completed -> handleCompletion(operation.id, progress.result)
+                }
+            }
+        }
+    }
+
+    private fun handleCompletion(operationId: OperationId, result: OperationResult) {
+        val message = when (result) {
+            is OperationResult.Success -> result.message ?: "Completed"
+            is OperationResult.Failure -> result.message
+            OperationResult.Cancelled -> "Cancelled"
+        }
+        updateNotification(message, false, 0, 0)
+        persistence.clearAsync(operationId)
+        currentJob = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -178,6 +226,7 @@ class FileOperationService : Service() {
         private const val NOTIFICATION_ID = 42
         private const val EXTRA_OPERATION = "extra_operation"
         private const val ACTION_CANCEL = "com.droidexplorer.websim.action.CANCEL_OPERATION"
+        private const val ACTION_RESUME = "com.droidexplorer.websim.action.RESUME_OPERATION"
 
         private val _progressFlow = MutableStateFlow<OperationProgress?>(null)
         val progressFlow: StateFlow<OperationProgress?> = _progressFlow
@@ -187,6 +236,13 @@ class FileOperationService : Service() {
         fun enqueue(context: Context, operation: FileOperation) {
             val intent = Intent(context, FileOperationService::class.java).apply {
                 putExtra(EXTRA_OPERATION, operation)
+            }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun resumePending(context: Context) {
+            val intent = Intent(context, FileOperationService::class.java).apply {
+                action = ACTION_RESUME
             }
             ContextCompat.startForegroundService(context, intent)
         }

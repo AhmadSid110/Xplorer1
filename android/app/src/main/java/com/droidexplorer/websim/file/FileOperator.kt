@@ -126,53 +126,84 @@ class FileOperator(
     }
 
     private fun copyInternal(src: File, dest: File, destDir: File) {
+        if (dest.exists()) {
+            throw FileWriteFailed("Destination already exists")
+        }
+        val partial = File(dest.parentFile ?: destDir, "${dest.name}.partial")
+        if (partial.exists()) partial.deleteRecursively()
         try {
             if (src.isDirectory) {
-                src.copyRecursively(dest, overwrite = false)
+                src.copyRecursively(partial, overwrite = true)
+                if (!partial.renameTo(dest)) throw FileWriteFailed("Failed to finalize copy")
             } else {
-                src.copyTo(dest, overwrite = false)
+                src.copyTo(partial, overwrite = true)
+                if (!partial.renameTo(dest)) throw FileWriteFailed("Failed to finalize copy")
             }
         } catch (e: Exception) {
+            if (partial.exists()) {
+                partial.deleteRecursively()
+            }
             if (e.isPermissionError()) {
                 val uri = saf.getOrRequest(destDir)
-                copyViaSaf(src, destDir, uri)
+                copyViaSaf(src, destDir, uri, dest.name)
             } else {
                 throw e
             }
         }
     }
 
-    private fun copyViaSaf(src: File, destDir: File, uri: Uri) {
+    private fun copyViaSaf(src: File, destDir: File, uri: Uri, finalName: String) {
         val documentDir = DocumentFile.fromTreeUri(context, uri)
             ?: throw SafRequired(destDir)
-        copyViaSaf(src, destDir, documentDir)
+        copyViaSaf(src, destDir, documentDir, finalName)
     }
 
-    private fun copyViaSaf(src: File, destDir: File, documentDir: DocumentFile) {
+    private fun copyViaSaf(
+        src: File,
+        destDir: File,
+        documentDir: DocumentFile,
+        finalName: String
+    ) {
+        val partialName = "$finalName.partial"
+        if (documentDir.findFile(finalName) != null) {
+            throw FileWriteFailed("Destination already exists")
+        }
         if (src.isDirectory) {
-            val targetDir = documentDir.findFile(src.name) ?: documentDir.createDirectory(src.name)
-            val destDocument = targetDir ?: throw FileWriteFailed("Unable to create directory via SAF")
+            val partialDir = documentDir.findFile(partialName) ?: documentDir.createDirectory(partialName)
+            val destDocument = partialDir ?: throw FileWriteFailed("Unable to create directory via SAF")
             src.listFiles()?.forEach { child ->
                 if (child.isDirectory) {
-                    copyViaSaf(child, File(destDir, child.name), destDocument)
+                    copyViaSaf(child, File(destDir, child.name), destDocument, child.name)
                 } else {
-                    copyFileToDocument(child, destDocument)
+                    copyFileToDocument(child, destDocument, child.name)
                 }
             }
+            if (!destDocument.renameTo(finalName)) {
+                throw FileWriteFailed("Failed to finalize SAF copy")
+            }
         } else {
-            copyFileToDocument(src, documentDir)
+            val copied = copyFileToDocument(src, documentDir, finalName, partialName)
+            if (!copied.renameTo(finalName)) {
+                throw FileWriteFailed("Failed to finalize SAF copy")
+            }
         }
     }
 
-    private fun copyFileToDocument(src: File, parentDoc: DocumentFile) {
-        val targetDoc = parentDoc.findFile(src.name) ?: parentDoc.createFile(
+    private fun copyFileToDocument(
+        src: File,
+        parentDoc: DocumentFile,
+        finalName: String,
+        partialName: String = "$finalName.partial"
+    ): DocumentFile {
+        val targetDoc = parentDoc.findFile(partialName) ?: parentDoc.createFile(
             "application/octet-stream",
-            src.name
+            partialName
         )
         if (targetDoc == null) throw FileWriteFailed("Unable to create file via SAF")
         src.inputStream().use { input ->
             streamCopy(input, context.contentResolver.openOutputStream(targetDoc.uri))
         }
+        return targetDoc
     }
 
     private fun deleteInternal(target: File) {

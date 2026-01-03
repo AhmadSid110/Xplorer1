@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.droidexplorer.websim.ui.DualPaneScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
+import com.droidexplorer.websim.debug.StrictModeConfig
+import com.droidexplorer.websim.service.FileOperationService
 
 class MainActivity : ComponentActivity() {
     
@@ -35,7 +37,10 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        if (BuildConfig.DEBUG) {
+            StrictModeConfig.install()
+        }
+        FileOperationService.resumePending(this)
         checkAndRequestPermissions()
         
         setContent {
