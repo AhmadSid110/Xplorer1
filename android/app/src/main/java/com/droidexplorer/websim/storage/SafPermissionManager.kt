@@ -56,6 +56,6 @@ class SafPermissionManager(
 
     fun getPersistedRootIds(): List<String> =
         context.contentResolver.persistedUriPermissions
-            .filter { it.isPersisted && (it.isReadPermission || it.isWritePermission) }
+            .filter { it.isReadPermission || it.isWritePermission }
             .map { it.uri.toString() }
 }
