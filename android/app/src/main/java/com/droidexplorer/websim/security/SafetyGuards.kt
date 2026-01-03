@@ -34,7 +34,11 @@ object SafetyGuards {
 
     private fun isCriticalRoot(file: File): Boolean {
         val normalized = file.absolutePath
-        return normalized == "/" || normalized.equals("/storage", ignoreCase = true)
+        return normalized == "/"
+                || normalized.equals("/storage", ignoreCase = true)
+                || normalized.equals("/system", ignoreCase = true)
+                || normalized.equals("/data", ignoreCase = true)
+                || normalized.equals("/proc", ignoreCase = true)
     }
 
     private fun isSymlink(file: File): Boolean {

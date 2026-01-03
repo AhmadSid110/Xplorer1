@@ -164,7 +164,7 @@ class FileOperator(
         documentDir: DocumentFile,
         finalName: String
     ) {
-        val partialName = "$finalName.partial"
+        val partialName = partialNameFor(finalName)
         if (documentDir.findFile(finalName) != null) {
             throw FileWriteFailed("Destination already exists")
         }
@@ -193,7 +193,7 @@ class FileOperator(
         src: File,
         parentDoc: DocumentFile,
         finalName: String,
-        partialName: String = "$finalName.partial"
+        partialName: String = partialNameFor(finalName)
     ): DocumentFile {
         val targetDoc = parentDoc.findFile(partialName) ?: parentDoc.createFile(
             "application/octet-stream",
@@ -205,6 +205,8 @@ class FileOperator(
         }
         return targetDoc
     }
+
+    private fun partialNameFor(name: String): String = "$name.partial"
 
     private fun deleteInternal(target: File) {
         try {

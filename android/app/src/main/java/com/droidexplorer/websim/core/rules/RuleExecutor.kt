@@ -105,10 +105,8 @@ class RuleExecutor(
             is RuleAction.Move -> {
                 val originalSource = operation.source.asFile()
                 val movedFile = File(operation.destinationDir.asFile(), originalSource.name)
-                val originalParent = originalSource.parentFile ?: movedFile.parentFile
-                if (originalParent != null) {
-                    FileOperation.Move(NodeRef.from(movedFile), NodeRef.from(originalParent))
-                } else null
+                val originalParent = originalSource.parentFile ?: return null
+                FileOperation.Move(NodeRef.from(movedFile), NodeRef.from(originalParent))
             }
 
             is RuleAction.Copy -> {
