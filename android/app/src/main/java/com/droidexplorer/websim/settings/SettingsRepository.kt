@@ -19,10 +19,10 @@ class SettingsRepository(
 
     val settings: Flow<SettingsState> =
         context.dataStore.data.map { prefs ->
+            val storedViewMode = prefs[VIEW_MODE]
+            val viewMode = ViewMode.values().firstOrNull { it.name == storedViewMode } ?: ViewMode.LIST
             SettingsState(
-                defaultViewMode = ViewMode.valueOf(
-                    prefs[VIEW_MODE] ?: ViewMode.LIST.name
-                ),
+                defaultViewMode = viewMode,
                 showHiddenFiles = prefs[SHOW_HIDDEN] ?: false,
                 searchIncludeSaf = prefs[SEARCH_SAF] ?: false
             )
