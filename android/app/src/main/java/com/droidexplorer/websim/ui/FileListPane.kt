@@ -12,10 +12,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.droidexplorer.websim.data.FileClipboard
@@ -26,6 +29,9 @@ import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.util.ZipUtils
+import com.droidexplorer.websim.ui.viewer.Viewer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +45,8 @@ fun FileListPane(
     isActive: Boolean,
     sortType: SortType,
     sortOrder: SortOrder,
-    showDivider: Boolean = false
+    showDivider: Boolean = false,
+    onOpenViewer: (Viewer) -> Unit = {}
 ) {
     val context = LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -47,7 +54,6 @@ fun FileListPane(
     var refreshTrigger by remember { mutableStateOf(0) }
     var viewerFile by remember { mutableStateOf<File?>(null) }
     var editorFile by remember { mutableStateOf<File?>(null) }
-    var pdfFile by remember { mutableStateOf<File?>(null) }
     var imageFile by remember { mutableStateOf<File?>(null) }
     
     // Context menu state
@@ -62,15 +68,31 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     
     // Load files
-    val allFiles = remember(paneState.path, sortType, sortOrder, refreshTrigger) {
-        FileManager.list(paneState.path, sortType, sortOrder)
+    val sortFiles = remember(sortType, sortOrder) {
+        { files: List<File> ->
+            FileManager.sortFiles(files, sortType, sortOrder)
+        }
     }
 
-    val files = remember(searchQuery, allFiles) {
-        if (searchQuery.isBlank()) {
-            allFiles
-        } else {
-            allFiles.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val files by produceState<List<File>>(
+        initialValue = emptyList(),
+        key1 = paneState.path,
+        key2 = searchQuery,
+        key3 = sortType,
+        key4 = sortOrder,
+        key5 = refreshTrigger
+    ) {
+        value = withContext(Dispatchers.IO) {
+            if (searchQuery.isBlank()) {
+                FileManager.list(paneState.path, sortType, sortOrder)
+            } else {
+                sortFiles(
+                    FileManager.searchRecursive(
+                        root = File(paneState.path),
+                        query = searchQuery
+                    )
+                )
+            }
         }
     }
 
@@ -117,11 +139,15 @@ fun FileListPane(
 
     fun handleOpen(file: File) {
         onRequestFocus()
+        if (file.extension.equals("zip", ignoreCase = true)) {
+            onOpenViewer(Viewer.Zip(file))
+            return
+        }
         openFile(
             file = file,
             openText = { viewerFile = it },
             openImage = { imageFile = it },
-            openPdf = { pdfFile = it },
+            openPdf = { onOpenViewer(Viewer.Pdf(it)) },
             openOther = openOther
         )
     }
@@ -204,6 +230,15 @@ fun FileListPane(
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             )
+                            if (searchQuery.isNotBlank()) {
+                                Text(
+                                    text = "Searching all subfolders…",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier
+                                        .padding(start = 8.dp, bottom = 4.dp)
+                                        .semantics { contentDescription = "Search status: Searching all subfolders" }
+                                )
+                            }
                         }
                     }
                 }
@@ -373,16 +408,6 @@ fun FileListPane(
             fileOperator = fileOperator,
             onDismiss = { editorFile = null },
             onSaved = { refreshTrigger++ },
-            onSafRequired = onSafRequired
-        )
-    }
-
-    // PDF viewer
-    pdfFile?.let { target ->
-        PdfViewerSheet(
-            file = target,
-            fileOperator = fileOperator,
-            onDismiss = { pdfFile = null },
             onSafRequired = onSafRequired
         )
     }

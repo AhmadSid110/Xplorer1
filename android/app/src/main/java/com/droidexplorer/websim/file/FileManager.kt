@@ -1,5 +1,6 @@
 package com.droidexplorer.websim.file
 
+import android.util.Log
 import com.droidexplorer.websim.data.ClipboardItem
 import com.droidexplorer.websim.data.ClipboardOperation
 import java.io.File
@@ -7,16 +8,13 @@ import java.io.File
 enum class SortType { NAME, SIZE, DATE }
 enum class SortOrder { ASC, DESC }
 
+private const val DEFAULT_MAX_SEARCH_RESULTS = 500
+
 object FileManager {
     fun list(path: String, sortType: SortType = SortType.NAME, sortOrder: SortOrder = SortOrder.ASC): List<File> {
         return try {
             val files = File(path).listFiles()?.toList() ?: emptyList()
-            val sorted = when (sortType) {
-                SortType.NAME -> files.sortedBy { it.name.lowercase() }
-                SortType.SIZE -> files.sortedBy { it.length() }
-                SortType.DATE -> files.sortedBy { it.lastModified() }
-            }
-            if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
+            sortFiles(files, sortType, sortOrder)
         } catch (e: Exception) {
             emptyList()
         }
@@ -30,6 +28,49 @@ object FileManager {
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    fun searchRecursive(
+        root: File,
+        query: String,
+        maxResults: Int = DEFAULT_MAX_SEARCH_RESULTS
+    ): List<File> {
+        val results = mutableListOf<File>()
+
+        fun walk(dir: File) {
+            if (results.size >= maxResults) return
+            val files = dir.listFiles() ?: return
+
+            for (file in files) {
+                if (file.name.contains(query, ignoreCase = true)) {
+                    results.add(file)
+                    if (results.size >= maxResults) return
+                }
+                if (file.isDirectory && !file.isHidden) {
+                    walk(file)
+                }
+            }
+        }
+
+        try {
+            walk(root)
+        } catch (e: Exception) {
+            Log.w("FileManager", "searchRecursive failed for ${root.absolutePath}", e)
+        }
+        return results
+    }
+
+    fun sortFiles(
+        files: List<File>,
+        sortType: SortType,
+        sortOrder: SortOrder
+    ): List<File> {
+        val sorted = when (sortType) {
+            SortType.NAME -> files.sortedBy { it.name.lowercase() }
+            SortType.SIZE -> files.sortedBy { it.length() }
+            SortType.DATE -> files.sortedBy { it.lastModified() }
+        }
+        return if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
     }
 
     fun rename(file: File, newName: String): Result<File> {
