@@ -3,21 +3,30 @@ package com.droidexplorer.websim.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.droidexplorer.websim.search.SearchEngine
+import com.droidexplorer.websim.search.SearchResult
+import com.droidexplorer.websim.search.SearchRoot
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.storage.SafPermissionManager
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ExplorerViewModel(
     private val settingsRepository: SettingsRepository,
-    private val safPermissionManager: SafPermissionManager
+    private val safPermissionManager: SafPermissionManager,
+    private val searchEngine: SearchEngine
 ) : ViewModel() {
 
     val settings: StateFlow<SettingsState> =
@@ -30,6 +39,27 @@ class ExplorerViewModel(
     private val _requestSafPermission = MutableSharedFlow<Unit>()
     val requestSafPermission: SharedFlow<Unit> = _requestSafPermission.asSharedFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val searchResults: StateFlow<SearchResult?> =
+        combine(
+            _searchQuery,
+            settings
+        ) { query, settings ->
+            query to buildSearchRoots(settings)
+        }.flatMapLatest { (query, roots) ->
+            if (query.isBlank()) {
+                flowOf(null)
+            } else {
+                searchEngine.search(query, roots)
+            }
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            null
+        )
+
     fun onToggleSafSearch(enabled: Boolean) {
         viewModelScope.launch {
             if (enabled && !safPermissionManager.hasAnyPermission()) {
@@ -38,6 +68,10 @@ class ExplorerViewModel(
                 updateSearchSaf(enabled)
             }
         }
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     fun setViewMode(mode: ViewMode) {
@@ -55,16 +89,28 @@ class ExplorerViewModel(
     private suspend fun updateSearchSaf(enabled: Boolean) {
         settingsRepository.setSearchSaf(enabled)
     }
+
+    private fun buildSearchRoots(settings: SettingsState): List<SearchRoot> {
+        val roots = mutableListOf<SearchRoot>()
+        roots += SearchRoot.Local("/storage/emulated/0")
+        if (settings.searchIncludeSaf) {
+            safPermissionManager.getPersistedRootIds().forEach { id ->
+                roots += SearchRoot.Saf(id)
+            }
+        }
+        return roots
+    }
 }
 
 class ExplorerViewModelFactory(
     private val settingsRepository: SettingsRepository,
-    private val safPermissionManager: SafPermissionManager
+    private val safPermissionManager: SafPermissionManager,
+    private val searchEngine: SearchEngine
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExplorerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExplorerViewModel(settingsRepository, safPermissionManager) as T
+            return ExplorerViewModel(settingsRepository, safPermissionManager, searchEngine) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
