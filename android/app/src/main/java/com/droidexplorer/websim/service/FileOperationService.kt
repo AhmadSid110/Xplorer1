@@ -151,13 +151,13 @@ class FileOperationService : Service() {
         )
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("File operation")
             .setContentText(content)
             .setContentIntent(mainPendingIntent)
             .setOngoing(true)
             .addAction(
-                R.drawable.ic_launcher_foreground,
+                android.R.drawable.ic_menu_close_clear_cancel,
                 "Cancel",
                 cancelPendingIntent
             )
