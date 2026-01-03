@@ -194,6 +194,64 @@ fun FileListPane(
     Box(modifier = modifier) {
         Row {
             Column(modifier = Modifier.weight(1f)) {
+                ScrollableTabRow(
+                    selectedTabIndex = paneState.activeTabIndex,
+                    edgePadding = 12.dp,
+                    divider = {},
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val tabs = paneState.tabs
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = index == paneState.activeTabIndex,
+                            onClick = {
+                                paneState.selectTab(index)
+                                onRequestFocus()
+                            },
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(File(tab.path).name.ifBlank { tab.path })
+                                    if (tabs.size > 1) {
+                                        IconButton(
+                                            onClick = { paneState.closeTab(index) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Close,
+                                                contentDescription = "Close tab",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    Tab(
+                        selected = false,
+                        onClick = {
+                            paneState.addTab()
+                            onRequestFocus()
+                        },
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "New tab",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text("New")
+                            }
+                        }
+                    )
+                }
+
                 // Top bar with search only (breadcrumbs moved to scaffold)
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,

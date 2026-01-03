@@ -23,4 +23,13 @@ class SafPermissionManager(
         )
         store.put(path, uri.toString())
     }
+
+    fun isPersisted(dir: File): Boolean {
+        val uri = store.get(dir.absolutePath) ?: return false
+        return context.contentResolver.persistedUriPermissions.any { permission ->
+            permission.uri == uri && permission.isReadPermission && permission.isWritePermission
+        }
+    }
+
+    fun isRevoked(dir: File): Boolean = has(dir) && !isPersisted(dir)
 }

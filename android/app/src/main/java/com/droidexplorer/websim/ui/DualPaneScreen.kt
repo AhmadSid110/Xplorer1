@@ -25,6 +25,7 @@ import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.ui.permission.SafRecoveryFlow
 import com.droidexplorer.websim.ui.viewer.PdfViewerScreen
 import com.droidexplorer.websim.ui.viewer.ImageViewerScreen
 import com.droidexplorer.websim.ui.viewer.TextViewerScreen
@@ -40,9 +41,15 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     val isTablet = configuration.screenWidthDp >= 600
     val safStore = remember { DataStoreSafStore(context) }
     val safManager = remember { SafPermissionManager(context, safStore) }
+    val safRecoveryFlow = remember { SafRecoveryFlow(safManager) }
     val fileOperator = remember { FileOperator(context, safManager) }
-    val leftPaneState = remember { PaneState("/storage/emulated/0") }
-    val rightPaneState = remember { PaneState("/storage/emulated/0") }
+    val defaultPath = "/storage/emulated/0"
+    val leftPaneState = rememberSaveable(saver = PaneState.saver(defaultPath)) {
+        PaneState.initial(defaultPath)
+    }
+    val rightPaneState = rememberSaveable(saver = PaneState.saver(defaultPath)) {
+        PaneState.initial(defaultPath)
+    }
     var activePane by remember { mutableStateOf(leftPaneState) }
     var pendingSafDir by remember { mutableStateOf<File?>(null) }
     var viewer by remember { mutableStateOf<Viewer?>(null) }
@@ -69,6 +76,7 @@ fun DualPaneScreen(singlePane: Boolean = false) {
         }
         pendingSafDir = null
     }
+    var recoveryPrompted by remember { mutableStateOf(false) }
     
     // Show cleaner result
     LaunchedEffect(cleanerResult) {
@@ -89,6 +97,27 @@ fun DualPaneScreen(singlePane: Boolean = false) {
             } else {
                 pendingSafDir = null
             }
+        }
+    }
+    
+    LaunchedEffect(paneMode, leftPaneState.path, rightPaneState.path) {
+        val tracked = buildList {
+            add(File(leftPaneState.path))
+            if (paneMode == PaneMode.DUAL) {
+                add(File(rightPaneState.path))
+            }
+        }
+        val state = safRecoveryFlow.buildState(tracked)
+        if (state.showDialog && state.revokedPath != null && !recoveryPrompted) {
+            pendingSafDir = state.revokedPath
+            recoveryPrompted = true
+        }
+    }
+
+    LaunchedEffect(pendingSafDir) {
+        if (pendingSafDir == null && recoveryPrompted) {
+            safRecoveryFlow.markHandled()
+            recoveryPrompted = false
         }
     }
     
