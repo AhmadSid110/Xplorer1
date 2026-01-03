@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Base64
 import android.util.Log
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.remove
+import androidx.datastore.preferences.core.minusAssign
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +53,7 @@ class RuleHistoryStore(private val context: Context) {
             latest = current.lastOrNull()
             val remaining = if (current.isNotEmpty()) current.dropLast(1) else emptyList()
             if (remaining.isEmpty()) {
-                prefs.remove(historyKey)
+                prefs -= historyKey
             } else {
                 prefs[historyKey] = serializeList(remaining)
             }

@@ -3,7 +3,7 @@ package com.droidexplorer.websim.core.ops
 import android.content.Context
 import android.util.Base64
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.remove
+import androidx.datastore.preferences.core.minusAssign
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
@@ -60,7 +60,7 @@ class OperationPersistence(private val context: Context) {
             context.operationDataStore.edit { prefs ->
                 val stored = prefs[activeKey]?.let { deserializeOperation(it) }
                 if (operationId == null || stored?.id == operationId) {
-                    prefs.remove(activeKey)
+                    prefs -= activeKey
                 }
             }
         }

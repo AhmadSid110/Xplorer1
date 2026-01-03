@@ -103,15 +103,17 @@ class RuleExecutor(
     ): FileOperation? {
         return when (action) {
             is RuleAction.Move -> {
-                val originalSource = operation.source.asFile()
-                val movedFile = File(operation.destinationDir.asFile(), originalSource.name)
+                val moveOp = operation as? FileOperation.Move ?: return null
+                val originalSource = moveOp.source.asFile()
+                val movedFile = File(moveOp.destinationDir.asFile(), originalSource.name)
                 val originalParent = originalSource.parentFile ?: return null
                 FileOperation.Move(NodeRef.from(movedFile), NodeRef.from(originalParent))
             }
 
             is RuleAction.Copy -> {
-                val originalSource = operation.source.asFile()
-                val copiedFile = File(operation.destinationDir.asFile(), originalSource.name)
+                val copyOp = operation as? FileOperation.Copy ?: return null
+                val originalSource = copyOp.source.asFile()
+                val copiedFile = File(copyOp.destinationDir.asFile(), originalSource.name)
                 FileOperation.Delete(NodeRef.from(copiedFile))
             }
 
