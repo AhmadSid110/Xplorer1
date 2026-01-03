@@ -427,60 +427,60 @@ fun FileListPane(
                     }
                 }
 
+                val handleItemClick: (FsNode) -> Unit = { node ->
+                    onRequestFocus()
+                    if (node.isDirectory) {
+                        paneState.navigateTo(node.path)
+                        onSearchQueryChange("")
+                    } else {
+                        handleOpen(node.asFile())
+                    }
+                }
+                val handleItemLongClick: (FsNode) -> Unit = { node ->
+                    selectedFile = node
+                    showContextMenu = true
+                    onRequestFocus()
+                }
+
                 // File list or empty state
                 when (settings.defaultViewMode) {
-                    ViewMode.GRID -> {
-                        if (files.isEmpty()) {
-                            EmptyState(searchQuery.isNotEmpty())
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(GridCellMinSize),
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 4.dp),
-                                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)
-                            ) {
-                                items(
-                                    items = files,
-                                    key = { it.uniqueKey }
-                                ) { node ->
-                                    val requiresSaf = remember(node.uniqueKey) {
-                                        requiresPermission(node)
-                                    }
-                                    FileGridItem(
-                                        file = node,
-                                        isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
-                                        requiresPermission = requiresSaf,
-                                        onClick = {
-                                            onRequestFocus()
-                                            if (node.isDirectory) {
-                                                paneState.navigateTo(node.path)
-                                                onSearchQueryChange("")
-                                            }
-                                            else handleOpen(node.asFile())
-                                        },
-                                        onLongClick = {
-                                            selectedFile = node
-                                            showContextMenu = true
-                                            onRequestFocus()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
                     ViewMode.LIST -> {
                         if (files.isEmpty()) {
                             EmptyState(searchQuery.isNotEmpty())
                         } else {
-                            FileListContent(showDetails = false)
+                            FileListView(
+                                files = files,
+                                onClick = handleItemClick,
+                                onLongClick = handleItemLongClick,
+                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                requiresPermission = { requiresPermission(it) }
+                            )
+                        }
+                    }
+                    ViewMode.GRID -> {
+                        if (files.isEmpty()) {
+                            EmptyState(searchQuery.isNotEmpty())
+                        } else {
+                            FileGridView(
+                                files = files,
+                                onClick = handleItemClick,
+                                onLongClick = handleItemLongClick,
+                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                requiresPermission = { requiresPermission(it) }
+                            )
                         }
                     }
                     ViewMode.DETAILS -> {
                         if (files.isEmpty()) {
                             EmptyState(searchQuery.isNotEmpty())
                         } else {
-                            FileListContent(showDetails = true)
+                            FileDetailsView(
+                                files = files,
+                                onClick = handleItemClick,
+                                onLongClick = handleItemLongClick,
+                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                requiresPermission = { requiresPermission(it) }
+                            )
                         }
                     }
                 }
