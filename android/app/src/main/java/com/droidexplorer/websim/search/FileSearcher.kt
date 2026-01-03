@@ -8,6 +8,7 @@ import com.droidexplorer.websim.file.FsNode
 import java.io.File
 
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
+private const val PRIMARY_STORAGE_PATH = "/storage/emulated/0"
 
 class FileSearcher(
     private val context: Context
@@ -55,7 +56,6 @@ class FileSearcher(
         out: MutableList<FsNode>,
         maxResults: Int
     ) {
-        if (out.size >= maxResults) return
         root.listFiles().forEach { child ->
             if (out.size >= maxResults) return
             val childPath = File(currentPath, child.name ?: "").absolutePath
@@ -68,13 +68,18 @@ class FileSearcher(
         }
     }
 
+    /**
+     * Attempts to map a tree URI to a primary storage path. This assumes the URI uses the
+     * standard "primary:" document ID format produced by Storage Access Framework for the
+     * shared external storage volume.
+     */
     private fun resolveBasePath(uri: Uri): String? {
         val docId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: return null
         val relativePath = docId.substringAfter(':', "")
         return if (relativePath.isNotEmpty()) {
-            "/storage/emulated/0/$relativePath"
+            "$PRIMARY_STORAGE_PATH/$relativePath"
         } else {
-            "/storage/emulated/0"
+            PRIMARY_STORAGE_PATH
         }
     }
 }
