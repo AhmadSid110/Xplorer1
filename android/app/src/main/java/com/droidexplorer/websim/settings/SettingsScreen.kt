@@ -1,10 +1,12 @@
 package com.droidexplorer.websim.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -21,6 +23,7 @@ fun SettingsScreen(
     onViewModeChange: (ViewMode) -> Unit,
     onToggleHidden: (Boolean) -> Unit,
     onToggleSafSearch: (Boolean) -> Unit,
+    onOpenStorage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -52,6 +55,14 @@ fun SettingsScreen(
             text = "Include SAF locations in search",
             checked = state.searchIncludeSaf,
             onCheckedChange = onToggleSafSearch
+        )
+
+        Divider()
+
+        ListItem(
+            headlineContent = { Text("Storage") },
+            supportingContent = { Text("View storage usage") },
+            modifier = Modifier.clickable { onOpenStorage() }
         )
     }
 }
