@@ -1,8 +1,11 @@
 package com.droidexplorer.websim.file
 
-import android.util.Log
+import android.content.Context
+import android.os.Environment
+import androidx.documentfile.provider.DocumentFile
 import com.droidexplorer.websim.data.ClipboardItem
 import com.droidexplorer.websim.data.ClipboardOperation
+import com.droidexplorer.websim.storage.SafPermissionManager
 import java.io.File
 
 enum class SortType { NAME, SIZE, DATE }
@@ -11,66 +14,130 @@ enum class SortOrder { ASC, DESC }
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
 
 object FileManager {
-    fun list(path: String, sortType: SortType = SortType.NAME, sortOrder: SortOrder = SortOrder.ASC): List<File> {
+    fun list(
+        path: String,
+        sortType: SortType = SortType.NAME,
+        sortOrder: SortOrder = SortOrder.ASC,
+        safPermissionManager: SafPermissionManager? = null,
+        context: Context? = null
+    ): List<FsNode> {
         return try {
-            val files = File(path).listFiles()?.toList() ?: emptyList()
-            sortFiles(files, sortType, sortOrder)
+            val root = File(path)
+            val anchor = safAnchor(path)
+            val permissionTarget = when {
+                safPermissionManager?.has(root) == true -> root
+                anchor != null && safPermissionManager?.has(anchor) == true -> anchor
+                else -> null
+            }
+            val nodes = if (permissionTarget != null && safPermissionManager != null && context != null) {
+                val uri = safPermissionManager.getOrRequest(permissionTarget)
+                val rootDoc = DocumentFile.fromTreeUri(context, uri)
+                val targetDoc = rootDoc?.let { resolveDocument(it, permissionTarget.absolutePath, path) }
+                targetDoc?.listFiles()?.mapNotNull { child ->
+                    val childPath = File(path, child.name ?: "").absolutePath
+                    FsNode.Saf(child, childPath)
+                } ?: emptyList()
+            } else {
+                root.listFiles()?.map { FsNode.Local(it) } ?: emptyList()
+            }
+            sortFiles(nodes, sortType, sortOrder)
+        } catch (e: SafRequired) {
+            emptyList()
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    fun search(path: String, query: String): List<File> {
+    /**
+     * Performs a case-insensitive search returning files only for both local storage and SAF trees.
+     */
+    fun search(
+        path: String,
+        query: String,
+        safPermissionManager: SafPermissionManager? = null,
+        context: Context? = null,
+        maxResults: Int = DEFAULT_MAX_SEARCH_RESULTS
+    ): List<FsNode> {
         return try {
-            File(path).listFiles()?.filter {
-                it.name.contains(query, ignoreCase = true)
-            }?.sortedBy { it.name } ?: emptyList()
+            val root = File(path)
+            val anchor = safAnchor(path)
+            val permissionTarget = when {
+                safPermissionManager?.has(root) == true -> root
+                anchor != null && safPermissionManager?.has(anchor) == true -> anchor
+                else -> null
+            }
+            if (permissionTarget != null && safPermissionManager != null && context != null) {
+                val uri = safPermissionManager.getOrRequest(permissionTarget)
+                val rootDoc = DocumentFile.fromTreeUri(context, uri) ?: return emptyList()
+                val targetDoc = resolveDocument(rootDoc, permissionTarget.absolutePath, path) ?: return emptyList()
+                val results = mutableListOf<FsNode>()
+                searchSafTree(targetDoc, query, path, results, maxResults)
+                results
+            } else {
+                File(path)
+                    .walkTopDown()
+                    .filter { it.isFile && it.name.contains(query, ignoreCase = true) }
+                    .take(maxResults)
+                    .map { FsNode.Local(it) }
+                    .toList()
+            }
+        } catch (e: SafRequired) {
+            emptyList()
         } catch (e: Exception) {
             emptyList()
         }
     }
 
+    private fun searchSafTree(
+        root: DocumentFile,
+        query: String,
+        currentPath: String,
+        out: MutableList<FsNode>,
+        maxResults: Int
+    ) {
+        if (out.size >= maxResults) return
+        root.listFiles()?.forEach { child ->
+            if (out.size >= maxResults) return
+            val childPath = File(currentPath, child.name ?: "").absolutePath
+            if (child.isFile && child.name?.contains(query, ignoreCase = true) == true) {
+                out.add(FsNode.Saf(child, childPath))
+            }
+            if (child.isDirectory) {
+                searchSafTree(child, query, childPath, out, maxResults)
+            }
+        }
+    }
+
+    fun sortFiles(
+        files: List<FsNode>,
+        sortType: SortType,
+        sortOrder: SortOrder
+    ): List<FsNode> {
+        val sorted = when (sortType) {
+            SortType.NAME -> files.sortedBy { it.name.lowercase() }
+            SortType.SIZE -> files.sortedBy { it.size() }
+            SortType.DATE -> files.sortedBy { it.lastModified() }
+        }
+        return if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
+    }
+
+    @Deprecated("Use search() returning FsNode instead; legacy API lacks SAF support and will be removed in v2.0")
     fun searchRecursive(
         root: File,
         query: String,
         maxResults: Int = DEFAULT_MAX_SEARCH_RESULTS
     ): List<File> {
-        val results = mutableListOf<File>()
-
-        fun walk(dir: File) {
-            if (results.size >= maxResults) return
-            val files = dir.listFiles() ?: return
-
-            for (file in files) {
-                if (file.name.contains(query, ignoreCase = true)) {
-                    results.add(file)
-                    if (results.size >= maxResults) return
-                }
-                if (file.isDirectory && !file.isHidden) {
-                    walk(file)
+        return search(
+            root.absolutePath,
+            query,
+            maxResults = maxResults
+        )
+            .map { node ->
+                when (node) {
+                    is FsNode.Local -> node.file
+                    is FsNode.Saf -> File(node.path)
                 }
             }
-        }
-
-        try {
-            walk(root)
-        } catch (e: Exception) {
-            Log.w("FileManager", "searchRecursive failed for ${root.absolutePath}", e)
-        }
-        return results
-    }
-
-    fun sortFiles(
-        files: List<File>,
-        sortType: SortType,
-        sortOrder: SortOrder
-    ): List<File> {
-        val sorted = when (sortType) {
-            SortType.NAME -> files.sortedBy { it.name.lowercase() }
-            SortType.SIZE -> files.sortedBy { it.length() }
-            SortType.DATE -> files.sortedBy { it.lastModified() }
-        }
-        return if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
     }
 
     fun rename(file: File, newName: String): Result<File> {
@@ -184,5 +251,25 @@ object FileManager {
             // Ignore errors
         }
         return count
+    }
+
+    private fun safAnchor(path: String): File? = when {
+        path.contains("/Android/data") -> File(Environment.getExternalStorageDirectory(), "Android/data")
+        path.contains("/Android/obb") -> File(Environment.getExternalStorageDirectory(), "Android/obb")
+        else -> null
+    }
+
+    private fun resolveDocument(
+        anchor: DocumentFile,
+        anchorPath: String,
+        targetPath: String
+    ): DocumentFile? {
+        if (anchorPath == targetPath) return anchor
+        val relative = targetPath.removePrefix(anchorPath).trimStart(File.separatorChar)
+        var current = anchor
+        for (segment in relative.split(File.separatorChar).filter { it.isNotEmpty() }) {
+            current = current.findFile(segment) ?: return null
+        }
+        return current
     }
 }

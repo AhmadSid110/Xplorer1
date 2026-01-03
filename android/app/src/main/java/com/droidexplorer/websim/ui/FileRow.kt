@@ -18,7 +18,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import java.io.File
+import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.file.lastModified
+import com.droidexplorer.websim.file.size
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -26,7 +28,7 @@ import java.util.Locale
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileRow(
-    file: File,
+    file: FsNode,
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -34,8 +36,8 @@ fun FileRow(
     modifier: Modifier = Modifier
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val sizeText = remember(file.absolutePath) { formatFileSize(file.length()) }
-    val dateText = remember(file.absolutePath) { dateFormat.format(Date(file.lastModified())) }
+    val sizeText = remember(file.uniqueKey) { formatFileSize(file.size()) }
+    val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
     
     val backgroundColor = if (isSelected) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
