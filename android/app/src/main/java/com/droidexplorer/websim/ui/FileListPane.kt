@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +41,7 @@ import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.asFile
 import com.droidexplorer.websim.file.isImage
+import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
@@ -63,6 +63,9 @@ fun FileListPane(
     fileOperator: FileOperator,
     safPermissionManager: SafPermissionManager,
     settings: SettingsState,
+    searchQuery: String,
+    searchResult: SearchResult?,
+    onSearchQueryChange: (String) -> Unit,
     onSafRequired: (File) -> Unit,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
@@ -72,11 +75,16 @@ fun FileListPane(
     onOpenViewer: (Viewer) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var editorFile by remember { mutableStateOf<File?>(null) }
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotBlank()) {
+            isSearching = true
+        }
+    }
     
     // Context menu state
     var selectedFile by remember { mutableStateOf<FsNode?>(null) }
@@ -100,10 +108,10 @@ fun FileListPane(
         initialValue = emptyList<FsNode>(),
         paneState.path,
         searchQuery,
+        searchResult,
         sortType,
         sortOrder,
         settings.showHiddenFiles,
-        settings.searchIncludeSaf,
         refreshTrigger
     ) {
         value = withContext(Dispatchers.IO) {
@@ -117,14 +125,13 @@ fun FileListPane(
                     context
                 )
             } else {
-                val results = FileManager.search(
-                    path = paneState.path,
-                    query = searchQuery,
-                    showHidden = settings.showHiddenFiles,
-                    safPermissionManager = if (settings.searchIncludeSaf) safPermissionManager else null,
-                    context = if (settings.searchIncludeSaf) context else null
-                )
-                sortFiles(results)
+                val matches = searchResult?.matches ?: emptyList()
+                val visible = if (settings.showHiddenFiles) {
+                    matches
+                } else {
+                    matches.filterNot { it.name.startsWith(".") }
+                }
+                sortFiles(visible)
             }
         }
     }
@@ -321,7 +328,7 @@ fun FileListPane(
                         if (isSearching) {
                             OutlinedTextField(
                                 value = searchQuery,
-                                onValueChange = { searchQuery = it },
+                                onValueChange = { onSearchQueryChange(it) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -330,7 +337,7 @@ fun FileListPane(
                                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
+                                        IconButton(onClick = { onSearchQueryChange("") }) {
                                             Icon(Icons.Filled.Clear, contentDescription = "Clear")
                                         }
                                     }
@@ -350,13 +357,17 @@ fun FileListPane(
                                         .semantics { contentDescription = "Search status: Searching" }
                                 )
                             }
-                        }
-                    }
                 }
+            }
+        }
 
-                fun requiresPermission(node: FsNode): Boolean {
-                    return when {
-                        node is FsNode.Saf -> true
+        if (searchQuery.isNotBlank()) {
+            SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
+        }
+
+        fun requiresPermission(node: FsNode): Boolean {
+            return when {
+                node is FsNode.Saf -> true
                         node is FsNode.Local && node.isDirectory -> {
                             val cached = writeProbeCache[node.path]
                             val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
@@ -392,7 +403,7 @@ fun FileListPane(
                                         onRequestFocus()
                                         if (node.isDirectory) {
                                             paneState.navigateTo(node.path)
-                                            searchQuery = ""
+                                            onSearchQueryChange("")
                                         }
                                         else handleOpen(node.asFile())
                                     },
@@ -444,7 +455,7 @@ fun FileListPane(
                                             onRequestFocus()
                                             if (node.isDirectory) {
                                                 paneState.navigateTo(node.path)
-                                                searchQuery = ""
+                                                onSearchQueryChange("")
                                             }
                                             else handleOpen(node.asFile())
                                         },

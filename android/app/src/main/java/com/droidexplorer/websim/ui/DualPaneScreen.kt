@@ -24,6 +24,7 @@ import androidx.compose.material3.SnackbarResult
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
+import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
@@ -39,7 +40,10 @@ import java.io.File
 @Composable
 fun DualPaneScreen(
     singlePane: Boolean = false,
-    settings: com.droidexplorer.websim.settings.SettingsState,
+    settings: SettingsState,
+    searchQuery: String,
+    searchResult: SearchResult?,
+    onSearchQueryChange: (String) -> Unit,
     onOpenSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -262,6 +266,9 @@ fun DualPaneScreen(
                         fileOperator = fileOperator,
                         safPermissionManager = safManager,
                         settings = settings,
+                        searchQuery = searchQuery,
+                        searchResult = searchResult,
+                        onSearchQueryChange = onSearchQueryChange,
                         onSafRequired = { pendingSafDir = it },
                         onRequestFocus = { activePane = leftPaneState },
                         isActive = activePane == leftPaneState,
@@ -282,6 +289,9 @@ fun DualPaneScreen(
                             fileOperator = fileOperator,
                             safPermissionManager = safManager,
                             settings = settings,
+                            searchQuery = searchQuery,
+                            searchResult = searchResult,
+                            onSearchQueryChange = onSearchQueryChange,
                             onSafRequired = { pendingSafDir = it },
                             onRequestFocus = { activePane = rightPaneState },
                             isActive = activePane == rightPaneState,

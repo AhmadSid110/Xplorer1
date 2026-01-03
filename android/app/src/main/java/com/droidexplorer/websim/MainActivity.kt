@@ -34,6 +34,8 @@ import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.ui.DualPaneScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
+import com.droidexplorer.websim.search.FileSearcher
+import com.droidexplorer.websim.search.SearchEngine
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -58,10 +60,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settingsRepository = remember { SettingsRepository(applicationContext) }
             val safPermissionManager = remember { SafPermissionManager(applicationContext, DataStoreSafStore(applicationContext)) }
+            val searchEngine = remember { SearchEngine(FileSearcher(applicationContext)) }
             val viewModel: ExplorerViewModel = viewModel(
-                factory = ExplorerViewModelFactory(settingsRepository, safPermissionManager)
+                factory = ExplorerViewModelFactory(settingsRepository, safPermissionManager, searchEngine)
             )
             val settingsState by viewModel.settings.collectAsState()
+            val searchQuery by viewModel.searchQuery.collectAsState()
+            val searchResult by viewModel.searchResults.collectAsState()
             var showSettings by rememberSaveable { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
 
@@ -113,6 +118,9 @@ class MainActivity : ComponentActivity() {
                         DualPaneScreen(
                             singlePane = false,
                             settings = settingsState,
+                            searchQuery = searchQuery,
+                            searchResult = searchResult,
+                            onSearchQueryChange = viewModel::setSearchQuery,
                             onOpenSettings = { showSettings = true }
                         )
                     }

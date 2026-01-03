@@ -53,4 +53,9 @@ class SafPermissionManager(
     }
 
     fun isRevoked(dir: File): Boolean = has(dir) && !isPersisted(dir)
+
+    fun getPersistedRootIds(): List<String> =
+        context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission }
+            .map { it.uri.toString() }
 }
