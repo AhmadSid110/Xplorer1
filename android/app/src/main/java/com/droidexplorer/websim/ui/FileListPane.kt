@@ -28,6 +28,9 @@ import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.file.openFile
+import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.file.asFile
+import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +43,7 @@ fun FileListPane(
     modifier: Modifier,
     paneState: PaneState,
     fileOperator: FileOperator,
+    safPermissionManager: SafPermissionManager,
     onSafRequired: (File) -> Unit,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
@@ -57,7 +61,7 @@ fun FileListPane(
     var imageFile by remember { mutableStateOf<File?>(null) }
     
     // Context menu state
-    var selectedFile by remember { mutableStateOf<File?>(null) }
+    var selectedFile by remember { mutableStateOf<FsNode?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -69,13 +73,13 @@ fun FileListPane(
     
     // Load files
     val sortFiles = remember(sortType, sortOrder) {
-        { files: List<File> ->
+        { files: List<FsNode> ->
             FileManager.sortFiles(files, sortType, sortOrder)
         }
     }
 
     val files by produceState(
-        initialValue = emptyList<File>(),
+        initialValue = emptyList<FsNode>(),
         paneState.path,
         searchQuery,
         sortType,
@@ -84,12 +88,20 @@ fun FileListPane(
     ) {
         value = withContext(Dispatchers.IO) {
             if (searchQuery.isBlank()) {
-                FileManager.list(paneState.path, sortType, sortOrder)
+                FileManager.list(
+                    paneState.path,
+                    sortType,
+                    sortOrder,
+                    safPermissionManager,
+                    context
+                )
             } else {
                 sortFiles(
-                    FileManager.searchRecursive(
-                        root = File(paneState.path),
-                        query = searchQuery
+                    FileManager.search(
+                        path = paneState.path,
+                        query = searchQuery,
+                        safPermissionManager = safPermissionManager,
+                        context = context
                     )
                 )
             }
@@ -232,11 +244,11 @@ fun FileListPane(
                             )
                             if (searchQuery.isNotBlank()) {
                                 Text(
-                                    text = "Searching all subfolders…",
+                                    text = "Searching…",
                                     style = MaterialTheme.typography.labelSmall,
                                     modifier = Modifier
                                         .padding(start = 8.dp, bottom = 4.dp)
-                                        .semantics { contentDescription = "Search status: Searching all subfolders" }
+                                        .semantics { contentDescription = "Search status: Searching" }
                                 )
                             }
                         }
@@ -278,33 +290,35 @@ fun FileListPane(
                     ) {
                         items(
                             items = files,
-                            key = { it.absolutePath }
-                        ) { file ->
-                            val requiresSaf = remember(file.absolutePath) {
-                                if (!file.isDirectory) {
-                                    false
-                                } else {
-                                    val cached = writeProbeCache[file.absolutePath]
-                                    val writable = cached ?: FileOperator.canWrite(file).also {
-                                        writeProbeCache[file.absolutePath] = it
+                            key = { it.uniqueKey }
+                        ) { node ->
+                            val requiresSaf = remember(node.uniqueKey) {
+                                when {
+                                    node is FsNode.Saf -> true
+                                    node is FsNode.Local && node.isDirectory -> {
+                                        val cached = writeProbeCache[node.path]
+                                        val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
+                                            writeProbeCache[node.path] = it
+                                        }
+                                        !writable
                                     }
-                                    !writable
+                                    else -> false
                                 }
                             }
                             FileRow(
-                                file = file,
-                                isSelected = selectedFile?.absolutePath == file.absolutePath && showContextMenu,
+                                file = node,
+                                isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
                                 requiresPermission = requiresSaf,
                                 onClick = {
                                     onRequestFocus()
-                                    if (file.isDirectory) {
-                                        paneState.navigateTo(file.absolutePath)
+                                    if (node.isDirectory) {
+                                        paneState.navigateTo(node.path)
                                         searchQuery = ""
                                     }
-                                    else handleOpen(file)
+                                    else handleOpen(node.asFile())
                                 },
                                 onLongClick = {
-                                    selectedFile = file
+                                    selectedFile = node
                                     showContextMenu = true
                                     onRequestFocus()
                                 }
@@ -334,26 +348,26 @@ fun FileListPane(
     // Context menu bottom sheet
     if (showContextMenu && selectedFile != null) {
         FileContextMenu(
-            file = selectedFile!!,
+            file = selectedFile!!.asFile(),
             onDismiss = { 
                 showContextMenu = false
             },
-            onOpen = { handleOpen(selectedFile!!) },
+            onOpen = { handleOpen(selectedFile!!.asFile()) },
             onEdit = {
-                editorFile = selectedFile
+                editorFile = selectedFile!!.asFile()
             },
             onRename = { showRenameDialog = true },
             onDelete = { showDeleteDialog = true },
             onCopy = { 
-                FileClipboard.copy(selectedFile!!.absolutePath)
+                FileClipboard.copy(selectedFile!!.path)
                 snackbarMessage = "Copied to clipboard"
             },
             onMove = { 
-                FileClipboard.cut(selectedFile!!.absolutePath)
+                FileClipboard.cut(selectedFile!!.path)
                 snackbarMessage = "Cut to clipboard"
             },
             onZip = {
-                ZipUtils.zipFile(selectedFile!!).fold(
+                ZipUtils.zipFile(selectedFile!!.asFile()).fold(
                     onSuccess = { 
                         snackbarMessage = "Zipped successfully"
                         refreshTrigger++
@@ -362,7 +376,7 @@ fun FileListPane(
                 )
             },
             onUnzip = {
-                ZipUtils.unzip(selectedFile!!).fold(
+                ZipUtils.unzip(selectedFile!!.asFile()).fold(
                     onSuccess = { 
                         snackbarMessage = "Unzipped successfully"
                         refreshTrigger++
@@ -422,10 +436,10 @@ fun FileListPane(
     // Rename dialog
     if (showRenameDialog && selectedFile != null) {
         RenameDialog(
-            file = selectedFile!!,
+            file = selectedFile!!.asFile(),
             onDismiss = { showRenameDialog = false },
             onRename = { newName ->
-                fileOperator.rename(selectedFile!!, newName).fold(
+                fileOperator.rename(selectedFile!!.asFile(), newName).fold(
                     onSuccess = { 
                         snackbarMessage = "Renamed successfully"
                         refreshTrigger++
@@ -443,10 +457,10 @@ fun FileListPane(
     // Delete confirmation dialog
     if (showDeleteDialog && selectedFile != null) {
         DeleteConfirmDialog(
-            file = selectedFile!!,
+            file = selectedFile!!.asFile(),
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
-                fileOperator.delete(selectedFile!!).fold(
+                fileOperator.delete(selectedFile!!.asFile()).fold(
                     onSuccess = { 
                         snackbarMessage = "Deleted successfully"
                         refreshTrigger++
