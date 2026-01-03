@@ -16,8 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.droidexplorer.websim.core.ops.OperationPersistence
+import com.droidexplorer.websim.debug.StrictModeConfig
+import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.ui.DualPaneScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     
@@ -35,11 +40,23 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
+        if (BuildConfig.DEBUG) {
+            StrictModeConfig.install(this)
+        }
+
         checkAndRequestPermissions()
         
         setContent {
             XplorerTheme {
+                LaunchedEffect(Unit) {
+                    val pending = withContext(Dispatchers.IO) {
+                        OperationPersistence(applicationContext).restore()
+                    }
+                    if (pending != null && !FileOperationService.running.value) {
+                        FileOperationService.enqueue(applicationContext, pending)
+                    }
+                }
                 if (hasStoragePermission) {
                     DualPaneScreen(singlePane = false)
                 } else {

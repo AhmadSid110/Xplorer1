@@ -13,11 +13,17 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.droidexplorer.websim.MainActivity
 import com.droidexplorer.websim.R
+import com.droidexplorer.websim.core.automation.AutoMoveSubtitle
+import com.droidexplorer.websim.core.automation.FileDescriptor
+import com.droidexplorer.websim.core.automation.FileOperations
 import com.droidexplorer.websim.core.ops.FileOperation
 import com.droidexplorer.websim.core.ops.FileOperationExecutor
 import com.droidexplorer.websim.core.ops.OperationCancellationToken
+import com.droidexplorer.websim.core.ops.NodeRef
+import com.droidexplorer.websim.core.ops.OperationPersistence
 import com.droidexplorer.websim.core.ops.OperationProgress
 import com.droidexplorer.websim.core.ops.OperationResult
+import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
@@ -28,21 +34,31 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class FileOperationService : Service() {
 
     private val serviceScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var executor: FileOperationExecutor
+    private lateinit var fileOperator: FileOperator
+    private lateinit var safManager: SafPermissionManager
+    private lateinit var persistence: OperationPersistence
+    private lateinit var automationOps: FileOperations
     private var cancellationToken: OperationCancellationToken = OperationCancellationToken()
     private var currentJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
         val safStore = DataStoreSafStore(this)
-        val safManager = SafPermissionManager(this, safStore)
-        executor = FileOperationExecutor(FileOperator(this, safManager))
+        safManager = SafPermissionManager(this, safStore)
+        fileOperator = FileOperator(this, safManager)
+        executor = FileOperationExecutor(fileOperator)
+        persistence = OperationPersistence(this)
+        automationOps = ServiceFileOperations(this, fileOperator, safManager)
         createChannel()
     }
 
@@ -52,20 +68,33 @@ class FileOperationService : Service() {
             return START_NOT_STICKY
         }
 
-        val operation = intent?.getSerializableExtra(EXTRA_OPERATION) as? FileOperation
+        if (intent == null) {
+            serviceScope.launch { resumePersistedOperation() }
+            return START_STICKY
+        }
+
+        val operation = intent.getSerializableExtra(EXTRA_OPERATION) as? FileOperation
             ?: return START_NOT_STICKY
+
+        startOperation(operation)
+        return START_REDELIVER_INTENT
+    }
+
+    private fun startOperation(operation: FileOperation) {
         if (currentJob != null) {
             _progressFlow.value = OperationProgress.Completed(
                 operation.id,
                 OperationResult.Failure("Another operation is already running")
             )
-            return START_NOT_STICKY
+            return
         }
 
         startForeground(NOTIFICATION_ID, buildNotification("Starting", true, 0, 0))
         cancellationToken = OperationCancellationToken()
 
         currentJob = serviceScope.launch {
+            persistence.persist(operation)
+            _isRunning.value = true
             executor.execute(operation, cancellationToken).collect { progress ->
                 _progressFlow.value = progress
                 when (progress) {
@@ -78,26 +107,41 @@ class FileOperationService : Service() {
                     )
 
                     is OperationProgress.Completed -> {
-                        val message = when (progress.result) {
-                            is OperationResult.Success -> progress.result.message ?: "Completed"
-                            is OperationResult.Failure -> progress.result.message
+                        val result = progress.result
+                        if (result is OperationResult.Success) {
+                            result.output?.let { output ->
+                                serviceScope.launch { handleAutomation(output) }
+                            }
+                        }
+                        persistence.clear()
+                        val message = when (result) {
+                            is OperationResult.Success -> result.message ?: "Completed"
+                            is OperationResult.Failure -> result.message
                             OperationResult.Cancelled -> "Cancelled"
                         }
                         updateNotification(message, false, 0, 0)
                         currentJob = null
+                        _isRunning.value = false
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                     }
                 }
             }
         }
+    }
 
-        return START_REDELIVER_INTENT
+    private suspend fun resumePersistedOperation() {
+        if (currentJob != null) return
+        val pending = persistence.restore() ?: return
+        withContext(Dispatchers.Main) {
+            startOperation(pending)
+        }
     }
 
     override fun onDestroy() {
         currentJob?.cancel()
         serviceScope.cancel()
+        _isRunning.value = false
         super.onDestroy()
     }
 
@@ -173,6 +217,34 @@ class FileOperationService : Service() {
         return builder.build()
     }
 
+    private suspend fun handleAutomation(output: NodeRef) {
+        val file = File(output.path)
+        val descriptor = FileDescriptor.from(file)
+        AutoMoveSubtitle.onFileCreated(descriptor, automationOps)
+    }
+
+    private class ServiceFileOperations(
+        private val context: Context,
+        private val fileOperator: FileOperator,
+        private val safPermissionManager: SafPermissionManager
+    ) : FileOperations {
+        override suspend fun listFiles(directory: String): List<FileDescriptor> =
+            withContext(Dispatchers.IO) {
+                FileManager.list(
+                    path = directory,
+                    safPermissionManager = safPermissionManager,
+                    context = context
+                ).filter { !it.isDirectory }
+                    .map { FileDescriptor.from(File(it.path)) }
+            }
+
+        override suspend fun move(file: FileDescriptor, destDir: String) {
+            withContext(Dispatchers.IO) {
+                fileOperator.move(File(file.path), File(destDir)).getOrThrow()
+            }
+        }
+    }
+
     companion object {
         private const val CHANNEL_ID = "file_ops"
         private const val NOTIFICATION_ID = 42
@@ -181,8 +253,11 @@ class FileOperationService : Service() {
 
         private val _progressFlow = MutableStateFlow<OperationProgress?>(null)
         val progressFlow: StateFlow<OperationProgress?> = _progressFlow
+        private val _isRunning = MutableStateFlow(false)
+        val running: StateFlow<Boolean> = _isRunning.asStateFlow()
 
         fun observe(): StateFlow<OperationProgress?> = progressFlow
+        fun isRunning(): StateFlow<Boolean> = running
 
         fun enqueue(context: Context, operation: FileOperation) {
             val intent = Intent(context, FileOperationService::class.java).apply {
