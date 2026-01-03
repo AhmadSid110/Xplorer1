@@ -143,14 +143,14 @@ class MainActivity : ComponentActivity() {
                     } else {
                         DualPaneScreen(
                             singlePane = false,
-                            settings = settingsState,
-                            searchQuery = searchQuery,
-                            searchResult = searchResult,
-                            onSearchQueryChange = viewModel::setSearchQuery,
-                            onOpenSettings = { showSettings = true }
-                        )
-                    }
-                } else {
+                             settings = settingsState,
+                             searchQuery = searchQuery,
+                             searchResult = searchResult,
+                             onSearchQueryChange = viewModel::updateSearchQuery,
+                             onOpenSettings = { showSettings = true }
+                         )
+                     }
+                 } else {
                     PermissionScreen(
                         showRationale = showPermissionRationale,
                         onRequestPermission = { checkAndRequestPermissions() }

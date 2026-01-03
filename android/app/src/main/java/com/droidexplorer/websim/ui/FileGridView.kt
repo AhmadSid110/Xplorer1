@@ -21,13 +21,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVectorPainter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.ui.icon.FileIconCache
 
 private val GridCellMinSize = 140.dp
 
@@ -49,7 +53,7 @@ fun FileGridView(
         modifier = modifier,
         contentPadding = contentPadding
     ) {
-        items(files, key = { it.uniqueKey }) { file ->
+        items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
 
@@ -98,17 +102,35 @@ fun FileGridView(
 
 @Composable
 fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
+    val key = remember(file) {
+        "${file.extensionKey()}_${file.isDirectory}"
+    }
+    val painter = FileIconCache.get(key) {
+        resolveIconPainter(file)
+    }
     val iconTint = tint ?: if (file.isDirectory) {
         MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     Icon(
-        imageVector = if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description,
-        contentDescription = if (file.isDirectory) "Folder" else "File",
+        painter = painter,
+        contentDescription = null,
         tint = iconTint,
         modifier = Modifier
             .padding(4.dp)
             .size(size)
     )
+}
+
+private fun resolveIconPainter(file: FsNode): Painter {
+    val imageVector = if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description
+    return ImageVectorPainter(imageVector)
+}
+
+private fun FsNode.extensionKey(): String {
+    return when (this) {
+        is FsNode.Local -> file.extension
+        is FsNode.Saf -> name.substringAfterLast('.', "")
+    }
 }
