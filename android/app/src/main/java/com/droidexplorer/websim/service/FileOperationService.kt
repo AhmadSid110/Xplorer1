@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.droidexplorer.websim.MainActivity
@@ -133,9 +134,7 @@ class FileOperationService : Service() {
     private suspend fun resumePersistedOperation() {
         if (currentJob != null) return
         val pending = persistence.restore() ?: return
-        withContext(Dispatchers.Main) {
-            startOperation(pending)
-        }
+        startOperation(pending)
     }
 
     override fun onDestroy() {
@@ -218,9 +217,13 @@ class FileOperationService : Service() {
     }
 
     private suspend fun handleAutomation(output: NodeRef) {
-        val file = File(output.path)
-        val descriptor = FileDescriptor.from(file)
-        AutoMoveSubtitle.onFileCreated(descriptor, automationOps)
+        try {
+            val file = File(output.path)
+            val descriptor = FileDescriptor.from(file)
+            AutoMoveSubtitle.onFileCreated(descriptor, automationOps)
+        } catch (e: Exception) {
+            Log.w("FileOperationService", "Automation failed for ${output.path}", e)
+        }
     }
 
     private class ServiceFileOperations(

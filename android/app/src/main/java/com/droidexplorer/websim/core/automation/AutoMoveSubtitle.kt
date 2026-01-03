@@ -1,5 +1,6 @@
 package com.droidexplorer.websim.core.automation
 
+import android.os.Environment
 import java.io.File
 
 data class FileDescriptor(
@@ -49,8 +50,8 @@ object AutoMoveSubtitle {
 
         // 2️⃣ Optional fallback: common video dirs (VERY LIMITED)
         val fallbackDirs = listOf(
-            "/storage/emulated/0/Movies",
-            "/storage/emulated/0/Video"
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).absolutePath,
+            File(Environment.getExternalStorageDirectory(), "Video").absolutePath
         )
 
         for (dir in fallbackDirs) {

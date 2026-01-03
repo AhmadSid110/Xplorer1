@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.droidexplorer.websim.BuildConfig
 import com.droidexplorer.websim.core.ops.OperationPersistence
 import com.droidexplorer.websim.debug.StrictModeConfig
 import com.droidexplorer.websim.service.FileOperationService

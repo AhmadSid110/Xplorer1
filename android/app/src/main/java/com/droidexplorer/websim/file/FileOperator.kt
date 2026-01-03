@@ -129,7 +129,7 @@ class FileOperator(
                 src.copyTo(temp, overwrite = false)
             }
             if (!temp.renameTo(dest)) {
-                throw FileWriteFailed("Failed to finalize copy")
+                throw FileWriteFailed("Failed to finalize copy from ${temp.path} to ${dest.path}")
             }
             return dest
         } catch (e: Exception) {
@@ -162,14 +162,16 @@ class FileOperator(
                 }
             }
             if (!destDocument.renameTo(src.name)) {
-                throw FileWriteFailed("Failed to finalize directory via SAF")
+                destDocument.delete()
+                throw FileWriteFailed("Failed to finalize directory ${src.name} via SAF")
             }
             return File(destDir, src.name)
         } else {
             val target = copyFileToDocument(src, documentDir, "${src.name}.partial")
                 ?: throw FileWriteFailed("Unable to create file via SAF")
             if (!target.renameTo(src.name)) {
-                throw FileWriteFailed("Failed to finalize file via SAF")
+                target.delete()
+                throw FileWriteFailed("Failed to finalize file ${src.name} via SAF")
             }
             return File(destDir, src.name)
         }
