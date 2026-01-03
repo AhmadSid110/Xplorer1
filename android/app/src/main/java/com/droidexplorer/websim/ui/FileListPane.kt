@@ -74,13 +74,13 @@ fun FileListPane(
         }
     }
 
-    val files by produceState<List<File>>(
-        initialValue = emptyList(),
-        key1 = paneState.path,
-        key2 = searchQuery,
-        key3 = sortType,
-        key4 = sortOrder,
-        key5 = refreshTrigger
+    val files by produceState(
+        initialValue = emptyList<File>(),
+        paneState.path,
+        searchQuery,
+        sortType,
+        sortOrder,
+        refreshTrigger
     ) {
         value = withContext(Dispatchers.IO) {
             if (searchQuery.isBlank()) {
