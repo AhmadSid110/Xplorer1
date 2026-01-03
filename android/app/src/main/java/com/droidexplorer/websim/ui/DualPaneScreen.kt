@@ -26,6 +26,8 @@ import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.viewer.PdfViewerScreen
+import com.droidexplorer.websim.ui.viewer.ImageViewerScreen
+import com.droidexplorer.websim.ui.viewer.TextViewerScreen
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.viewer.ZipViewerScreen
 import java.io.File
@@ -91,7 +93,26 @@ fun DualPaneScreen(singlePane: Boolean = false) {
     }
     
     when (val currentViewer = viewer) {
+        is Viewer.Image -> {
+            val next = currentViewer.items.getOrNull(currentViewer.index + 1)
+            val previous = currentViewer.items.getOrNull(currentViewer.index - 1)
+            ImageViewerScreen(
+                file = currentViewer.file,
+                onClose = { viewer = null },
+                onNext = next?.let {
+                    { viewer = currentViewer.copy(file = it, index = currentViewer.index + 1) }
+                },
+                onPrevious = previous?.let {
+                    { viewer = currentViewer.copy(file = it, index = currentViewer.index - 1) }
+                }
+            )
+        }
         is Viewer.Pdf -> PdfViewerScreen(currentViewer.file) { viewer = null }
+        is Viewer.Text -> TextViewerScreen(
+            file = currentViewer.file,
+            onClose = { viewer = null },
+            showLineNumbers = currentViewer.showLineNumbers
+        )
         is Viewer.Zip -> ZipViewerScreen(currentViewer.file) { viewer = null }
         null -> {
             Scaffold(

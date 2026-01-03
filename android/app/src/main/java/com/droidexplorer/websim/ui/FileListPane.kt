@@ -21,7 +21,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.droidexplorer.websim.data.ClipboardOperation
 import com.droidexplorer.websim.data.FileClipboard
+import com.droidexplorer.websim.core.ops.FileOperation
+import com.droidexplorer.websim.core.ops.NodeRef
+import com.droidexplorer.websim.core.ops.OperationProgress
+import com.droidexplorer.websim.core.ops.OperationResult
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SafRequired
 import com.droidexplorer.websim.file.FileManager
@@ -30,7 +35,9 @@ import com.droidexplorer.websim.file.SortType
 import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.asFile
+import com.droidexplorer.websim.file.isImage
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import kotlinx.coroutines.Dispatchers
@@ -56,9 +63,8 @@ fun FileListPane(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
-    var viewerFile by remember { mutableStateOf<File?>(null) }
     var editorFile by remember { mutableStateOf<File?>(null) }
-    var imageFile by remember { mutableStateOf<File?>(null) }
+    val operationProgress by FileOperationService.observe().collectAsState(initial = null)
     
     // Context menu state
     var selectedFile by remember { mutableStateOf<FsNode?>(null) }
@@ -116,6 +122,22 @@ fun FileListPane(
         }
     }
 
+    LaunchedEffect(operationProgress) {
+        val progress = operationProgress ?: return@LaunchedEffect
+        when (progress) {
+            is OperationProgress.Started -> progress.label?.let { snackbarMessage = it }
+            is OperationProgress.Running -> progress.label?.let { snackbarMessage = it }
+            is OperationProgress.Completed -> {
+                when (val result = progress.result) {
+                    is OperationResult.Success -> snackbarMessage = result.message ?: "Operation completed"
+                    is OperationResult.Failure -> snackbarMessage = result.message
+                    OperationResult.Cancelled -> snackbarMessage = "Operation cancelled"
+                }
+                refreshTrigger++
+            }
+        }
+    }
+
     BackHandler(enabled = paneState.canGoBack() && isActive) {
         paneState.goBack()
     }
@@ -157,8 +179,13 @@ fun FileListPane(
         }
         openFile(
             file = file,
-            openText = { viewerFile = it },
-            openImage = { imageFile = it },
+            openText = { onOpenViewer(Viewer.Text(it)) },
+            openImage = { target ->
+                val images = files.filter { !it.isDirectory && it.asFile().isImage() }.map { it.asFile() }
+                val index = images.indexOfFirst { it.absolutePath == target.absolutePath }
+                    .takeIf { it >= 0 } ?: 0
+                onOpenViewer(Viewer.Image(target, images, index))
+            },
             openPdf = { onOpenViewer(Viewer.Pdf(it)) },
             openOther = openOther
         )
@@ -194,22 +221,21 @@ fun FileListPane(
                                 IconButton(
                                     onClick = {
                                         FileClipboard.item?.let { item ->
-                                            val result = fileOperator.performClipboard(
-                                                item,
-                                                File(paneState.path)
-                                            )
-                                            result.fold(
-                                                onSuccess = { 
-                                                    snackbarMessage = "Pasted successfully"
-                                                    FileClipboard.clear()
-                                                    refreshTrigger++
-                                                },
-                                                onFailure = { 
-                                                    if (!handleSaf(it)) {
-                                                        snackbarMessage = "Failed to paste: ${it.message}"
-                                                    }
-                                                }
-                                            )
+                                            val destination = NodeRef.from(File(paneState.path))
+                                            val operation = when (item.operation) {
+                                                ClipboardOperation.COPY -> FileOperation.Copy(
+                                                    NodeRef.from(File(item.sourcePath)),
+                                                    destination
+                                                )
+
+                                                ClipboardOperation.MOVE -> FileOperation.Move(
+                                                    NodeRef.from(File(item.sourcePath)),
+                                                    destination
+                                                )
+                                            }
+                                            FileOperationService.enqueue(context, operation)
+                                            FileClipboard.clear()
+                                            snackbarMessage = "Operation started"
                                         }
                                     }
                                 ) {
@@ -404,17 +430,6 @@ fun FileListPane(
         )
     }
     
-    // Text viewer
-    viewerFile?.let { target ->
-        TextViewerSheet(
-            file = target,
-            fileOperator = fileOperator,
-            onDismiss = { viewerFile = null },
-            onEdit = { editorFile = target },
-            onSafRequired = onSafRequired
-        )
-    }
-
     // Text editor
     editorFile?.let { target ->
         TextEditorSheet(
@@ -426,30 +441,17 @@ fun FileListPane(
         )
     }
 
-    imageFile?.let { target ->
-        ImageViewerSheet(
-            file = target,
-            onDismiss = { imageFile = null }
-        )
-    }
-
     // Rename dialog
     if (showRenameDialog && selectedFile != null) {
         RenameDialog(
             file = selectedFile!!.asFile(),
             onDismiss = { showRenameDialog = false },
             onRename = { newName ->
-                fileOperator.rename(selectedFile!!.asFile(), newName).fold(
-                    onSuccess = { 
-                        snackbarMessage = "Renamed successfully"
-                        refreshTrigger++
-                    },
-                    onFailure = { 
-                        if (!handleSaf(it)) {
-                            snackbarMessage = "Failed to rename: ${it.message}"
-                        }
-                    }
+                FileOperationService.enqueue(
+                    context,
+                    FileOperation.Rename(NodeRef.from(selectedFile!!.asFile()), newName)
                 )
+                snackbarMessage = "Renaming..."
             }
         )
     }
@@ -460,17 +462,11 @@ fun FileListPane(
             file = selectedFile!!.asFile(),
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
-                fileOperator.delete(selectedFile!!.asFile()).fold(
-                    onSuccess = { 
-                        snackbarMessage = "Deleted successfully"
-                        refreshTrigger++
-                    },
-                    onFailure = { 
-                        if (!handleSaf(it)) {
-                            snackbarMessage = "Failed to delete: ${it.message}"
-                        }
-                    }
+                FileOperationService.enqueue(
+                    context,
+                    FileOperation.Delete(NodeRef.from(selectedFile!!.asFile()))
                 )
+                snackbarMessage = "Deleting..."
             }
         )
     }
