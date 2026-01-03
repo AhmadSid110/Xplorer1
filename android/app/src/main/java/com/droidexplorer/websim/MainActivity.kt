@@ -17,6 +17,13 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.droidexplorer.websim.ui.ExplorerViewModelFactory
+import com.droidexplorer.websim.ui.ExplorerViewModel
+import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.storage.DataStoreSafStore
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -50,10 +57,31 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val settingsRepository = remember { SettingsRepository(applicationContext) }
-            val settingsState by settingsRepository.settings.collectAsState(initial = SettingsState())
+            val safPermissionManager = remember { SafPermissionManager(applicationContext, DataStoreSafStore(applicationContext)) }
+            val viewModel: ExplorerViewModel = viewModel(
+                factory = ExplorerViewModelFactory(settingsRepository, safPermissionManager)
+            )
+            val settingsState by viewModel.settings.collectAsState()
             var showSettings by rememberSaveable { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
-            
+
+            val safLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocumentTree()
+            ) { uri ->
+                if (uri != null) {
+                    safPermissionManager.persist(uri)
+                    scope.launch { viewModel.setSearchSaf(true) }
+                } else {
+                    scope.launch { viewModel.setSearchSaf(false) }
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                viewModel.requestSafPermission.collect {
+                    safLauncher.launch(null)
+                }
+            }
+
             XplorerTheme {
                 if (hasStoragePermission) {
                     if (showSettings) {
@@ -75,21 +103,16 @@ class MainActivity : ComponentActivity() {
                         ) { paddingValues ->
                             SettingsScreen(
                                 state = settingsState,
-                                onViewModeChange = { mode ->
-                                    scope.launch { settingsRepository.setViewMode(mode) }
-                                },
-                                onToggleHidden = { enabled ->
-                                    scope.launch { settingsRepository.setShowHidden(enabled) }
-                                },
-                                onToggleSafSearch = { enabled ->
-                                    scope.launch { settingsRepository.setSearchSaf(enabled) }
-                                },
+                                onViewModeChange = viewModel::setViewMode,
+                                onToggleHidden = viewModel::setShowHidden,
+                                onToggleSafSearch = viewModel::onToggleSafSearch,
                                 modifier = Modifier.padding(paddingValues)
                             )
                         }
                     } else {
                         DualPaneScreen(
                             singlePane = false,
+                            settings = settingsState,
                             onOpenSettings = { showSettings = true }
                         )
                     }

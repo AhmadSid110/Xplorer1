@@ -38,6 +38,7 @@ import java.io.File
 @Composable
 fun DualPaneScreen(
     singlePane: Boolean = false,
+    settings: SettingsState,
     onOpenSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -259,6 +260,7 @@ fun DualPaneScreen(
                         paneState = leftPaneState,
                         fileOperator = fileOperator,
                         safPermissionManager = safManager,
+                        settings = settings,
                         onSafRequired = { pendingSafDir = it },
                         onRequestFocus = { activePane = leftPaneState },
                         isActive = activePane == leftPaneState,
@@ -278,6 +280,7 @@ fun DualPaneScreen(
                             paneState = rightPaneState,
                             fileOperator = fileOperator,
                             safPermissionManager = safManager,
+                            settings = settings,
                             onSafRequired = { pendingSafDir = it },
                             onRequestFocus = { activePane = rightPaneState },
                             isActive = activePane == rightPaneState,
