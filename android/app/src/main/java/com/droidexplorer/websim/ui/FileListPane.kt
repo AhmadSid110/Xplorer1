@@ -389,7 +389,7 @@ fun FileListPane(
                     val uri = FileProvider.getUriForFile(
                         ctx,
                         "${ctx.packageName}.provider",
-                        selectedFile!!
+                        selectedFile!!.asFile()
                     )
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "*/*"
