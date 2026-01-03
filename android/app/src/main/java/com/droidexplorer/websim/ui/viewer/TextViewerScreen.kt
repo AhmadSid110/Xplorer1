@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -29,14 +31,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
@@ -172,8 +175,8 @@ fun TextViewerScreen(
     }
 }
 
-private fun snapshotFlowWithViewport(listState: androidx.compose.foundation.lazy.LazyListState) =
-    kotlinx.coroutines.flow.snapshotFlow {
+private fun snapshotFlowWithViewport(listState: LazyListState): Flow<Int> =
+    snapshotFlow {
         val visible = listState.layoutInfo.visibleItemsInfo
         if (visible.isEmpty()) 0 else visible.maxOf { it.index }
-    }.filter { it >= 0 }.map { it }
+    }.filter { it >= 0 }

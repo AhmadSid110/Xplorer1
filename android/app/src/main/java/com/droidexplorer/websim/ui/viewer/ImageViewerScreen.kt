@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.SubcomposeAsyncImage
 import java.io.File
 
@@ -84,15 +85,19 @@ fun ImageViewerScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(12.dp)
-                    .detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 8f)
-                        offset += pan
+                    .pointerInput(file) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 8f)
+                            offset += pan
+                        }
                     }
-                    .detectHorizontalDragGestures { _, dragAmount ->
-                        if (dragAmount > 30 && onPrevious != null) {
-                            onPrevious()
-                        } else if (dragAmount < -30 && onNext != null) {
-                            onNext()
+                    .pointerInput(file to "drag") {
+                        detectHorizontalDragGestures { _, dragAmount ->
+                            if (dragAmount > 30 && onPrevious != null) {
+                                onPrevious()
+                            } else if (dragAmount < -30 && onNext != null) {
+                                onNext()
+                            }
                         }
                     }
                     .graphicsLayer(
