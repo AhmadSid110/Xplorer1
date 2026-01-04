@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -42,9 +44,13 @@ class ExplorerViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val debouncedQuery = searchQuery
+        .debounce(350)
+        .distinctUntilChanged()
+
     val searchResults: StateFlow<SearchResult?> =
         combine(
-            _searchQuery,
+            debouncedQuery,
             settings
         ) { query, settings ->
             query to buildSearchRoots(settings)
@@ -70,8 +76,8 @@ class ExplorerViewModel(
         }
     }
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+    fun updateSearchQuery(text: String) {
+        _searchQuery.value = text
     }
 
     fun setViewMode(mode: ViewMode) {

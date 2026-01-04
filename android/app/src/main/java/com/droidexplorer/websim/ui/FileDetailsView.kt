@@ -46,9 +46,17 @@ fun FileDetailsView(
     }
 
     LazyColumn {
-        items(files, key = { it.uniqueKey }) { file ->
+        items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
+            val lastModified = file.lastModified()
+            val formattedDate = remember(lastModified) {
+                formatter.format(Date(lastModified))
+            }
+            val sizeBytes = file.size()
+            val sizeText = remember(sizeBytes) {
+                sizeBytes.sizeReadable()
+            }
 
             Surface(
                 modifier = Modifier
@@ -83,7 +91,7 @@ fun FileDetailsView(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            "${file.sizeReadable()}$SEPARATOR${formatter.format(Date(file.lastModified()))}",
+                            "$sizeText$SEPARATOR$formattedDate",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -113,7 +121,7 @@ fun FileListView(
     requiresPermission: (FsNode) -> Boolean = { false }
 ) {
     LazyColumn {
-        items(files, key = { it.uniqueKey }) { file ->
+        items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
 
@@ -164,12 +172,11 @@ fun FileListView(
     }
 }
 
-private fun FsNode.sizeReadable(): String {
-    val bytes = size()
+private fun Long.sizeReadable(): String {
     return when {
-        bytes < BYTES_IN_KB -> "$bytes B"
-        bytes < BYTES_IN_MB -> String.format(Locale.getDefault(), "%.1f KB", bytes / BYTES_IN_KB.toDouble())
-        bytes < BYTES_IN_GB -> String.format(Locale.getDefault(), "%.1f MB", bytes / BYTES_IN_MB.toDouble())
-        else -> String.format(Locale.getDefault(), "%.1f GB", bytes / BYTES_IN_GB.toDouble())
+        this < BYTES_IN_KB -> "$this B"
+        this < BYTES_IN_MB -> String.format(Locale.getDefault(), "%.1f KB", this / BYTES_IN_KB.toDouble())
+        this < BYTES_IN_GB -> String.format(Locale.getDefault(), "%.1f MB", this / BYTES_IN_MB.toDouble())
+        else -> String.format(Locale.getDefault(), "%.1f GB", this / BYTES_IN_GB.toDouble())
     }
 }

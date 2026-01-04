@@ -389,9 +389,9 @@ fun FileListPane(
                     ) {
                         items(
                             items = files,
-                            key = { it.uniqueKey }
+                            key = { it.path }
                         ) { node ->
-                            val requiresSaf = remember(node.uniqueKey) {
+                            val requiresSaf = remember(node.path) {
                                 requiresPermission(node)
                             }
                             Column(modifier = Modifier.fillMaxWidth()) {
