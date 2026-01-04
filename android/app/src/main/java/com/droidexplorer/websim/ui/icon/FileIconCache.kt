@@ -1,15 +1,15 @@
 package com.droidexplorer.websim.ui.icon
 
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 
 object FileIconCache {
-    private val cache = mutableStateMapOf<String, Painter>()
+    private val cache = mutableStateMapOf<String, ImageVector>()
 
     fun get(
         key: String,
-        loader: () -> Painter
-    ): Painter {
+        loader: () -> ImageVector
+    ): ImageVector {
         return cache.getOrPut(key) { loader() }
     }
 }

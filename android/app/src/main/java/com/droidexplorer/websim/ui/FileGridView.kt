@@ -25,8 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVectorPainter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -106,8 +104,8 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     val key = remember(extension, file.isDirectory) {
         "${extension}_${file.isDirectory}"
     }
-    val painter = FileIconCache.get(key) {
-        resolveIconPainter(file)
+    val imageVector = FileIconCache.get(key) {
+        resolveIconVector(file)
     }
     val iconTint = tint ?: if (file.isDirectory) {
         MaterialTheme.colorScheme.primary
@@ -115,7 +113,7 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     Icon(
-        painter = painter,
+        imageVector = imageVector,
         contentDescription = if (file.isDirectory) "Folder" else "File",
         tint = iconTint,
         modifier = Modifier
@@ -124,10 +122,8 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     )
 }
 
-private fun resolveIconPainter(file: FsNode): Painter {
-    val imageVector = if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description
-    return ImageVectorPainter(imageVector)
-}
+private fun resolveIconVector(file: FsNode) =
+    if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description
 
 private fun FsNode.extensionKey(): String {
     return when (this) {
