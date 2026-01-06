@@ -1,8 +1,8 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
+        gradlePluginPortal()   // Kotlin compiler MIRROR (critical)
         google()
-        mavenCentral()
+        mavenCentral()         // kept for non-Kotlin libs
     }
     plugins {
         id("com.android.application") version "8.2.2"
@@ -13,14 +13,23 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+
     repositories {
-        mavenCentral {
-            metadataSources {
-                mavenPom()
-                artifact()
+        // 🔥 FORCE Kotlin artifacts to come from Gradle Plugin Portal
+        exclusiveContent {
+            forRepository {
+                gradlePluginPortal()
+            }
+            filter {
+                includeGroup("org.jetbrains.kotlin")
             }
         }
+
+        // Normal Android deps
         google()
+
+        // Everything else
+        mavenCentral()
     }
 }
 
