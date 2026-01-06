@@ -13,10 +13,37 @@ enum class SortOrder { ASC, DESC }
 
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
 
+/**
+ * Filters hidden files (files starting with '.') from the list.
+ * 
+ * CRITICAL: This is the ONLY allowed filtering for file visibility.
+ * DO NOT add any other filters based on:
+ * - File extension
+ * - MIME type  
+ * - File category (image, video, audio, etc.)
+ * - File size
+ * - File support/compatibility
+ * 
+ * ALL regular files and directories must be visible regardless of type.
+ */
 private fun List<FsNode>.filterHidden(showHidden: Boolean): List<FsNode> =
     if (showHidden) this else filter { !it.name.startsWith(".") }
 
 object FileManager {
+    /**
+     * Lists all files and directories in the given path.
+     * 
+     * VISIBILITY GUARANTEE: Returns ALL files and folders (subject only to hidden file setting).
+     * This function must NEVER filter files based on extension, MIME type, or category.
+     * 
+     * @param path Directory path to list
+     * @param sortType How to sort the results
+     * @param sortOrder Ascending or descending order
+     * @param showHidden Whether to include hidden files (files starting with '.')
+     * @param safPermissionManager Manager for Storage Access Framework permissions
+     * @param context Android context for SAF operations
+     * @return List of all files and directories in the path
+     */
     fun list(
         path: String,
         sortType: SortType = SortType.NAME,
@@ -53,7 +80,18 @@ object FileManager {
     }
 
     /**
-     * Performs a case-insensitive search returning files only for both local storage and SAF trees.
+     * Performs a case-insensitive search returning ALL matching files.
+     * 
+     * VISIBILITY GUARANTEE: Returns ALL files that match the query (subject only to hidden file setting).
+     * This function must NEVER filter files based on extension, MIME type, or category.
+     * 
+     * @param path Root directory to search from
+     * @param query Search query string (case-insensitive)
+     * @param showHidden Whether to include hidden files (files starting with '.')
+     * @param safPermissionManager Manager for Storage Access Framework permissions
+     * @param context Android context for SAF operations
+     * @param maxResults Maximum number of results to return
+     * @return List of all matching files
      */
     fun search(
         path: String,

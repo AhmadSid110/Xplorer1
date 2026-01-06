@@ -37,6 +37,19 @@ private const val BYTES_IN_KB = 1024L
 private const val BYTES_IN_MB = BYTES_IN_KB * 1024
 private const val BYTES_IN_GB = BYTES_IN_MB * 1024
 
+/**
+ * Displays files in a detailed list view with size and date information.
+ * 
+ * CRITICAL VISIBILITY RULE: This composable MUST render ALL files in the provided list.
+ * DO NOT add any filtering based on extension, MIME type, category, or file support.
+ * Unknown file types must be shown with default icons, NOT hidden.
+ * 
+ * @param files Complete list of files to display (all will be rendered)
+ * @param onClick Callback when a file is clicked
+ * @param onLongClick Callback when a file is long-pressed
+ * @param isSelected Function to determine if a file is selected
+ * @param requiresPermission Function to determine if a file requires permission
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileDetailsView(
@@ -52,6 +65,7 @@ fun FileDetailsView(
     val haptic = LocalHapticFeedback.current
 
     LazyColumn {
+        // Render ALL files - no filtering allowed here
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
@@ -131,6 +145,19 @@ fun FileDetailsView(
     }
 }
 
+/**
+ * Displays files in a simple list view.
+ * 
+ * CRITICAL VISIBILITY RULE: This composable MUST render ALL files in the provided list.
+ * DO NOT add any filtering based on extension, MIME type, category, or file support.
+ * Unknown file types must be shown with default icons, NOT hidden.
+ * 
+ * @param files Complete list of files to display (all will be rendered)
+ * @param onClick Callback when a file is clicked
+ * @param onLongClick Callback when a file is long-pressed
+ * @param isSelected Function to determine if a file is selected
+ * @param requiresPermission Function to determine if a file requires permission
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileListView(
@@ -143,6 +170,7 @@ fun FileListView(
     val haptic = LocalHapticFeedback.current
     
     LazyColumn {
+        // Render ALL files - no filtering allowed here
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
