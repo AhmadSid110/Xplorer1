@@ -83,7 +83,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug \
+          ./gradlew assembleDebug \
             -PversionName=$APP_VERSION \
             --no-daemon
 
