@@ -1,6 +1,6 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal() // ← MUST BE FIRST
+        gradlePluginPortal()
         google()
         mavenCentral()
     }
@@ -14,8 +14,10 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        gradlePluginPortal() // ← ADD THIS
         google()
         mavenCentral()
     }
 }
+
+rootProject.name = "android"
+include(":app")
