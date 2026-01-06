@@ -1,6 +1,8 @@
 package com.droidexplorer.websim.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,9 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
@@ -44,6 +50,7 @@ fun FileDetailsView(
     val formatter = remember {
         SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     }
+    val haptic = LocalHapticFeedback.current
 
     LazyColumn {
         items(files, key = { it.path }) { file ->
@@ -57,14 +64,29 @@ fun FileDetailsView(
             val sizeText = remember(sizeBytes) {
                 sizeBytes.sizeReadable()
             }
+            
+            // Animated selection background
+            val backgroundColor by animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    Color.Transparent
+                },
+                label = "detailsItemBackground"
+            )
 
             Surface(
                 modifier = Modifier
+                    .animateItemPlacement()
                     .padding(horizontal = 8.dp, vertical = 4.dp)
                     .fillMaxWidth()
+                    .background(backgroundColor, RoundedCornerShape(8.dp))
                     .combinedClickable(
                         onClick = { onClick(file) },
-                        onLongClick = { onLongClick(file) }
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onLongClick(file)
+                        }
                     ),
                 tonalElevation = if (selected) 2.dp else 0.dp,
                 shape = RoundedCornerShape(8.dp),
@@ -120,24 +142,44 @@ fun FileListView(
     isSelected: (FsNode) -> Boolean = { false },
     requiresPermission: (FsNode) -> Boolean = { false }
 ) {
+    val haptic = LocalHapticFeedback.current
+    
     LazyColumn {
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
+            
+            // Animated selection background
+            val backgroundColor by animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    Color.Transparent
+                },
+                label = "listItemBackground"
+            )
 
             if (permissionNeeded) {
                 RestrictedFolderItem(
                     name = file.name,
-                    onLongPress = { onLongClick(file) }
+                    onLongPress = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick(file)
+                    }
                 )
             } else {
                 Surface(
                     modifier = Modifier
+                        .animateItemPlacement()
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                         .fillMaxWidth()
+                        .background(backgroundColor, RoundedCornerShape(8.dp))
                         .combinedClickable(
                             onClick = { onClick(file) },
-                            onLongClick = { onLongClick(file) }
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onLongClick(file)
+                            }
                         ),
                     tonalElevation = if (selected) 2.dp else 0.dp,
                     shape = RoundedCornerShape(8.dp),

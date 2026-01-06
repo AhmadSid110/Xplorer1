@@ -1,6 +1,8 @@
 package com.droidexplorer.websim.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,10 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +51,8 @@ fun FileGridView(
         .padding(horizontal = 4.dp),
     contentPadding: PaddingValues = PaddingValues(vertical = 8.dp, horizontal = 4.dp)
 ) {
+    val haptic = LocalHapticFeedback.current
+    
     LazyVerticalGrid(
         columns = GridCells.Adaptive(GridCellMinSize),
         modifier = modifier,
@@ -54,14 +61,29 @@ fun FileGridView(
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
+            
+            // Animated selection background
+            val backgroundColor by animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    Color.Transparent
+                },
+                label = "gridItemBackground"
+            )
 
             Surface(
                 modifier = Modifier
+                    .animateItemPlacement()
                     .padding(4.dp)
                     .fillMaxWidth()
+                    .background(backgroundColor, RoundedCornerShape(12.dp))
                     .combinedClickable(
                         onClick = { onClick(file) },
-                        onLongClick = { onLongClick(file) }
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onLongClick(file)
+                        }
                     ),
                 tonalElevation = if (selected) 4.dp else 0.dp,
                 shape = RoundedCornerShape(12.dp),
