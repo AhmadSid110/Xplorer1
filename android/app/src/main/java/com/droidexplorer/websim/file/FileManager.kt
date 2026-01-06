@@ -37,7 +37,7 @@ object FileManager {
                 val uri = safPermissionManager.getOrRequest(permissionTarget)
                 val rootDoc = DocumentFile.fromTreeUri(context, uri)
                 val targetDoc = rootDoc?.let { resolveDocument(it, permissionTarget.absolutePath, path) }
-                targetDoc?.listFiles()?.mapNotNull { child ->
+                targetDoc?.listFiles()?.map { child ->
                     val childPath = File(path, child.name ?: "").absolutePath
                     FsNode.Saf(child, childPath)
                 } ?: emptyList()
