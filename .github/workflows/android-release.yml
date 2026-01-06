@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
 
       # -------------------------
-      # Version
+      # Versioning
       # -------------------------
       - name: Extract version
         run: |
@@ -42,7 +42,7 @@ jobs:
           echo "Using version: $VERSION"
 
       # -------------------------
-      # Java
+      # Java 17
       # -------------------------
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -73,12 +73,15 @@ jobs:
             "build-tools;34.0.0"
 
       # -------------------------
-      # Gradle config
+      # local.properties
       # -------------------------
       - name: Write local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
+      # -------------------------
+      # gradle.properties
+      # -------------------------
       - name: Write gradle.properties
         run: |
           cat <<EOF > android/gradle.properties
@@ -88,20 +91,16 @@ jobs:
           EOF
 
       # -------------------------
-      # DEBUG: show modules + tasks
+      # Verify Gradle model (debug)
       # -------------------------
-      - name: List Gradle projects
+      - name: Show Gradle projects
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew projects
 
-      - name: List Gradle tasks
-        working-directory: android
-        run: ./gradlew tasks --all
-
       # -------------------------
-      # Build (SAFE, GENERIC)
+      # Build (CORRECT for your project)
       # -------------------------
       - name: Build APK
         working-directory: android
@@ -111,15 +110,15 @@ jobs:
             --no-daemon
 
       # -------------------------
-      # Find APK (no assumptions)
+      # Locate APK
       # -------------------------
       - name: Locate APK
         run: |
-          echo "Searching for APK..."
-          find . -type f -name "*.apk"
+          echo "APK files found:"
+          find android -type f -name "*.apk"
 
       # -------------------------
-      # Upload APK if tag
+      # Upload APK on tag
       # -------------------------
       - name: Upload APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -129,4 +128,4 @@ jobs:
           name: Xplorer v${{ env.APP_VERSION }}
           prerelease: true
           files: |
-            **/*.apk
+            android/**/*.apk
