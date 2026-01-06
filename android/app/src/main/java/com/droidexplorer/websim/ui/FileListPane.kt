@@ -534,12 +534,6 @@ fun FileListPane(
                         }
                     }
                 }
-                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
-                                requiresPermission = { requiresPermission(it) }
-                            )
-                        }
-                    }
-                }
             }
             
             // Vertical divider for dual pane

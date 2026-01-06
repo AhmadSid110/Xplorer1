@@ -2,7 +2,6 @@ package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,11 +62,11 @@ fun FileGridView(
             val permissionNeeded = requiresPermission(file)
             
             // Animated selection background
-            val backgroundColor by animateColorAsState(
+            val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    MaterialTheme.colorScheme.surfaceVariant
                 } else {
-                    Color.Transparent
+                    MaterialTheme.colorScheme.surface
                 },
                 label = "gridItemBackground"
             )
@@ -77,7 +76,6 @@ fun FileGridView(
                     .animateItemPlacement()
                     .padding(4.dp)
                     .fillMaxWidth()
-                    .background(backgroundColor, RoundedCornerShape(12.dp))
                     .combinedClickable(
                         onClick = { onClick(file) },
                         onLongClick = {
@@ -87,7 +85,7 @@ fun FileGridView(
                     ),
                 tonalElevation = if (selected) 4.dp else 0.dp,
                 shape = RoundedCornerShape(12.dp),
-                color = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+                color = surfaceColor
             ) {
                 Column(
                     modifier = Modifier
