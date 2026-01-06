@@ -12,7 +12,10 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+
     repositories {
+
+        // 🔒 Kotlin compiler + stdlib
         exclusiveContent {
             forRepository {
                 gradlePluginPortal()
@@ -21,7 +24,21 @@ dependencyResolutionManagement {
                 includeGroup("org.jetbrains.kotlin")
             }
         }
+
+        // 🔒 KotlinX (coroutines, serialization, etc.)
+        exclusiveContent {
+            forRepository {
+                google()
+            }
+            filter {
+                includeGroup("org.jetbrains.kotlinx")
+            }
+        }
+
+        // Android + Jetpack
         google()
+
+        // Everything else
         mavenCentral()
     }
 }
