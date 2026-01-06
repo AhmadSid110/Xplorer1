@@ -1,7 +1,6 @@
-// Root build file - plugin versions are declared here for all subprojects
+// Root build file - intentionally minimal
+// Plugin versions are declared in settings.gradle.kts
 
-plugins {
-    id("com.android.application") version "8.2.2" apply false
-    id("com.android.library") version "8.2.2" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+tasks.register("clean", Delete::class) {
+    delete(rootProject.layout.buildDirectory)
 }
