@@ -1,8 +1,8 @@
 pluginManagement {
     repositories {
+        gradlePluginPortal() // ← MUST BE FIRST
         google()
         mavenCentral()
-        gradlePluginPortal()
     }
     plugins {
         id("com.android.application") version "8.2.2"
@@ -12,12 +12,10 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
+        gradlePluginPortal() // ← ADD THIS
         google()
         mavenCentral()
     }
 }
-
-rootProject.name = "Xplorer"
-include(":app")
