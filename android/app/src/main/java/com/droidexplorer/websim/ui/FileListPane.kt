@@ -5,6 +5,11 @@ package com.droidexplorer.websim.ui
 import android.content.Intent
 import android.content.ActivityNotFoundException
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -476,45 +481,53 @@ fun FileListPane(
                     }
                 }
 
-                // File list or empty state
-                when (settings.defaultViewMode) {
-                    ViewMode.LIST -> {
-                        if (files.isEmpty()) {
-                            EmptyState(searchQuery.isNotEmpty())
-                        } else {
-                            FileListView(
-                                files = files,
-                                onClick = handleItemClick,
-                                onLongClick = handleItemLongClick,
-                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
-                                requiresPermission = { requiresPermission(it) }
-                            )
+                // File list or empty state with animated transitions
+                AnimatedContent(
+                    targetState = paneState.path,
+                    transitionSpec = {
+                        fadeIn(tween(120)) togetherWith fadeOut(tween(120))
+                    },
+                    label = "directoryTransition"
+                ) { _ ->
+                    when (settings.defaultViewMode) {
+                        ViewMode.LIST -> {
+                            if (files.isEmpty()) {
+                                EmptyState(searchQuery.isNotEmpty())
+                            } else {
+                                FileListView(
+                                    files = files,
+                                    onClick = handleItemClick,
+                                    onLongClick = handleItemLongClick,
+                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    requiresPermission = { requiresPermission(it) }
+                                )
+                            }
                         }
-                    }
-                    ViewMode.GRID -> {
-                        if (files.isEmpty()) {
-                            EmptyState(searchQuery.isNotEmpty())
-                        } else {
-                            FileGridView(
-                                files = files,
-                                onClick = handleItemClick,
-                                onLongClick = handleItemLongClick,
-                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
-                                requiresPermission = { requiresPermission(it) }
-                            )
+                        ViewMode.GRID -> {
+                            if (files.isEmpty()) {
+                                EmptyState(searchQuery.isNotEmpty())
+                            } else {
+                                FileGridView(
+                                    files = files,
+                                    onClick = handleItemClick,
+                                    onLongClick = handleItemLongClick,
+                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    requiresPermission = { requiresPermission(it) }
+                                )
+                            }
                         }
-                    }
-                    ViewMode.DETAILS -> {
-                        if (files.isEmpty()) {
-                            EmptyState(searchQuery.isNotEmpty())
-                        } else {
-                            FileDetailsView(
-                                files = files,
-                                onClick = handleItemClick,
-                                onLongClick = handleItemLongClick,
-                                isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
-                                requiresPermission = { requiresPermission(it) }
-                            )
+                        ViewMode.DETAILS -> {
+                            if (files.isEmpty()) {
+                                EmptyState(searchQuery.isNotEmpty())
+                            } else {
+                                FileDetailsView(
+                                    files = files,
+                                    onClick = handleItemClick,
+                                    onLongClick = handleItemLongClick,
+                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    requiresPermission = { requiresPermission(it) }
+                                )
+                            }
                         }
                     }
                 }
@@ -690,6 +703,14 @@ private fun EmptyState(hasSearchQuery: Boolean) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
+            if (!hasSearchQuery) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "This folder is empty",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
+            }
         }
     }
 }
