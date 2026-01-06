@@ -75,6 +75,8 @@ jobs:
           android.useAndroidX=true
           android.enableJetifier=true
           org.gradle.jvmargs=-Xmx3g -XX:+UseParallelGC
+          org.gradle.daemon=false
+          org.gradle.parallel=true
           EOF
 
       - name: Build Debug APK
