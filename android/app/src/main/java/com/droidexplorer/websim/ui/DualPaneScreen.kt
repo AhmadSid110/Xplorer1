@@ -1,8 +1,6 @@
 package com.droidexplorer.websim.ui
 
 import android.content.res.Configuration
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -20,15 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.SnackbarResult
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SortOrder
 import com.droidexplorer.websim.file.SortType
+import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
-import com.droidexplorer.websim.ui.permission.SafRecoveryFlow
 import com.droidexplorer.websim.ui.viewer.PdfViewerScreen
 import com.droidexplorer.websim.ui.viewer.ImageViewerScreen
 import com.droidexplorer.websim.ui.viewer.TextViewerScreen
@@ -43,15 +40,16 @@ fun DualPaneScreen(
     settings: SettingsState,
     searchQuery: String,
     searchResult: SearchResult?,
+    permissionRefresh: Int,
     onSearchQueryChange: (String) -> Unit,
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    onRequestSafAccess: (FsNode) -> Unit
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
     val safStore = remember { DataStoreSafStore(context) }
     val safManager = remember { SafPermissionManager(context, safStore) }
-    val safRecoveryFlow = remember { SafRecoveryFlow(safManager) }
     val fileOperator = remember { FileOperator(context, safManager) }
     val defaultPath = "/storage/emulated/0"
     val leftPaneState = rememberSaveable(saver = PaneState.saver(defaultPath)) {
@@ -61,7 +59,6 @@ fun DualPaneScreen(
         PaneState.initial(defaultPath)
     }
     var activePane by remember { mutableStateOf(leftPaneState) }
-    var pendingSafDir by remember { mutableStateOf<File?>(null) }
     var viewer by remember { mutableStateOf<Viewer?>(null) }
     
     // Use rememberSaveable to persist pane mode across configuration changes
@@ -77,17 +74,6 @@ fun DualPaneScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     var cleanerResult by remember { mutableStateOf<String?>(null) }
-
-    val safLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        val dir = pendingSafDir
-        if (uri != null && dir != null) {
-            safManager.persist(uri, dir.absolutePath)
-        }
-        pendingSafDir = null
-    }
-    var recoveryPrompted by remember { mutableStateOf(false) }
     
     // Show cleaner result
     LaunchedEffect(cleanerResult) {
@@ -97,41 +83,6 @@ fun DualPaneScreen(
         }
     }
 
-    LaunchedEffect(pendingSafDir) {
-        pendingSafDir?.let {
-            val result = snackbarHostState.showSnackbar(
-                message = "Android requires permission to write here. Select this folder once.",
-                actionLabel = "Grant"
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                safLauncher.launch(null)
-            } else {
-                pendingSafDir = null
-            }
-        }
-    }
-    
-    LaunchedEffect(paneMode, leftPaneState.path, rightPaneState.path) {
-        val tracked = buildList {
-            add(File(leftPaneState.path))
-            if (paneMode == PaneMode.DUAL) {
-                add(File(rightPaneState.path))
-            }
-        }
-        val state = safRecoveryFlow.buildState(tracked)
-        if (state.showDialog && state.revokedPath != null && !recoveryPrompted) {
-            pendingSafDir = state.revokedPath
-            recoveryPrompted = true
-        }
-    }
-
-    LaunchedEffect(pendingSafDir) {
-        if (pendingSafDir == null && recoveryPrompted) {
-            safRecoveryFlow.markHandled()
-            recoveryPrompted = false
-        }
-    }
-    
     when (val currentViewer = viewer) {
         is Viewer.Image -> {
             val next = currentViewer.items.getOrNull(currentViewer.index + 1)
@@ -268,13 +219,15 @@ fun DualPaneScreen(
                         settings = settings,
                         searchQuery = searchQuery,
                         searchResult = searchResult,
+                        permissionRefresh = permissionRefresh,
                         onSearchQueryChange = onSearchQueryChange,
-                        onSafRequired = { pendingSafDir = it },
+                        onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                        onRequestSafAccess = onRequestSafAccess,
                         onRequestFocus = { activePane = leftPaneState },
                         isActive = activePane == leftPaneState,
                         sortType = sortType,
-                        sortOrder = sortOrder,
-                        showDivider = paneMode == PaneMode.DUAL,
+                         sortOrder = sortOrder,
+                         showDivider = paneMode == PaneMode.DUAL,
                         onOpenViewer = { viewer = it }
                     )
                     
@@ -291,13 +244,15 @@ fun DualPaneScreen(
                             settings = settings,
                             searchQuery = searchQuery,
                             searchResult = searchResult,
+                            permissionRefresh = permissionRefresh,
                             onSearchQueryChange = onSearchQueryChange,
-                            onSafRequired = { pendingSafDir = it },
+                            onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                            onRequestSafAccess = onRequestSafAccess,
                             onRequestFocus = { activePane = rightPaneState },
                             isActive = activePane == rightPaneState,
                             sortType = sortType,
-                            sortOrder = sortOrder,
-                            showDivider = false,
+                             sortOrder = sortOrder,
+                             showDivider = false,
                             onOpenViewer = { viewer = it }
                         )
                     }

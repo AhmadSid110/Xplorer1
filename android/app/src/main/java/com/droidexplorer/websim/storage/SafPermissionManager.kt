@@ -58,4 +58,6 @@ class SafPermissionManager(
         context.contentResolver.persistedUriPermissions
             .filter { it.isReadPermission || it.isWritePermission }
             .map { it.uri.toString() }
+
+    fun findStoredUri(path: String): Uri? = store.get(path)
 }

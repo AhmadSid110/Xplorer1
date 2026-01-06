@@ -125,42 +125,40 @@ fun FileListView(
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
 
-            Surface(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = { onClick(file) },
-                        onLongClick = { onLongClick(file) }
-                    ),
-                tonalElevation = if (selected) 2.dp else 0.dp,
-                shape = RoundedCornerShape(8.dp),
-                color = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
-            ) {
-                Row(
+            if (permissionNeeded) {
+                RestrictedFolderItem(
+                    name = file.name,
+                    onLongPress = { onLongClick(file) }
+                )
+            } else {
+                Surface(
                     modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .combinedClickable(
+                            onClick = { onClick(file) },
+                            onLongClick = { onLongClick(file) }
+                        ),
+                    tonalElevation = if (selected) 2.dp else 0.dp,
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
                 ) {
-                    FileIcon(
-                        file = file,
-                        size = 24.dp,
-                        tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = file.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FileIcon(
+                            file = file,
+                            size = 24.dp,
+                            tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
                         )
-                        if (permissionNeeded) {
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Permission needed",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
+                                text = file.name,
+                                style = MaterialTheme.typography.bodyMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
