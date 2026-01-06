@@ -6,12 +6,9 @@ import android.content.Intent
 import android.content.ActivityNotFoundException
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -491,7 +488,7 @@ fun FileListPane(
                         fadeIn(tween(120)) togetherWith fadeOut(tween(120))
                     },
                     label = "directoryTransition"
-                ) { currentPath ->
+                ) { _ ->
                     when (settings.defaultViewMode) {
                         ViewMode.LIST -> {
                             if (files.isEmpty()) {
@@ -685,40 +682,34 @@ fun PermissionExplanationDialog(onDismiss: () -> Unit) {
 
 @Composable
 private fun EmptyState(hasSearchQuery: Boolean) {
-    AnimatedVisibility(
-        visible = true,
-        enter = fadeIn(animationSpec = tween(300)) + expandVertically(),
-        exit = fadeOut(animationSpec = tween(300)) + shrinkVertically()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.FolderOpen,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            Icon(
+                imageVector = Icons.Filled.FolderOpen,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = if (hasSearchQuery) "No files found" else "No files here",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            if (!hasSearchQuery) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = if (hasSearchQuery) "No files found" else "No files here",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    text = "This folder is empty",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
-                if (!hasSearchQuery) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "This folder is empty",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }
