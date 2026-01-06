@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -17,34 +18,42 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.droidexplorer.websim.ui.ExplorerViewModelFactory
-import com.droidexplorer.websim.ui.ExplorerViewModel
-import com.droidexplorer.websim.storage.SafPermissionManager
-import com.droidexplorer.websim.storage.DataStoreSafStore
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.ui.DualPaneScreen
+import com.droidexplorer.websim.ui.ExplorerViewModel
+import com.droidexplorer.websim.ui.ExplorerViewModelFactory
+import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import com.droidexplorer.websim.search.FileSearcher
 import com.droidexplorer.websim.search.SearchEngine
+import com.droidexplorer.websim.storage.DataStoreSafStore
+import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    
+    private val settingsRepository by lazy { SettingsRepository(applicationContext) }
+    private val safStore by lazy { DataStoreSafStore(applicationContext) }
+    private val safPermissionManager by lazy { SafPermissionManager(applicationContext, safStore) }
+    private val searchEngine by lazy { SearchEngine(FileSearcher(applicationContext)) }
+    private val viewModel: ExplorerViewModel by viewModels {
+        ExplorerViewModelFactory(settingsRepository, safPermissionManager, searchEngine)
+    }
+
     private var hasStoragePermission by mutableStateOf(false)
     private var showPermissionRationale by mutableStateOf(false)
-    
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -53,45 +62,48 @@ class MainActivity : ComponentActivity() {
             showPermissionRationale = true
         }
     }
-    
+
+    private val safLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                viewModel.onSafPermissionGranted(uri)
+            } else {
+                viewModel.onSafPermissionDenied()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         checkAndRequestPermissions()
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiEvents.collect { event ->
+                    when (event) {
+                        is UiEvent.RequestSafAccess -> {
+                            safLauncher.launch(event.initialUri)
+                        }
+                    }
+                }
+            }
+        }
         
         setContent {
-            val settingsRepository = remember { SettingsRepository(applicationContext) }
-            val safPermissionManager = remember { SafPermissionManager(applicationContext, DataStoreSafStore(applicationContext)) }
-            val searchEngine = remember { SearchEngine(FileSearcher(applicationContext)) }
-            val viewModel: ExplorerViewModel = viewModel(
-                factory = ExplorerViewModelFactory(settingsRepository, safPermissionManager, searchEngine)
-            )
             val settingsState by viewModel.settings.collectAsState()
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
+            val permissionRefresh by viewModel.permissionRefresh.collectAsState()
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
-            val scope = rememberCoroutineScope()
             val storageInfoProvider = remember { StorageInfoProvider() }
             val storageInfo = remember(showStorage) {
                 storageInfoProvider.internalStorage()
-            }
-
-            val safLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.OpenDocumentTree()
-            ) { uri ->
-                if (uri != null) {
-                    safPermissionManager.persist(uri)
-                    scope.launch { viewModel.setSearchSaf(true) }
-                } else {
-                    scope.launch { viewModel.setSearchSaf(false) }
-                }
-            }
-
-            LaunchedEffect(Unit) {
-                viewModel.requestSafPermission.collect {
-                    safLauncher.launch(null)
-                }
             }
 
             XplorerTheme {
@@ -141,16 +153,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
-                        DualPaneScreen(
-                            singlePane = false,
-                             settings = settingsState,
-                             searchQuery = searchQuery,
-                             searchResult = searchResult,
-                             onSearchQueryChange = viewModel::updateSearchQuery,
-                             onOpenSettings = { showSettings = true }
-                         )
-                     }
-                 } else {
+                         DualPaneScreen(
+                             singlePane = false,
+                              settings = settingsState,
+                              searchQuery = searchQuery,
+                              searchResult = searchResult,
+                              permissionRefresh = permissionRefresh,
+                              onSearchQueryChange = viewModel::updateSearchQuery,
+                              onOpenSettings = { showSettings = true },
+                              onRequestSafAccess = viewModel::requestSafAccessFor
+                          )
+                      }
+                  } else {
                     PermissionScreen(
                         showRationale = showPermissionRationale,
                         onRequestPermission = { checkAndRequestPermissions() }

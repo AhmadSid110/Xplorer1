@@ -65,8 +65,10 @@ fun FileListPane(
     settings: SettingsState,
     searchQuery: String,
     searchResult: SearchResult?,
+    permissionRefresh: Int,
     onSearchQueryChange: (String) -> Unit,
     onSafRequired: (File) -> Unit,
+    onRequestSafAccess: (FsNode) -> Unit,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
     sortType: SortType,
@@ -78,6 +80,8 @@ fun FileListPane(
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var editorFile by remember { mutableStateOf<File?>(null) }
+    var restrictedTarget by remember { mutableStateOf<FsNode?>(null) }
+    var showExplain by remember { mutableStateOf(false) }
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
 
     LaunchedEffect(searchQuery) {
@@ -92,6 +96,12 @@ fun FileListPane(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
+    LaunchedEffect(permissionRefresh) {
+        writeProbeCache.clear()
+        if (permissionRefresh > 0) {
+            refreshTrigger++
+        }
+    }
     
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
@@ -170,6 +180,7 @@ fun FileListPane(
         return if (e is SafRequired) {
             onSafRequired(e.directory)
             snackbarMessage = permissionMessage
+            restrictedTarget = FsNode.Local(e.directory)
             true
         } else false
     }
@@ -366,18 +377,21 @@ fun FileListPane(
         }
 
         fun requiresPermission(node: FsNode): Boolean {
+            val file = node.asFile()
+            if (!file.isDirectory) return false
+            if (file.isDirectory && safPermissionManager.isPersisted(file)) return false
+            if (file.isDirectory && safPermissionManager.isRevoked(file)) return true
             return when {
-                node is FsNode.Saf -> true
-                        node is FsNode.Local && node.isDirectory -> {
-                            val cached = writeProbeCache[node.path]
-                            val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
-                                writeProbeCache[node.path] = it
-                            }
-                            !writable
-                        }
-                        else -> false
+                node is FsNode.Local && node.isDirectory -> {
+                    val cached = writeProbeCache[node.path]
+                    val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
+                        writeProbeCache[node.path] = it
                     }
+                    !writable
                 }
+                else -> false
+            }
+        }
 
                 @Composable
                 fun FileListContent(showDetails: Boolean) {
@@ -391,7 +405,7 @@ fun FileListPane(
                             items = files,
                             key = { it.path }
                         ) { node ->
-                            val requiresSaf = remember(node.path) {
+                            val requiresSaf = remember(node.path, permissionRefresh) {
                                 requiresPermission(node)
                             }
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -401,6 +415,10 @@ fun FileListPane(
                                     requiresPermission = requiresSaf,
                                     onClick = {
                                         onRequestFocus()
+                                        if (requiresSaf) {
+                                            restrictedTarget = node
+                                            return@FileRow
+                                        }
                                         if (node.isDirectory) {
                                             paneState.navigateTo(node.path)
                                             onSearchQueryChange("")
@@ -408,6 +426,11 @@ fun FileListPane(
                                         else handleOpen(node.asFile())
                                     },
                                     onLongClick = {
+                                        if (requiresSaf) {
+                                            restrictedTarget = node
+                                            showContextMenu = false
+                                            return@FileRow
+                                        }
                                         selectedFile = node
                                         showContextMenu = true
                                         onRequestFocus()
@@ -427,9 +450,15 @@ fun FileListPane(
                     }
                 }
 
+                val handleRestricted: (FsNode) -> Unit = { node ->
+                    restrictedTarget = node
+                    onRequestFocus()
+                }
                 val handleItemClick: (FsNode) -> Unit = { node ->
                     onRequestFocus()
-                    if (node.isDirectory) {
+                    if (requiresPermission(node)) {
+                        handleRestricted(node)
+                    } else if (node.isDirectory) {
                         paneState.navigateTo(node.path)
                         onSearchQueryChange("")
                     } else {
@@ -437,9 +466,14 @@ fun FileListPane(
                     }
                 }
                 val handleItemLongClick: (FsNode) -> Unit = { node ->
-                    selectedFile = node
-                    showContextMenu = true
                     onRequestFocus()
+                    if (requiresPermission(node)) {
+                        handleRestricted(node)
+                        showContextMenu = false
+                    } else {
+                        selectedFile = node
+                        showContextMenu = true
+                    }
                 }
 
                 // File list or empty state
@@ -501,6 +535,19 @@ fun FileListPane(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+    }
+    
+    restrictedTarget?.let { target ->
+        RestrictedFolderMenu(
+            folderName = target.name,
+            onGrantAccess = { onRequestSafAccess(target) },
+            onExplain = { showExplain = true },
+            onDismiss = { restrictedTarget = null }
+        )
+    }
+    
+    if (showExplain) {
+        PermissionExplanationDialog { showExplain = false }
     }
     
     // Context menu bottom sheet
@@ -602,6 +649,22 @@ fun FileListPane(
             }
         )
     }
+}
+
+@Composable
+fun PermissionExplanationDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Why is this restricted?") },
+        text = {
+            Text("Android restricts some folders for privacy. Grant access to manage their contents.")
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
 }
 
 @Composable
