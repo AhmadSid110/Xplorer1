@@ -14,8 +14,13 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
+        mavenCentral {
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
         google()
-        mavenCentral()
     }
 }
 
