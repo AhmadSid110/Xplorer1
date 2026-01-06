@@ -20,6 +20,7 @@ android {
     }
 
     composeOptions {
+        // ✅ Correct for Compose 1.6.x + Kotlin 1.9.x
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
@@ -34,16 +35,41 @@ android {
 }
 
 dependencies {
+
+    // ─────────────────────────────────────────────
+    // 🔒 CRITICAL: Explicit coroutine version
+    // (REQUIRED for CI stability)
+    // ─────────────────────────────────────────────
+    val coroutinesVersion = "1.7.3"
+
+    // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+
+    // Jetpack Compose
     implementation("androidx.compose.ui:ui:1.6.4")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.4")
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.4")
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("io.coil-kt:coil-compose:2.5.0")
-    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+
+    // Storage / SAF
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
+    // Image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // EXIF
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // ─────────────────────────────────────────────
+    // ✅ REQUIRED EXPLICIT DEPENDENCIES (DO NOT REMOVE)
+    // Fixes GitHub Actions Maven 403 failures
+    // ─────────────────────────────────────────────
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
 }
