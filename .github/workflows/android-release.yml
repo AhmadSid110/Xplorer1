@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Debug APK
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
 
       # -------------------------
-      # Versioning
+      # Version
       # -------------------------
       - name: Extract version
         run: |
@@ -73,15 +73,12 @@ jobs:
             "build-tools;34.0.0"
 
       # -------------------------
-      # local.properties
+      # Gradle config
       # -------------------------
       - name: Write local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      # -------------------------
-      # gradle.properties
-      # -------------------------
       - name: Write gradle.properties
         run: |
           cat <<EOF > android/gradle.properties
@@ -91,34 +88,32 @@ jobs:
           EOF
 
       # -------------------------
-      # Verify Gradle model (debug)
+      # Verify module graph (for sanity)
       # -------------------------
-      - name: Show Gradle projects
-        working-directory: android
+      - name: Verify Gradle modules
         run: |
-          chmod +x gradlew
-          ./gradlew projects
+          chmod +x android/gradlew
+          android/gradlew -p android projects
 
       # -------------------------
-      # Build (CORRECT for your project)
+      # BUILD APK (THIS IS THE IMPORTANT PART)
       # -------------------------
-      - name: Build APK
-        working-directory: android
+      - name: Assemble Debug APK
         run: |
-          ./gradlew build \
+          android/gradlew -p android :app:assembleDebug \
             -PversionName=$APP_VERSION \
             --no-daemon
 
       # -------------------------
-      # Locate APK
+      # Verify APK exists
       # -------------------------
-      - name: Locate APK
+      - name: Verify APK
         run: |
-          echo "APK files found:"
-          find android -type f -name "*.apk"
+          ls -lh android/app/build/outputs/apk/debug/
+          test -f android/app/build/outputs/apk/debug/app-debug.apk
 
       # -------------------------
-      # Upload APK on tag
+      # Upload on tag
       # -------------------------
       - name: Upload APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -127,5 +122,4 @@ jobs:
           tag_name: v${{ env.APP_VERSION }}
           name: Xplorer v${{ env.APP_VERSION }}
           prerelease: true
-          files: |
-            android/**/*.apk
+          files: android/app/build/outputs/apk/debug/app-debug.apk
