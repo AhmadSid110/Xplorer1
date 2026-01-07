@@ -37,6 +37,21 @@ import com.droidexplorer.websim.ui.icon.FileIconCache
 
 private val GridCellMinSize = 140.dp
 
+/**
+ * Displays files in a grid layout.
+ * 
+ * CRITICAL VISIBILITY RULE: This composable MUST render ALL files in the provided list.
+ * DO NOT add any filtering based on extension, MIME type, category, or file support.
+ * Unknown file types must be shown with default icons, NOT hidden.
+ * 
+ * @param files Complete list of files to display (all will be rendered)
+ * @param onClick Callback when a file is clicked
+ * @param onLongClick Callback when a file is long-pressed
+ * @param isSelected Function to determine if a file is selected
+ * @param requiresPermission Function to determine if a file requires permission
+ * @param modifier Modifier for the grid
+ * @param contentPadding Padding around the grid content
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileGridView(
@@ -57,6 +72,7 @@ fun FileGridView(
         modifier = modifier,
         contentPadding = contentPadding
     ) {
+        // Render ALL files - no filtering allowed here
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
@@ -118,12 +134,24 @@ fun FileGridView(
     }
 }
 
+/**
+ * Displays an icon for a file or directory.
+ * 
+ * CRITICAL: Icon resolution failure must NOT hide the file.
+ * If icon cannot be determined, a default icon (Description) is used.
+ * This ensures ALL files remain visible even with unknown extensions.
+ * 
+ * @param file The file/directory to display an icon for
+ * @param size Size of the icon
+ * @param tint Optional color tint for the icon
+ */
 @Composable
 fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     val extension = remember(file.path) { file.extensionKey() }
     val key = remember(extension, file.isDirectory) {
         "${extension}_${file.isDirectory}"
     }
+    // Icon resolution with guaranteed fallback - never returns null
     val imageVector = FileIconCache.get(key) {
         resolveIconVector(file)
     }
@@ -142,6 +170,15 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     )
 }
 
+/**
+ * Resolves the icon for a file or directory.
+ * 
+ * GUARANTEED FALLBACK: Always returns a valid icon (never null).
+ * - Directories: Folder icon
+ * - Files: Description icon (default for all file types)
+ * 
+ * This ensures unknown file types are still visible with a generic icon.
+ */
 private fun resolveIconVector(file: FsNode) =
     if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description
 

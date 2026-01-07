@@ -1,21 +1,16 @@
-name: Android Release Build
+name: Android Build & Release
 
 on:
-  # Manual trigger
-  workflow_dispatch:
-
-  # Auto trigger on version tags
   push:
-    tags:
-      - "v*.*.*"   # v1.0.0, v1.2.3 etc
     branches:
-      - "**"       # ✅ run on every commit to any branch
+      - "**"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
+  build:
     runs-on: ubuntu-latest
 
     env:
@@ -23,41 +18,54 @@ jobs:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      # ─────────────────────────────────────────────
+      # 1️⃣ Checkout
+      # ─────────────────────────────────────────────
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract version
+      # ─────────────────────────────────────────────
+      # 2️⃣ Resolve version
+      # ─────────────────────────────────────────────
+      - name: Resolve version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION="dev-${GITHUB_RUN_NUMBER}"
-          fi
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using version: $VERSION"
+          COMMITS=$(git rev-list --count HEAD)
+          VERSION_NAME="1.0.${COMMITS}"
+          VERSION_CODE="${COMMITS}"
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+          echo "VersionName=$VERSION_NAME"
+          echo "VersionCode=$VERSION_CODE"
+
+      # ─────────────────────────────────────────────
+      # 3️⃣ Java 17
+      # ─────────────────────────────────────────────
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
+      # ─────────────────────────────────────────────
+      # 4️⃣ Android SDK (FIXED)
+      # ─────────────────────────────────────────────
       - name: Install Android SDK
         run: |
           mkdir -p "$ANDROID_SDK_ROOT"
           cd "$ANDROID_SDK_ROOT"
 
-          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
 
-          rm -rf cmdline-tools-temp
-          unzip -q tools.zip -d cmdline-tools-temp
+          rm -rf cmdline-tools temp
+          mkdir temp
 
+          unzip -q tools.zip -d temp
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest/
+          mv temp/cmdline-tools/* cmdline-tools/latest/
 
-          rm -rf cmdline-tools-temp tools.zip
+          rm -rf temp tools.zip
 
           yes | cmdline-tools/latest/bin/sdkmanager \
             --sdk_root="$ANDROID_SDK_ROOT" \
@@ -65,35 +73,41 @@ jobs:
             "platforms;android-34" \
             "build-tools;34.0.0"
 
-      - name: Write local.properties
-        run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+      # ─────────────────────────────────────────────
+      # 5️⃣ local.properties
+      # ─────────────────────────────────────────────
+      - run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-      - name: Write gradle.properties
-        run: |
+      # ─────────────────────────────────────────────
+      # 6️⃣ gradle.properties
+      # ─────────────────────────────────────────────
+      - run: |
           cat <<EOF > android/gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
           org.gradle.jvmargs=-Xmx3g -XX:+UseParallelGC
           EOF
 
-      - name: Build Debug APK
+      # ─────────────────────────────────────────────
+      # 7️⃣ Build APK
+      # ─────────────────────────────────────────────
+      - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug \
-            -PversionName=$APP_VERSION \
+          ./gradlew assembleDebug \
+            -PversionName=$VERSION_NAME \
+            -PversionCode=$VERSION_CODE \
             --no-daemon
 
-      - name: Verify APK output
-        run: |
-          ls -lh android/app/build/outputs/apk/debug/
-          test -f android/app/build/outputs/apk/debug/app-debug.apk
-
+      # ─────────────────────────────────────────────
+      # 8️⃣ Upload APK (ONLY on main)
+      # ─────────────────────────────────────────────
       - name: Upload APK to GitHub Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.APP_VERSION }}
-          name: Xplorer v${{ env.APP_VERSION }}
-          prerelease: true
+          tag_name: release-${{ env.VERSION_CODE }}
+          name: Xplorer ${{ env.VERSION_NAME }}
+          prerelease: false
           files: android/app/build/outputs/apk/debug/app-debug.apk

@@ -29,6 +29,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Displays a single file or directory as a row.
+ * 
+ * CRITICAL VISIBILITY RULE: This composable renders the file unconditionally.
+ * DO NOT add any logic to skip rendering based on extension, MIME type, or category.
+ * 
+ * @param file The file to render
+ * @param isSelected Whether the file is currently selected
+ * @param onClick Callback when the row is clicked
+ * @param onLongClick Callback when the row is long-pressed
+ * @param requiresPermission Whether the file requires permission to access
+ * @param modifier Optional modifier for the row
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileRow(
