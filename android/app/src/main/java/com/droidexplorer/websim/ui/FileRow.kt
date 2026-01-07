@@ -58,13 +58,13 @@ fun FileRow(
     
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         } else {
             Color.Transparent
         },
-        label = "glassSelection"
+        label = "fileRowSelection"
     )
-    val iconSize = 20.dp
+    val iconSize = 18.dp
 
     GlassSurface(
         modifier = modifier
