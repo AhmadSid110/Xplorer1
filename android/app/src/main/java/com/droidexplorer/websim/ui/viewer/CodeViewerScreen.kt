@@ -1,5 +1,7 @@
 package com.droidexplorer.websim.ui.viewer
 
+import android.os.Build
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,6 +80,14 @@ fun CodeViewerScreen(
                         factory = { context ->
                             WebView(context).apply {
                                 settings.javaScriptEnabled = true
+                                settings.allowFileAccess = false
+                                settings.allowContentAccess = false
+                                settings.domStorageEnabled = false
+                                settings.setSupportMultipleWindows(false)
+                                settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    settings.safeBrowsingEnabled = true
+                                }
                                 loadDataWithBaseURL(
                                     null,
                                     buildHtml(code, language),
