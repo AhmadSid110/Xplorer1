@@ -4,6 +4,7 @@ package com.droidexplorer.websim.ui
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -755,7 +756,13 @@ private fun openApk(context: android.content.Context, file: File) {
         flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
     }
 
-    context.startActivity(intent)
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No installer found", Toast.LENGTH_SHORT).show()
+    } catch (_: Exception) {
+        Toast.makeText(context, "Unable to open APK", Toast.LENGTH_SHORT).show()
+    }
 }
 
 @Composable

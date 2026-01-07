@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -170,4 +172,4 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
  */
 @Composable
 private fun resolveIconVector(file: FsNode) =
-    if (file.isDirectory) androidx.compose.material.icons.Icons.Filled.Folder else fileIconFor(file)
+    if (file.isDirectory) Icons.Filled.Folder else fileIconFor(file)
