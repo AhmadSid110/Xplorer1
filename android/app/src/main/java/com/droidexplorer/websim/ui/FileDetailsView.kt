@@ -2,6 +2,7 @@ package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,11 +82,11 @@ fun FileDetailsView(
             // Animated selection background
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    Color.Transparent
                 },
-                label = "detailsItemBackground"
+                label = "detailsItemSelection"
             )
 
             Surface(
@@ -100,12 +101,13 @@ fun FileDetailsView(
                             onLongClick(file)
                         }
                     ),
-                tonalElevation = if (selected) 2.dp else 0.dp,
+                tonalElevation = if (selected) 1.dp else 0.dp,
                 shape = RoundedCornerShape(8.dp),
-                color = surfaceColor
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Row(
                     modifier = Modifier
+                        .background(surfaceColor)
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -178,11 +180,11 @@ fun FileListView(
             // Animated selection background
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    Color.Transparent
                 },
-                label = "listItemBackground"
+                label = "listItemSelection"
             )
 
             if (permissionNeeded) {
@@ -206,12 +208,13 @@ fun FileListView(
                                 onLongClick(file)
                             }
                         ),
-                    tonalElevation = if (selected) 2.dp else 0.dp,
+                    tonalElevation = if (selected) 1.dp else 0.dp,
                     shape = RoundedCornerShape(8.dp),
-                    color = surfaceColor
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     Row(
                         modifier = Modifier
+                            .background(surfaceColor)
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically

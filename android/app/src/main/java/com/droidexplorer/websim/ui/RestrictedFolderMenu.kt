@@ -65,12 +65,28 @@ fun RestrictedFolderItem(
     val haptic = LocalHapticFeedback.current
     
     ListItem(
-        headlineContent = { Text(name) },
+        headlineContent = { 
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium
+            ) 
+        },
         supportingContent = {
             Text(
-                "Permission needed",
+                text = "Access restricted — tap to grant access",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error
             )
+        },
+        trailingContent = {
+            androidx.compose.material.icons.Icons.Outlined.Lock.let { lockIcon ->
+                androidx.compose.material3.Icon(
+                    imageVector = lockIcon,
+                    contentDescription = "Restricted",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = androidx.compose.ui.Modifier.size(20.dp)
+                )
+            }
         },
         modifier = Modifier.combinedClickable(
             onClick = {},

@@ -695,9 +695,9 @@ private fun EmptyState(hasSearchQuery: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
-        ) {
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -709,16 +709,16 @@ private fun EmptyState(hasSearchQuery: Boolean) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (hasSearchQuery) "No files found" else "No files here",
+                text = if (hasSearchQuery) "No results found" else "This folder is empty",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (!hasSearchQuery) {
+            if (hasSearchQuery) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "This folder is empty",
+                    text = "Try another keyword or check permissions",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
         }
