@@ -56,21 +56,26 @@ jobs:
       # Android SDK
       # -------------------------
       - name: Install Android SDK
-        run: |
-          mkdir -p "$ANDROID_SDK_ROOT"
-          cd "$ANDROID_SDK_ROOT"
+  run: |
+    mkdir -p "$ANDROID_SDK_ROOT"
 
-          curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-          unzip -q tools.zip
+    if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
+      cd "$ANDROID_SDK_ROOT"
 
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
+      curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+      unzip -q tools.zip
 
-          yes | cmdline-tools/latest/bin/sdkmanager \
-            --sdk_root="$ANDROID_SDK_ROOT" \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
+      mkdir -p cmdline-tools/latest
+      mv cmdline-tools/* cmdline-tools/latest/
+
+      rm -rf tools.zip
+    fi
+
+    yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+      --sdk_root="$ANDROID_SDK_ROOT" \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;34.0.0"
 
       # -------------------------
       # local.properties
