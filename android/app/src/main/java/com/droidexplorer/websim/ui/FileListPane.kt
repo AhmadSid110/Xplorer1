@@ -760,7 +760,9 @@ private fun openApk(context: android.content.Context, file: File) {
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
         Toast.makeText(context, "No installer found", Toast.LENGTH_SHORT).show()
-    } catch (_: Exception) {
+    } catch (_: SecurityException) {
+        Toast.makeText(context, "Permission denied opening APK", Toast.LENGTH_SHORT).show()
+    } catch (_: IllegalArgumentException) {
         Toast.makeText(context, "Unable to open APK", Toast.LENGTH_SHORT).show()
     }
 }
