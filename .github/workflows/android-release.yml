@@ -19,7 +19,7 @@ jobs:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
-      # 🔒 CRITICAL: keep Gradle cache inside workspace
+      # 🔒 Keep Gradle cache inside workspace
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
@@ -41,7 +41,7 @@ jobs:
           java-version: 17
 
       # -------------------------
-      # Cache Gradle (MOST IMPORTANT)
+      # Cache Gradle
       # -------------------------
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -53,22 +53,25 @@ jobs:
             gradle-${{ runner.os }}
 
       # -------------------------
-      # Android SDK (IDEMPOTENT)
+      # Android SDK (BULLET-PROOF)
       # -------------------------
       - name: Install Android SDK
         run: |
           mkdir -p "$ANDROID_SDK_ROOT"
 
           if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
-            cd "$ANDROID_SDK_ROOT"
+            rm -rf "$ANDROID_SDK_ROOT/cmdline-tools-temp"
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools-temp"
+            cd "$ANDROID_SDK_ROOT/cmdline-tools-temp"
 
             curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
             unzip -q tools.zip
 
-            mkdir -p cmdline-tools/latest
-            mv cmdline-tools/* cmdline-tools/latest/
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+            mv cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
 
-            rm -rf tools.zip
+            cd "$ANDROID_SDK_ROOT"
+            rm -rf cmdline-tools-temp
           fi
 
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
@@ -85,7 +88,7 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       # -------------------------
-      # 🔥 PREWARM GRADLE (KEY FIX)
+      # 🔥 PREWARM GRADLE (CRITICAL)
       # -------------------------
       - name: Prewarm Gradle
         working-directory: android
@@ -110,7 +113,7 @@ jobs:
           test -f android/app/build/outputs/apk/debug/app-debug.apk
 
       # -------------------------
-      # Upload APK to GitHub Release (tags only)
+      # Upload APK (tags only)
       # -------------------------
       - name: Upload APK to Release
         if: startsWith(github.ref, 'refs/tags/')
