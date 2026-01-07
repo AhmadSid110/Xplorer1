@@ -118,7 +118,7 @@ fun DualPaneScreen(
                 topBar = {
                     GlassSurface(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 0
+                        cornerRadius = 0.dp
                     ) {
                         TopAppBar(
                             colors = TopAppBarDefaults.topAppBarColors(

@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -30,10 +31,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    cornerRadius: Int = 16,
+    cornerRadius: Dp = 16.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(cornerRadius.dp)
+    val shape = RoundedCornerShape(cornerRadius)
 
     Box(
         modifier = modifier

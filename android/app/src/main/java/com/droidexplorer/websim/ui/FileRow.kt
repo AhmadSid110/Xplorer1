@@ -68,11 +68,11 @@ fun FileRow(
 
     GlassSurface(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxWidth(),
+        cornerRadius = 8.dp
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
                 .heightIn(min = 56.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(backgroundColor)
