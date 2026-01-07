@@ -15,7 +15,7 @@ dependencyResolutionManagement {
 
     repositories {
 
-        // 🔒 Kotlin compiler + stdlib
+        // 🔒 Kotlin compiler & stdlib
         exclusiveContent {
             forRepository {
                 gradlePluginPortal()
@@ -25,20 +25,10 @@ dependencyResolutionManagement {
             }
         }
 
-        // 🔒 KotlinX (coroutines, serialization, etc.)
-        exclusiveContent {
-            forRepository {
-                google()
-            }
-            filter {
-                includeGroup("org.jetbrains.kotlinx")
-            }
-        }
-
-        // Android + Jetpack
+        // Android / Jetpack
         google()
 
-        // Everything else
+        // KotlinX, Coil, Coroutines, everything else
         mavenCentral()
     }
 }
