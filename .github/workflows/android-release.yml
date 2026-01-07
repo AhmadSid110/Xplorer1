@@ -1,16 +1,11 @@
-name: Android Auto Build & Release
+name: Android Build & Release
 
 on:
-  # ✅ Run on every commit (build only)
   push:
     branches:
-      - "**"
-
-    # ✅ Run release only on tags
+      - "**"        # run on every commit
     tags:
-      - "v*.*.*"
-
-  # ✅ Manual trigger
+      - "v*.*.*"    # release on tags
   workflow_dispatch:
 
 permissions:
@@ -28,12 +23,13 @@ jobs:
       # ─────────────────────────────────────────────
       # 1️⃣ Checkout
       # ─────────────────────────────────────────────
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # ─────────────────────────────────────────────
-      # 2️⃣ Version handling
+      # 2️⃣ Resolve version (tag → release, commit → dev)
       # ─────────────────────────────────────────────
       - name: Resolve version
         run: |
@@ -56,13 +52,14 @@ jobs:
       # ─────────────────────────────────────────────
       # 3️⃣ Java 17
       # ─────────────────────────────────────────────
-      - uses: actions/setup-java@v4
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       # ─────────────────────────────────────────────
-      # 4️⃣ Android SDK
+      # 4️⃣ Android SDK (FIXED – NO SELF MOVE)
       # ─────────────────────────────────────────────
       - name: Install Android SDK
         run: |
@@ -70,11 +67,16 @@ jobs:
           cd "$ANDROID_SDK_ROOT"
 
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-          unzip -q tools.zip
+
+          rm -rf cmdline-tools temp
+          mkdir temp
+
+          unzip -q tools.zip -d temp
 
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
-          rm -rf cmdline-tools tools.zip
+          mv temp/cmdline-tools/* cmdline-tools/latest/
+
+          rm -rf temp tools.zip
 
           yes | cmdline-tools/latest/bin/sdkmanager \
             --sdk_root="$ANDROID_SDK_ROOT" \
@@ -85,12 +87,15 @@ jobs:
       # ─────────────────────────────────────────────
       # 5️⃣ local.properties
       # ─────────────────────────────────────────────
-      - run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+      - name: Write local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       # ─────────────────────────────────────────────
-      # 6️⃣ gradle.properties
+      # 6️⃣ gradle.properties (NO kotlin.version here)
       # ─────────────────────────────────────────────
-      - run: |
+      - name: Write gradle.properties
+        run: |
           cat <<EOF > android/gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
@@ -98,9 +103,9 @@ jobs:
           EOF
 
       # ─────────────────────────────────────────────
-      # 7️⃣ Build APK (always)
+      # 7️⃣ Build APK
       # ─────────────────────────────────────────────
-      - name: Build APK
+      - name: Build Debug APK
         working-directory: android
         run: |
           chmod +x gradlew
@@ -110,7 +115,15 @@ jobs:
             --no-daemon
 
       # ─────────────────────────────────────────────
-      # 8️⃣ Upload to Release (ONLY on tags)
+      # 8️⃣ Verify APK
+      # ─────────────────────────────────────────────
+      - name: Verify APK
+        run: |
+          ls -lh android/app/build/outputs/apk/debug/
+          test -f android/app/build/outputs/apk/debug/app-debug.apk
+
+      # ─────────────────────────────────────────────
+      # 9️⃣ Upload APK (ONLY on tags)
       # ─────────────────────────────────────────────
       - name: Upload APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
