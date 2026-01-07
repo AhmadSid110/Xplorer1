@@ -32,6 +32,8 @@ import com.droidexplorer.websim.ui.viewer.ImageViewerScreen
 import com.droidexplorer.websim.ui.viewer.TextViewerScreen
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.viewer.ZipViewerScreen
+import com.droidexplorer.websim.ui.glass.GlassSurface
+import androidx.compose.ui.graphics.Color
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,96 +116,104 @@ fun DualPaneScreen(
         null -> {
             Scaffold(
                 topBar = {
-                    TopAppBar(
-                        title = {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("Xplorer", style = MaterialTheme.typography.titleMedium)
-                                BreadcrumbBar(
-                                    currentPath = activePane.path,
-                                    onNavigateToPath = { newPath ->
-                                        activePane.navigateToPath(newPath)
-                                    }
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            Row {
-                                IconButton(
-                                    onClick = { activePane.goBack() },
-                                    enabled = activePane.canGoBack()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { activePane.goForward() },
-                                    enabled = activePane.canGoForward()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                                        contentDescription = "Forward"
-                                    )
-                                }
-                            }
-                        },
-                        actions = {
-                            IconToggleButton(
-                                checked = paneMode == PaneMode.DUAL,
-                                onCheckedChange = { checked ->
-                                    paneMode = if (checked) PaneMode.DUAL else PaneMode.SINGLE
-                                    if (!checked) {
-                                        activePane = leftPaneState
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (paneMode == PaneMode.DUAL)
-                                        Icons.Outlined.ViewWeek else Icons.Outlined.ViewAgenda,
-                                    contentDescription = "Toggle view mode"
-                                )
-                            }
-
-                            Box {
-                                IconButton(onClick = { showSortMenu = true }) {
-                                    Icon(Icons.Outlined.Sort, contentDescription = "Sort")
-                                }
-                                SortMenu(
-                                    currentSortType = sortType,
-                                    currentSortOrder = sortOrder,
-                                    onSortChange = { type, order ->
-                                        sortType = type
-                                        sortOrder = order
-                                    },
-                                    expanded = showSortMenu,
-                                    onDismiss = { showSortMenu = false }
-                                )
-                            }
-
-                            IconButton(onClick = { showCleanerDialog = true }) {
-                                Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
-                            }
-
-                            Box {
-                                IconButton(onClick = { showOverflowMenu = true }) {
-                                    Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
-                                }
-                                DropdownMenu(
-                                    expanded = showOverflowMenu,
-                                    onDismissRequest = { showOverflowMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Settings") },
-                                        onClick = {
-                                            showOverflowMenu = false
-                                            onOpenSettings()
+                    GlassSurface(
+                        modifier = Modifier.fillMaxWidth(),
+                        cornerRadius = 0.dp
+                    ) {
+                        TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent
+                            ),
+                            title = {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Xplorer", style = MaterialTheme.typography.titleMedium)
+                                    BreadcrumbBar(
+                                        currentPath = activePane.path,
+                                        onNavigateToPath = { newPath ->
+                                            activePane.navigateToPath(newPath)
                                         }
                                     )
                                 }
+                            },
+                            navigationIcon = {
+                                Row {
+                                    IconButton(
+                                        onClick = { activePane.goBack() },
+                                        enabled = activePane.canGoBack()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                            contentDescription = "Back"
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { activePane.goForward() },
+                                        enabled = activePane.canGoForward()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                                            contentDescription = "Forward"
+                                        )
+                                    }
+                                }
+                            },
+                            actions = {
+                                IconToggleButton(
+                                    checked = paneMode == PaneMode.DUAL,
+                                    onCheckedChange = { checked ->
+                                        paneMode = if (checked) PaneMode.DUAL else PaneMode.SINGLE
+                                        if (!checked) {
+                                            activePane = leftPaneState
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (paneMode == PaneMode.DUAL)
+                                            Icons.Outlined.ViewWeek else Icons.Outlined.ViewAgenda,
+                                        contentDescription = "Toggle view mode"
+                                    )
+                                }
+
+                                Box {
+                                    IconButton(onClick = { showSortMenu = true }) {
+                                        Icon(Icons.Outlined.Sort, contentDescription = "Sort")
+                                    }
+                                    SortMenu(
+                                        currentSortType = sortType,
+                                        currentSortOrder = sortOrder,
+                                        onSortChange = { type, order ->
+                                            sortType = type
+                                            sortOrder = order
+                                        },
+                                        expanded = showSortMenu,
+                                        onDismiss = { showSortMenu = false }
+                                    )
+                                }
+
+                                IconButton(onClick = { showCleanerDialog = true }) {
+                                    Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner")
+                                }
+
+                                Box {
+                                    IconButton(onClick = { showOverflowMenu = true }) {
+                                        Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showOverflowMenu,
+                                        onDismissRequest = { showOverflowMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Settings") },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                onOpenSettings()
+                                            }
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) }
             ) { paddingValues ->

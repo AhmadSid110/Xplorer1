@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.size
+import com.droidexplorer.websim.ui.glass.GlassSurface
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,71 +58,76 @@ fun FileRow(
     
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
         } else {
             Color.Transparent
         },
-        label = "fileRowBackground"
+        label = "glassSelection"
     )
     val iconSize = 20.dp
 
-    Row(
+    GlassSurface(
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onLongClick()
-                }
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth(),
+        cornerRadius = 8.dp
     ) {
-        FileIcon(
-            file = file,
-            size = iconSize
-        )
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = file.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
+        Row(
+            modifier = Modifier
+                .heightIn(min = 56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(backgroundColor)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick()
+                    }
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FileIcon(
+                file = file,
+                size = iconSize
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (!file.isDirectory) {
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (!file.isDirectory) {
+                        Text(
+                            text = sizeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text(
-                        text = sizeText,
+                        text = dateText,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = dateText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            if (requiresPermission) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = "Permission required",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(iconSize)
                 )
             }
-        }
-
-        if (requiresPermission) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Outlined.Lock,
-                contentDescription = "Permission required",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(iconSize)
-            )
         }
     }
 }
