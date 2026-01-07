@@ -14,16 +14,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,7 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
-import com.droidexplorer.websim.ui.icon.FileIconCache
+import com.droidexplorer.websim.ui.icons.fileIconFor
 
 private val GridCellMinSize = 140.dp
 
@@ -147,14 +143,7 @@ fun FileGridView(
  */
 @Composable
 fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
-    val extension = remember(file.path) { file.extensionKey() }
-    val key = remember(extension, file.isDirectory) {
-        "${extension}_${file.isDirectory}"
-    }
-    // Icon resolution with guaranteed fallback - never returns null
-    val imageVector = FileIconCache.get(key) {
-        resolveIconVector(file)
-    }
+    val imageVector = resolveIconVector(file)
     val iconTint = tint ?: if (file.isDirectory) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -179,12 +168,6 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
  * 
  * This ensures unknown file types are still visible with a generic icon.
  */
+@Composable
 private fun resolveIconVector(file: FsNode) =
-    if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description
-
-private fun FsNode.extensionKey(): String {
-    return when (this) {
-        is FsNode.Local -> file.extension
-        is FsNode.Saf -> name.substringAfterLast('.', "")
-    }
-}
+    if (file.isDirectory) androidx.compose.material.icons.Icons.Filled.Folder else fileIconFor(file)

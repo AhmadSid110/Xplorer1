@@ -26,6 +26,7 @@ import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.ui.viewer.CodeViewerScreen
 import com.droidexplorer.websim.ui.viewer.PdfViewerScreen
 import com.droidexplorer.websim.ui.viewer.ImageViewerScreen
 import com.droidexplorer.websim.ui.viewer.TextViewerScreen
@@ -103,6 +104,11 @@ fun DualPaneScreen(
             file = currentViewer.file,
             onClose = { viewer = null },
             showLineNumbers = currentViewer.showLineNumbers
+        )
+        is Viewer.Code -> CodeViewerScreen(
+            file = currentViewer.file,
+            language = currentViewer.language,
+            onClose = { viewer = null }
         )
         is Viewer.Zip -> ZipViewerScreen(currentViewer.file) { viewer = null }
         null -> {

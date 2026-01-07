@@ -2,8 +2,8 @@
 
 package com.droidexplorer.websim.ui
 
-import android.content.Intent
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -211,8 +211,17 @@ fun FileListPane(
 
     fun handleOpen(file: File) {
         onRequestFocus()
-        if (file.extension.equals("zip", ignoreCase = true)) {
+        val ext = file.extension.lowercase()
+        if (ext == "apk") {
+            openApk(context, file)
+            return
+        }
+        if (ext == "zip") {
             onOpenViewer(Viewer.Zip(file))
+            return
+        }
+        if (ext in codeExtensions) {
+            onOpenViewer(Viewer.Code(file, langFor(ext)))
             return
         }
         openFile(
@@ -685,9 +694,9 @@ private fun EmptyState(hasSearchQuery: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -713,6 +722,40 @@ private fun EmptyState(hasSearchQuery: Boolean) {
             }
         }
     }
+}
+
+private val codeExtensions = setOf(
+    "py", "kt", "java", "json", "xml", "js", "ts", "c", "cpp", "h", "sh"
+)
+
+private fun langFor(ext: String): String = when (ext.lowercase()) {
+    "py" -> "python"
+    "kt" -> "kotlin"
+    "java" -> "java"
+    "json" -> "json"
+    "xml" -> "xml"
+    "js" -> "javascript"
+    "ts" -> "typescript"
+    "c" -> "c"
+    "cpp" -> "cpp"
+    "h" -> "cpp"
+    "sh" -> "bash"
+    else -> "plaintext"
+}
+
+private fun openApk(context: android.content.Context, file: File) {
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/vnd.android.package-archive")
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+
+    context.startActivity(intent)
 }
 
 @Composable
