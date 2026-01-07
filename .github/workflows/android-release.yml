@@ -19,7 +19,7 @@ jobs:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
 
-      # 🔒 CRITICAL: Keep Gradle cache inside workspace
+      # 🔒 CRITICAL: keep Gradle cache inside workspace
       GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
@@ -41,7 +41,7 @@ jobs:
           java-version: 17
 
       # -------------------------
-      # Cache Gradle (MOST IMPORTANT STEP)
+      # Cache Gradle (MOST IMPORTANT)
       # -------------------------
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -53,29 +53,29 @@ jobs:
             gradle-${{ runner.os }}
 
       # -------------------------
-      # Android SDK
+      # Android SDK (IDEMPOTENT)
       # -------------------------
       - name: Install Android SDK
-  run: |
-    mkdir -p "$ANDROID_SDK_ROOT"
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT"
 
-    if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
-      cd "$ANDROID_SDK_ROOT"
+          if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
+            cd "$ANDROID_SDK_ROOT"
 
-      curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
-      unzip -q tools.zip
+            curl -s https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+            unzip -q tools.zip
 
-      mkdir -p cmdline-tools/latest
-      mv cmdline-tools/* cmdline-tools/latest/
+            mkdir -p cmdline-tools/latest
+            mv cmdline-tools/* cmdline-tools/latest/
 
-      rm -rf tools.zip
-    fi
+            rm -rf tools.zip
+          fi
 
-    yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-      --sdk_root="$ANDROID_SDK_ROOT" \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;34.0.0"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       # -------------------------
       # local.properties
@@ -85,9 +85,9 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       # -------------------------
-      # 🔥 PRE-WARM GRADLE (THIS IS THE FIX)
+      # 🔥 PREWARM GRADLE (KEY FIX)
       # -------------------------
-      - name: Prewarm Gradle (downloads Kotlin ONCE)
+      - name: Prewarm Gradle
         working-directory: android
         run: |
           chmod +x gradlew
