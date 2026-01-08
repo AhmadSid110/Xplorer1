@@ -38,7 +38,6 @@ import com.droidexplorer.websim.search.SearchEngine
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.storage.DataStoreSafStore
-import com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
 import com.droidexplorer.websim.ui.DualPaneScreen
@@ -60,7 +59,8 @@ class MainActivity : ComponentActivity() {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
-            searchEngine
+            searchEngine,
+            contentResolver
         )
     }
 
@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
+            val storageCategoryData by viewModel.storageCategoryData.collectAsState()
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
@@ -122,12 +123,11 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
-            val storageAnalyzer = remember { 
-                MediaStoreStorageAnalyzer(contentResolver) 
-            }
-            val categoryData = remember(showStorage) {
-                if (showStorage) storageAnalyzer.analyze()
-                else null
+            // Refresh storage data when storage screen is shown
+            LaunchedEffect(showStorage) {
+                if (showStorage) {
+                    viewModel.refreshStorageData()
+                }
             }
 
             XplorerTheme {
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
                                 if (isShowingStorage) {
                                     StorageScreen(
                                         info = storageInfo,
-                                        categoryData = categoryData,
+                                        categoryData = storageCategoryData,
                                         modifier = Modifier.padding(padding)
                                     )
                                 } else {

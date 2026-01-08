@@ -130,7 +130,6 @@ fun StorageScreen(
         val categories = remember(categoryData) {
             if (categoryData != null) {
                 // Use real data from MediaStore
-                val total = info.total.toFloat().coerceAtLeast(1f)
                 listOf(
                     StorageCategory("Images", categoryData.images, Color(0xFF2196F3)),
                     StorageCategory("Videos", categoryData.videos, Color(0xFF9C27B0)),
