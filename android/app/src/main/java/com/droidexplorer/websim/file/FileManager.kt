@@ -76,22 +76,14 @@ object FileManager {
                 // behavior differs based on MANAGE_EXTERNAL_STORAGE permission:
                 // - With permission: Full unfiltered access to ALL files
                 // - Without permission: Android silently filters results (scoped storage)
-                val files = if (hasAllFilesAccess()) {
-                    // FULL access - Android returns ALL file types without filtering
-                    root.listFiles()
-                } else {
-                    // LIMITED mode - Android filters results in scoped storage mode
-                    root.listFiles()
-                }
-                
+                val files = root.listFiles()
                 val result = files?.map { FsNode.Local(it) } ?: emptyList()
                 
                 // Debug logging to verify file enumeration
-                if (files != null) {
-                    Log.d("FILE_ENUM", "Listed ${files.size} files in $path (hasAllFilesAccess=${hasAllFilesAccess()})")
-                    files.forEach { file ->
-                        Log.d("FILE_ENUM", "  ${file.name} (${file.extension})")
-                    }
+                if (files != null && files.isNotEmpty()) {
+                    val fileList = files.take(10).joinToString(", ") { "${it.name} (${it.extension})" }
+                    val more = if (files.size > 10) " and ${files.size - 10} more" else ""
+                    Log.d("FILE_ENUM", "Listed ${files.size} files in $path (hasAllFilesAccess=${hasAllFilesAccess()}): $fileList$more")
                 }
                 
                 result

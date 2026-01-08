@@ -30,9 +30,10 @@ class FileSearcher(
                 .toList()
             
             // Debug logging to verify search results
-            Log.d("FILE_SEARCH", "Found ${results.size} results for '$query' in $path (hasAllFilesAccess=${hasAllFilesAccess()})")
-            results.forEach { node ->
-                Log.d("FILE_SEARCH", "  ${node.name}")
+            if (results.isNotEmpty()) {
+                val fileList = results.take(5).joinToString(", ") { it.name }
+                val more = if (results.size > 5) " and ${results.size - 5} more" else ""
+                Log.d("FILE_SEARCH", "Found ${results.size} results for '$query' in $path (hasAllFilesAccess=${hasAllFilesAccess()}): $fileList$more")
             }
             
             results
