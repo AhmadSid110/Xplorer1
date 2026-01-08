@@ -80,7 +80,8 @@ fun FileListPane(
     sortType: SortType,
     sortOrder: SortOrder,
     showDivider: Boolean = false,
-    onOpenViewer: (Viewer) -> Unit = {}
+    onOpenViewer: (Viewer) -> Unit = {},
+    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
 ) {
     val context = LocalContext.current
     var isSearching by remember { mutableStateOf(false) }
@@ -132,14 +133,30 @@ fun FileListPane(
     ) {
         value = withContext(Dispatchers.IO) {
             if (searchQuery.isBlank()) {
-                FileManager.list(
-                    paneState.path,
-                    sortType,
-                    sortOrder,
-                    settings.showHiddenFiles,
-                    safPermissionManager,
-                    context
-                )
+                // Check if this is a TorBox path
+                if (paneState.path.startsWith("torbox://") && torBoxClient != null) {
+                    try {
+                        torBoxClient.listFiles().map { torBoxFile ->
+                            FsNode.TorBox(
+                                id = torBoxFile.id,
+                                name = torBoxFile.name,
+                                size = torBoxFile.size,
+                                downloadUrl = torBoxFile.downloadUrl
+                            )
+                        }
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                } else {
+                    FileManager.list(
+                        paneState.path,
+                        sortType,
+                        sortOrder,
+                        settings.showHiddenFiles,
+                        safPermissionManager,
+                        context
+                    )
+                }
             } else {
                 val matches = searchResult?.matches ?: emptyList()
                 val visible = if (settings.showHiddenFiles) {

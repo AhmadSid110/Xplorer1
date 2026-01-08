@@ -207,6 +207,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
+                        val torBoxClient = remember(settingsState.torBoxEnabled) {
+                            if (settingsState.torBoxEnabled) {
+                                val apiKey = torBoxStore.getApiKey()
+                                if (apiKey != null) {
+                                    com.droidexplorer.websim.torbox.TorBoxClient(apiKey)
+                                } else null
+                            } else null
+                        }
+                        
                         DualPaneScreen(
                             singlePane = false,
                             settings = settingsState,
@@ -215,7 +224,8 @@ class MainActivity : ComponentActivity() {
                             permissionRefresh = permissionRefresh,
                             onSearchQueryChange = viewModel::updateSearchQuery,
                             onOpenSettings = { showSettings = true },
-                            onRequestSafAccess = viewModel::requestSafAccessFor
+                            onRequestSafAccess = viewModel::requestSafAccessFor,
+                            torBoxClient = torBoxClient
                         )
                     }
                 } else {
