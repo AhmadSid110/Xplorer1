@@ -21,15 +21,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer
 import com.droidexplorer.websim.storage.StorageInfo
 import com.droidexplorer.websim.ui.formatFileSize
 import kotlin.math.min
 
+/**
+ * Data class for storage category information.
+ * Contains byte totals for different file categories.
+ */
+data class StorageCategoryData(
+    val images: Long = 0,
+    val videos: Long = 0,
+    val audio: Long = 0,
+    val apks: Long = 0,
+    val archives: Long = 0
+)
+
 @Composable
 fun StorageScreen(
     info: StorageInfo,
-    categoryData: MediaStoreStorageAnalyzer.StorageCategoryData?,
+    categoryData: StorageCategoryData?,
     modifier: Modifier = Modifier
 ) {
     val progress =
@@ -125,7 +136,7 @@ fun StorageScreen(
 
         // ─────────────────────────────
         // PHASE-2: REAL DATA FROM MEDIASTORE
-        // Uses MediaStoreStorageAnalyzer for actual byte counts
+        // Data is provided by the ViewModel
         // ─────────────────────────────
         val categories = remember(categoryData) {
             if (categoryData != null) {
