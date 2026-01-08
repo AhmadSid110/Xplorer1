@@ -14,6 +14,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -142,21 +147,29 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         ) { padding ->
-                            if (showStorage) {
-                                StorageScreen(
-                                    info = storageInfo,
-                                    modifier = Modifier.padding(padding)
-                                )
-                            } else {
-                                SettingsScreen(
-                                    state = settingsState,
-                                    onViewModeChange = viewModel::setViewMode,
-                                    onToggleHidden = viewModel::setShowHidden,
-                                    onToggleSafSearch = viewModel::onToggleSafSearch,
-                                    onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
-                                    onOpenStorage = { showStorage = true },
-                                    modifier = Modifier.padding(padding)
-                                )
+                            AnimatedContent(
+                                targetState = showStorage,
+                                transitionSpec = {
+                                    fadeIn(tween(120)) togetherWith fadeOut(tween(120))
+                                },
+                                label = "settingsStorageTransition"
+                            ) { isShowingStorage ->
+                                if (isShowingStorage) {
+                                    StorageScreen(
+                                        info = storageInfo,
+                                        modifier = Modifier.padding(padding)
+                                    )
+                                } else {
+                                    SettingsScreen(
+                                        state = settingsState,
+                                        onViewModeChange = viewModel::setViewMode,
+                                        onToggleHidden = viewModel::setShowHidden,
+                                        onToggleSafSearch = viewModel::onToggleSafSearch,
+                                        onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
+                                        onOpenStorage = { showStorage = true },
+                                        modifier = Modifier.padding(padding)
+                                    )
+                                }
                             }
                         }
                     } else {
