@@ -16,6 +16,7 @@ class SettingsRepository(
     private val VIEW_MODE = stringPreferencesKey("view_mode")
     private val SHOW_HIDDEN = booleanPreferencesKey("show_hidden")
     private val SEARCH_SAF = booleanPreferencesKey("search_saf")
+    private val TORBOX_ENABLED = booleanPreferencesKey("torbox_enabled")
 
     val settings: Flow<SettingsState> =
         context.dataStore.data.map { prefs ->
@@ -24,7 +25,8 @@ class SettingsRepository(
             SettingsState(
                 defaultViewMode = viewMode,
                 showHiddenFiles = prefs[SHOW_HIDDEN] ?: false,
-                searchIncludeSaf = prefs[SEARCH_SAF] ?: false
+                searchIncludeSaf = prefs[SEARCH_SAF] ?: false,
+                torBoxEnabled = prefs[TORBOX_ENABLED] ?: false
             )
         }
 
@@ -43,6 +45,12 @@ class SettingsRepository(
     suspend fun setSearchSaf(enabled: Boolean) {
         context.dataStore.edit {
             it[SEARCH_SAF] = enabled
+        }
+    }
+
+    suspend fun setTorBoxEnabled(enabled: Boolean) {
+        context.dataStore.edit {
+            it[TORBOX_ENABLED] = enabled
         }
     }
 }

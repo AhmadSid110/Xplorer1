@@ -158,6 +158,10 @@ class ExplorerViewModel(
         viewModelScope.launch { settingsRepository.setShowHidden(enabled) }
     }
 
+    fun setTorBoxEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setTorBoxEnabled(enabled) }
+    }
+
     fun requestAllFilesAccess() {
         viewModelScope.launch {
             _uiEvents.send(UiEvent.RequestAllFilesAccess)

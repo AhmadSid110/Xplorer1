@@ -24,6 +24,7 @@ fun SettingsScreen(
     onViewModeChange: (ViewMode) -> Unit,
     onToggleHidden: (Boolean) -> Unit,
     onToggleSafSearch: (Boolean) -> Unit,
+    onToggleTorBox: (Boolean) -> Unit,
     onRequestAllFilesAccess: () -> Unit,
     onOpenStorage: () -> Unit,
     modifier: Modifier = Modifier
@@ -72,6 +73,35 @@ fun SettingsScreen(
             checked = state.searchIncludeSaf,
             onCheckedChange = onToggleSafSearch
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Remote Access Section
+        Text(
+            "Remote Access", 
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+            tonalElevation = 0.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ListItem(
+                headlineContent = { Text("Enable TorBox (Remote files)") },
+                supportingContent = { Text("Access files stored remotely (read-only)") },
+                trailingContent = {
+                    Switch(
+                        checked = state.torBoxEnabled,
+                        onCheckedChange = onToggleTorBox
+                    )
+                },
+                modifier = Modifier.clickable { onToggleTorBox(!state.torBoxEnabled) }
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 

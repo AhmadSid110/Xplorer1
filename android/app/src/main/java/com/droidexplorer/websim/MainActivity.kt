@@ -190,6 +190,7 @@ class MainActivity : ComponentActivity() {
                                         onViewModeChange = viewModel::setViewMode,
                                         onToggleHidden = viewModel::setShowHidden,
                                         onToggleSafSearch = viewModel::onToggleSafSearch,
+                                        onToggleTorBox = viewModel::setTorBoxEnabled,
                                         onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                                         onOpenStorage = { showStorage = true },
                                         modifier = Modifier.padding(padding)
