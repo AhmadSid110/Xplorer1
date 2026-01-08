@@ -72,12 +72,16 @@ object FileManager {
                 } ?: emptyList()
             } else {
                 // Use conditional file listing based on permission state
+                // Note: Both branches call the same listFiles() method, but Android's
+                // behavior differs based on MANAGE_EXTERNAL_STORAGE permission:
+                // - With permission: Full unfiltered access to ALL files
+                // - Without permission: Android silently filters results (scoped storage)
                 val files = if (hasAllFilesAccess()) {
-                    // FULL, UNFILTERED access - returns ALL file types
+                    // FULL access - Android returns ALL file types without filtering
                     root.listFiles()
                 } else {
-                    // LIMITED mode - falls back to SAF or returns limited files
-                    root.listFiles() // Will be filtered by Android in scoped mode
+                    // LIMITED mode - Android filters results in scoped storage mode
+                    root.listFiles()
                 }
                 
                 val result = files?.map { FsNode.Local(it) } ?: emptyList()
