@@ -69,6 +69,9 @@ dependencies {
     // Security - Encrypted Storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // HTTP Client for TorBox API
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     // ─────────────────────────────────────────────
     // ✅ REQUIRED EXPLICIT DEPENDENCIES (DO NOT REMOVE)
     // Fixes GitHub Actions Maven 403 failures
