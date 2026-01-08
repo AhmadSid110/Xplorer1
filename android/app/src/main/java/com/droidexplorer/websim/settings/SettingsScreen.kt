@@ -23,6 +23,7 @@ fun SettingsScreen(
     onViewModeChange: (ViewMode) -> Unit,
     onToggleHidden: (Boolean) -> Unit,
     onToggleSafSearch: (Boolean) -> Unit,
+    onRequestAllFilesAccess: () -> Unit,
     onOpenStorage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -55,6 +56,14 @@ fun SettingsScreen(
             text = "Include SAF locations in search",
             checked = state.searchIncludeSaf,
             onCheckedChange = onToggleSafSearch
+        )
+
+        Divider()
+
+        ListItem(
+            headlineContent = { Text("Enable full storage access") },
+            supportingContent = { Text("Grant access to all file types (PDF, ZIP, APK, etc.)") },
+            modifier = Modifier.clickable { onRequestAllFilesAccess() }
         )
 
         Divider()

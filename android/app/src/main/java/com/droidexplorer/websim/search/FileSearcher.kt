@@ -3,8 +3,10 @@ package com.droidexplorer.websim.search
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.storage.hasAllFilesAccess
 import java.io.File
 
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
@@ -20,12 +22,21 @@ class FileSearcher(
         maxResults: Int = DEFAULT_MAX_SEARCH_RESULTS
     ): List<FsNode> {
         return runCatching {
-            File(path)
+            val results = File(path)
                 .walkTopDown()
                 .filter { it.isFile && it.name.contains(query, ignoreCase = true) }
                 .take(maxResults)
                 .map { FsNode.Local(it) }
                 .toList()
+            
+            // Debug logging to verify search results
+            if (results.isNotEmpty()) {
+                val fileList = results.take(5).joinToString(", ") { it.name }
+                val more = if (results.size > 5) " and ${results.size - 5} more" else ""
+                Log.d("FILE_SEARCH", "Found ${results.size} results for '$query' in $path (hasAllFilesAccess=${hasAllFilesAccess()}): $fileList$more")
+            }
+            
+            results
         }.getOrElse { emptyList() }
     }
 

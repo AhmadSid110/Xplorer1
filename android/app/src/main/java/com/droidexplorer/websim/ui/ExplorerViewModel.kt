@@ -135,6 +135,12 @@ class ExplorerViewModel(
     fun setSearchSaf(enabled: Boolean) {
         viewModelScope.launch { updateSearchSaf(enabled) }
     }
+    
+    fun requestAllFilesAccess() {
+        viewModelScope.launch {
+            _uiEvents.send(UiEvent.RequestAllFilesAccess)
+        }
+    }
 
     private suspend fun updateSearchSaf(enabled: Boolean) {
         settingsRepository.setSearchSaf(enabled)
