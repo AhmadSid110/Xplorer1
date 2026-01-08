@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
-            searchEngine
+            searchEngine,
+            contentResolver
         )
     }
 
@@ -69,9 +70,7 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             hasStoragePermission = permissions.all { it.value }
-            if (!hasStoragePermission) {
-                showPermissionRationale = true
-            }
+            if (!hasStoragePermission) showPermissionRationale = true
         }
 
     private val safLauncher =
@@ -112,6 +111,7 @@ class MainActivity : ComponentActivity() {
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
+            val storageCategoryData by viewModel.storageCategoryData.collectAsState()
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
@@ -121,9 +121,27 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
+            // Analyze storage categories when storage screen is shown
+            LaunchedEffect(showStorage) {
+                if (showStorage) {
+                    val analyzer = com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer(contentResolver)
+                    val analyzerData = analyzer.analyze()
+                    // Convert to UI data class and update ViewModel
+                    val categoryData = com.droidexplorer.websim.ui.settings.StorageCategoryData(
+                        images = analyzerData.images,
+                        videos = analyzerData.videos,
+                        audio = analyzerData.audio,
+                        apks = analyzerData.apks,
+                        archives = analyzerData.archives
+                    )
+                    viewModel.updateStorageData(categoryData)
+                }
+            }
+
             XplorerTheme {
                 if (hasStoragePermission) {
                     if (showSettings) {
+
                         BackHandler {
                             if (showStorage) showStorage = false
                             else showSettings = false
@@ -143,20 +161,27 @@ class MainActivity : ComponentActivity() {
                                                 contentDescription = "Back"
                                             )
                                         }
-                                    }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor =
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+                                    )
                                 )
                             }
                         ) { padding ->
+
                             AnimatedContent(
                                 targetState = showStorage,
                                 transitionSpec = {
                                     fadeIn(tween(120)) togetherWith fadeOut(tween(120))
                                 },
-                                label = "settingsStorageTransition"
-                            ) { isShowingStorage ->
-                                if (isShowingStorage) {
+                                label = "settings-storage"
+                            ) { isStorage ->
+
+                                if (isStorage) {
                                     StorageScreen(
                                         info = storageInfo,
+                                        categoryData = storageCategoryData,
                                         modifier = Modifier.padding(padding)
                                     )
                                 } else {
@@ -194,7 +219,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🔥 CRITICAL: THIS FIXES YOUR ISSUE
     override fun onResume() {
         super.onResume()
         viewModel.onAllFilesAccessChanged()

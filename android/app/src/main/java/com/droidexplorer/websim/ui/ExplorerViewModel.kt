@@ -1,5 +1,6 @@
 package com.droidexplorer.websim.ui
 
+import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -13,6 +14,7 @@ import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.events.UiEvent
+import com.droidexplorer.websim.ui.settings.StorageCategoryData
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,7 +23,8 @@ import java.io.File
 class ExplorerViewModel(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
-    private val searchEngine: SearchEngine
+    private val searchEngine: SearchEngine,
+    private val contentResolver: ContentResolver
 ) : ViewModel() {
 
     // ─────────────────────────────────────────────
@@ -66,6 +69,16 @@ class ExplorerViewModel(
     // ─────────────────────────────────────────────
     private val _permissionRefresh = MutableStateFlow(0)
     val permissionRefresh: StateFlow<Int> = _permissionRefresh.asStateFlow()
+
+    // ─────────────────────────────────────────────
+    // Storage category data
+    // ─────────────────────────────────────────────
+    private val _storageCategoryData = MutableStateFlow<StorageCategoryData?>(null)
+    val storageCategoryData: StateFlow<StorageCategoryData?> = _storageCategoryData.asStateFlow()
+
+    fun updateStorageData(data: StorageCategoryData?) {
+        _storageCategoryData.value = data
+    }
 
     private var pendingPermissionPath: String? = null
     private var pendingSearchEnable = false
@@ -172,7 +185,8 @@ class ExplorerViewModel(
 class ExplorerViewModelFactory(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
-    private val searchEngine: SearchEngine
+    private val searchEngine: SearchEngine,
+    private val contentResolver: ContentResolver
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExplorerViewModel::class.java)) {
@@ -180,7 +194,8 @@ class ExplorerViewModelFactory(
             return ExplorerViewModel(
                 settingsRepository,
                 safPermissionManager,
-                searchEngine
+                searchEngine,
+                contentResolver
             ) as T
         }
         error("Unknown ViewModel class")

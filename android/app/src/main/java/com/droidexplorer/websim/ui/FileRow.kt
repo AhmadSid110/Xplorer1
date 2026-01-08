@@ -60,7 +60,7 @@ fun FileRow(
         targetValue = if (isSelected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         } else {
-            Color.Transparent
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
         },
         animationSpec = tween(durationMillis = 120),
         label = "fileRowSelection"
@@ -71,7 +71,8 @@ fun FileRow(
         modifier = modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = Color.Transparent,
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier

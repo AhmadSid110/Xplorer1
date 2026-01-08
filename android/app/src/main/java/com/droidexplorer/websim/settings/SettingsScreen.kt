@@ -85,7 +85,8 @@ fun SettingsScreen(
 
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+            tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             ListItem(
@@ -99,7 +100,8 @@ fun SettingsScreen(
 
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+            tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             ListItem(

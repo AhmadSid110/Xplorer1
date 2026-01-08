@@ -25,9 +25,22 @@ import com.droidexplorer.websim.storage.StorageInfo
 import com.droidexplorer.websim.ui.formatFileSize
 import kotlin.math.min
 
+/**
+ * Data class for storage category information.
+ * Contains byte totals for different file categories.
+ */
+data class StorageCategoryData(
+    val images: Long = 0,
+    val videos: Long = 0,
+    val audio: Long = 0,
+    val apks: Long = 0,
+    val archives: Long = 0
+)
+
 @Composable
 fun StorageScreen(
     info: StorageInfo,
+    categoryData: StorageCategoryData?,
     modifier: Modifier = Modifier
 ) {
     val progress =
@@ -114,7 +127,7 @@ fun StorageScreen(
         Spacer(Modifier.height(32.dp))
 
         Text(
-            text = "Estimated categories",
+            text = if (categoryData != null) "Storage by category" else "Estimated categories",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -122,18 +135,29 @@ fun StorageScreen(
         Spacer(Modifier.height(12.dp))
 
         // ─────────────────────────────
-        // PHASE-1 PLACEHOLDER CATEGORIES
-        // (Phase-2 will replace data source)
+        // PHASE-2: REAL DATA FROM MEDIASTORE
+        // Data is provided by the ViewModel
         // ─────────────────────────────
-        val categories = remember {
-            listOf(
-                StorageCategory("Images", 0.25f, Color(0xFF2196F3)),
-                StorageCategory("Videos", 0.20f, Color(0xFF9C27B0)),
-                StorageCategory("Audio", 0.15f, Color(0xFF009688)),
-                StorageCategory("Apps", 0.18f, Color(0xFFFF9800)),
-                StorageCategory("Archives", 0.12f, Color(0xFF757575)),
-                StorageCategory("Other", 0.10f, Color(0xFF607D8B))
-            )
+        val categories = remember(categoryData) {
+            if (categoryData != null) {
+                // Use real data from MediaStore
+                listOf(
+                    StorageCategory("Images", categoryData.images, Color(0xFF2196F3)),
+                    StorageCategory("Videos", categoryData.videos, Color(0xFF9C27B0)),
+                    StorageCategory("Audio", categoryData.audio, Color(0xFF009688)),
+                    StorageCategory("APKs", categoryData.apks, Color(0xFFFF9800)),
+                    StorageCategory("Archives", categoryData.archives, Color(0xFF757575))
+                )
+            } else {
+                // Fallback to placeholder data
+                listOf(
+                    StorageCategory("Images", (info.total * 0.25f).toLong(), Color(0xFF2196F3)),
+                    StorageCategory("Videos", (info.total * 0.20f).toLong(), Color(0xFF9C27B0)),
+                    StorageCategory("Audio", (info.total * 0.15f).toLong(), Color(0xFF009688)),
+                    StorageCategory("APKs", (info.total * 0.18f).toLong(), Color(0xFFFF9800)),
+                    StorageCategory("Archives", (info.total * 0.12f).toLong(), Color(0xFF757575))
+                )
+            }
         }
 
         categories.forEach { category ->
@@ -149,7 +173,7 @@ fun StorageScreen(
 
 data class StorageCategory(
     val name: String,
-    val percentage: Float,
+    val bytes: Long,
     val color: Color
 )
 
@@ -162,18 +186,23 @@ private fun CategoryItem(
     category: StorageCategory,
     totalBytes: Long
 ) {
+    val percentage = if (totalBytes > 0) {
+        (category.bytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    
     val animatedFraction by animateFloatAsState(
-        targetValue = category.percentage,
+        targetValue = percentage,
         animationSpec = tween(600),
         label = "categoryBar"
     )
 
-    val estimatedSize = (totalBytes * category.percentage).toLong()
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+        tonalElevation = 0.dp
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(
@@ -185,7 +214,7 @@ private fun CategoryItem(
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = formatFileSize(estimatedSize),
+                    text = formatFileSize(category.bytes),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
