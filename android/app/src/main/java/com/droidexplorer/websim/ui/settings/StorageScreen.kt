@@ -3,8 +3,6 @@ package com.droidexplorer.websim.ui.settings
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +22,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -34,14 +30,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.storage.StorageInfo
 import com.droidexplorer.websim.ui.formatFileSize
 import kotlin.math.min
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StorageScreen(info: StorageInfo) {
     val progress = if (info.total > 0) {
@@ -91,9 +84,10 @@ fun StorageScreen(info: StorageInfo) {
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
 
-                // Progress arc
+                // Progress arc - using Material theme colors
+                val progressColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                 drawArc(
-                    color = Color(0xFF2196F3).copy(alpha = 0.8f),
+                    color = progressColor,
                     startAngle = -90f,
                     sweepAngle = animatedProgress * 360f,
                     useCenter = false,
@@ -131,7 +125,8 @@ fun StorageScreen(info: StorageInfo) {
         )
         Spacer(Modifier.height(12.dp))
 
-        // Placeholder data for categories
+        // Placeholder data for categories - these are estimates only
+        // In production, these would be calculated from actual file system data
         val categories = remember {
             listOf(
                 StorageCategory("Images", 0.25f, Color(0xFF2196F3).copy(alpha = 0.7f)),
@@ -159,15 +154,11 @@ data class StorageCategory(
     val color: Color
 )
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CategoryItem(
     category: StorageCategory,
     totalBytes: Long
 ) {
-    val haptic = LocalHapticFeedback.current
-    var showTooltip by remember { mutableStateOf(false) }
-    
     val animatedWidth by animateFloatAsState(
         targetValue = category.percentage,
         animationSpec = tween(durationMillis = 600),
@@ -179,15 +170,7 @@ private fun CategoryItem(
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = { /* Ripple effect */ },
-                onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    showTooltip = true
-                }
-            )
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -232,21 +215,6 @@ private fun CategoryItem(
                 ) {}
             }
         }
-    }
-    
-    if (showTooltip) {
-        // Simple tooltip using AlertDialog (could be enhanced)
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showTooltip = false },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { showTooltip = false }) {
-                    Text("OK")
-                }
-            },
-            text = {
-                Text("Estimates shown")
-            }
-        )
     }
 }
 
