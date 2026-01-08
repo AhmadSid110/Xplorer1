@@ -1,6 +1,7 @@
 package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -86,6 +87,7 @@ fun FileDetailsView(
                 } else {
                     Color.Transparent
                 },
+                animationSpec = tween(durationMillis = 120),
                 label = "detailsItemSelection"
             )
 
@@ -101,9 +103,9 @@ fun FileDetailsView(
                             onLongClick(file)
                         }
                     ),
-                tonalElevation = if (selected) 1.dp else 0.dp,
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface
+                tonalElevation = 0.dp,
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
                     modifier = Modifier
@@ -122,13 +124,13 @@ fun FileDetailsView(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             file.name,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             "$sizeText$SEPARATOR$formattedDate",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -184,6 +186,7 @@ fun FileListView(
                 } else {
                     Color.Transparent
                 },
+                animationSpec = tween(durationMillis = 120),
                 label = "listItemSelection"
             )
 
@@ -208,9 +211,9 @@ fun FileListView(
                                 onLongClick(file)
                             }
                         ),
-                    tonalElevation = if (selected) 1.dp else 0.dp,
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface
+                    tonalElevation = 0.dp,
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
                         modifier = Modifier
@@ -228,7 +231,7 @@ fun FileListView(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = file.name,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )

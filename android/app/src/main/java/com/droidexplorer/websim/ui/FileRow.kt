@@ -1,6 +1,7 @@
 package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -23,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.size
-import com.droidexplorer.websim.ui.glass.GlassSurface
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,19 +62,21 @@ fun FileRow(
         } else {
             Color.Transparent
         },
+        animationSpec = tween(durationMillis = 120),
         label = "fileRowSelection"
     )
     val iconSize = 18.dp
 
-    GlassSurface(
+    Surface(
         modifier = modifier
             .fillMaxWidth(),
-        cornerRadius = 8.dp
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
             modifier = Modifier
                 .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .background(backgroundColor)
                 .combinedClickable(
                     onClick = onClick,
@@ -96,7 +98,7 @@ fun FileRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = if (file.isDirectory) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
@@ -124,7 +126,7 @@ fun FileRow(
                 Icon(
                     imageVector = Icons.Outlined.Lock,
                     contentDescription = "Permission required",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(iconSize)
                 )
             }
