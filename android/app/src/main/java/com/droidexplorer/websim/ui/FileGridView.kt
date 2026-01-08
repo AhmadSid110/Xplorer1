@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -180,11 +181,14 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
  * Resolves the icon for a file or directory.
  * 
  * GUARANTEED FALLBACK: Always returns a valid icon (never null).
+ * - TorBox files: Cloud icon
  * - Directories: Folder icon
  * - Files: Description icon (default for all file types)
  * 
  * This ensures unknown file types are still visible with a generic icon.
  */
 @Composable
-private fun resolveIconVector(file: FsNode) =
-    if (file.isDirectory) Icons.Filled.Folder else fileIconFor(file)
+private fun resolveIconVector(file: FsNode) = when (file) {
+    is FsNode.TorBox -> Icons.Filled.Cloud
+    else -> if (file.isDirectory) Icons.Filled.Folder else fileIconFor(file)
+}

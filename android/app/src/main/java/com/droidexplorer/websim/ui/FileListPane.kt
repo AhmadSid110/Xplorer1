@@ -592,61 +592,82 @@ fun FileListPane(
     
     // Context menu bottom sheet
     if (showContextMenu && selectedFile != null) {
-        FileContextMenu(
-            file = selectedFile!!.asFile(),
-            onDismiss = { 
-                showContextMenu = false
-            },
-            onOpen = { handleOpen(selectedFile!!.asFile()) },
-            onEdit = {
-                editorFile = selectedFile!!.asFile()
-            },
-            onRename = { showRenameDialog = true },
-            onDelete = { showDeleteDialog = true },
-            onCopy = { 
-                FileClipboard.copy(selectedFile!!.path)
-                snackbarMessage = "Copied to clipboard"
-            },
-            onMove = { 
-                FileClipboard.cut(selectedFile!!.path)
-                snackbarMessage = "Cut to clipboard"
-            },
-            onZip = {
-                ZipUtils.zipFile(selectedFile!!.asFile()).fold(
-                    onSuccess = { 
-                        snackbarMessage = "Zipped successfully"
-                        refreshTrigger++
-                    },
-                    onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
-                )
-            },
-            onUnzip = {
-                ZipUtils.unzip(selectedFile!!.asFile()).fold(
-                    onSuccess = { 
-                        snackbarMessage = "Unzipped successfully"
-                        refreshTrigger++
-                    },
-                    onFailure = { snackbarMessage = "Failed to unzip: ${it.message}" }
-                )
-            },
-            onShare = { ctx ->
-                try {
-                    val uri = FileProvider.getUriForFile(
-                        ctx,
-                        "${ctx.packageName}.provider",
-                        selectedFile!!.asFile()
-                    )
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "*/*"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        when (val file = selectedFile!!) {
+            is FsNode.TorBox -> {
+                // TorBox-specific context menu
+                TorBoxContextMenu(
+                    file = file,
+                    onDismiss = { showContextMenu = false },
+                    onDownload = { torBoxFile ->
+                        // Open browser to download
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(torBoxFile.downloadUrl))
+                        try {
+                            context.startActivity(intent)
+                            snackbarMessage = "Opening browser for download..."
+                        } catch (e: ActivityNotFoundException) {
+                            snackbarMessage = "No browser found to download file"
+                        }
                     }
-                    ctx.startActivity(Intent.createChooser(intent, "Share"))
-                } catch (e: Exception) {
-                    snackbarMessage = "Failed to share: ${e.message}"
-                }
+                )
             }
-        )
+            else -> {
+                FileContextMenu(
+                    file = file.asFile(),
+                    onDismiss = { 
+                        showContextMenu = false
+                    },
+                    onOpen = { handleOpen(file.asFile()) },
+                    onEdit = {
+                        editorFile = file.asFile()
+                    },
+                    onRename = { showRenameDialog = true },
+                    onDelete = { showDeleteDialog = true },
+                    onCopy = { 
+                        FileClipboard.copy(file.path)
+                        snackbarMessage = "Copied to clipboard"
+                    },
+                    onMove = { 
+                        FileClipboard.cut(file.path)
+                        snackbarMessage = "Cut to clipboard"
+                    },
+                    onZip = {
+                        ZipUtils.zipFile(file.asFile()).fold(
+                            onSuccess = { 
+                                snackbarMessage = "Zipped successfully"
+                                refreshTrigger++
+                            },
+                            onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
+                        )
+                    },
+                    onUnzip = {
+                        ZipUtils.unzip(file.asFile()).fold(
+                            onSuccess = { 
+                                snackbarMessage = "Unzipped successfully"
+                                refreshTrigger++
+                            },
+                            onFailure = { snackbarMessage = "Failed to unzip: ${it.message}" }
+                        )
+                    },
+                    onShare = { ctx ->
+                        try {
+                            val uri = FileProvider.getUriForFile(
+                                ctx,
+                                "${ctx.packageName}.provider",
+                                file.asFile()
+                            )
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "*/*"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            ctx.startActivity(Intent.createChooser(intent, "Share"))
+                        } catch (e: Exception) {
+                            snackbarMessage = "Failed to share: ${e.message}"
+                        }
+                    }
+                )
+            }
+        }
     }
     
     // Text editor
