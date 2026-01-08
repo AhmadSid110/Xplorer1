@@ -1,7 +1,14 @@
 package com.droidexplorer.websim.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -26,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -77,20 +85,28 @@ fun FileGridView(
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
             
-            // Animated selection background
+            // Animated selection background with spring animation
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.25f)
                 },
-                animationSpec = tween(durationMillis = 120),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
                 label = "gridItemSelection"
             )
 
             Surface(
                 modifier = Modifier
-                    .animateItemPlacement()
+                    .animateItemPlacement(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
                     .padding(8.dp)
                     .fillMaxWidth()
                     .combinedClickable(
@@ -101,22 +117,30 @@ fun FileGridView(
                         }
                     ),
                 tonalElevation = 0.dp,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = Color.Transparent
             ) {
                 Column(
                     modifier = Modifier
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
                         .background(surfaceColor)
                         .padding(12.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FileIcon(
-                        file = file,
-                        size = 48.dp,
-                        tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
-                    )
+                    // Icon with fade + scale animation
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(tween(100)) + scaleIn(initialScale = 0.95f, animationSpec = tween(100)),
+                        exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.9f, animationSpec = tween(100))
+                    ) {
+                        FileIcon(
+                            file = file,
+                            size = 48.dp,
+                            tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
+                        )
+                    }
                     Text(
                         text = file.name,
                         maxLines = 2,

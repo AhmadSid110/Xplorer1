@@ -2,7 +2,9 @@ package com.droidexplorer.websim.ui.settings
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,14 +17,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.storage.StorageInfo
 import com.droidexplorer.websim.ui.formatFileSize
+import com.droidexplorer.websim.ui.theme.backgroundGradient
 import kotlin.math.min
 
 /**
@@ -57,18 +62,24 @@ fun StorageScreen(
     val progressColor =
         MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
 
-    Column(
+    // Dynamic gradient background
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .background(backgroundGradient())
     ) {
-        Text(
-            text = "Storage",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Storage",
+                style = MaterialTheme.typography.titleLarge
+            )
 
-        Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
         // ─────────────────────────────
         // STORAGE RING (Hero)
@@ -160,9 +171,10 @@ fun StorageScreen(
             }
         }
 
-        categories.forEach { category ->
-            CategoryItem(category, info.total)
-            Spacer(Modifier.height(10.dp))
+            categories.forEach { category ->
+                CategoryItem(category, info.total)
+                Spacer(Modifier.height(10.dp))
+            }
         }
     }
 }
@@ -199,9 +211,11 @@ private fun CategoryItem(
     )
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.25f),
         tonalElevation = 0.dp
     ) {
         Column(Modifier.padding(12.dp)) {

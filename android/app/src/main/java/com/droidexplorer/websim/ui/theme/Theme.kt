@@ -6,6 +6,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -76,3 +78,25 @@ fun XplorerTheme(
 }
 
 val Typography = Typography()
+
+/**
+ * Dynamic gradient background brush that adapts to dark/light theme
+ */
+@Composable
+fun backgroundGradient(darkTheme: Boolean = isSystemInDarkTheme()): Brush {
+    return if (darkTheme) {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFF121212),
+                Color(0xFF1F1F1F)
+            )
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFFFBFDF8),
+                Color(0xFFE8EAE6)
+            )
+        )
+    }
+}

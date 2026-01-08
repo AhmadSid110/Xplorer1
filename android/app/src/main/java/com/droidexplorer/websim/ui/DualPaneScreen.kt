@@ -1,6 +1,10 @@
 package com.droidexplorer.websim.ui
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -15,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,8 @@ import com.droidexplorer.websim.ui.viewer.TextViewerScreen
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.viewer.ZipViewerScreen
 import com.droidexplorer.websim.ui.glass.GlassSurface
+import com.droidexplorer.websim.ui.theme.backgroundGradient
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import java.io.File
 
@@ -118,7 +125,8 @@ fun DualPaneScreen(
                 topBar = {
                     GlassSurface(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 0.dp
+                        cornerRadius = 0.dp,
+                        enableBlur = false
                     ) {
                         TopAppBar(
                             colors = TopAppBarDefaults.topAppBarColors(
@@ -217,60 +225,73 @@ fun DualPaneScreen(
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) }
             ) { paddingValues ->
-                Row(
+                // Dynamic gradient background
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(backgroundGradient())
                 ) {
-                    // Left pane (always visible)
-                    FileListPane(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.surface),
-                        paneState = leftPaneState,
-                        fileOperator = fileOperator,
-                        safPermissionManager = safManager,
-                        settings = settings,
-                        searchQuery = searchQuery,
-                        searchResult = searchResult,
-                        permissionRefresh = permissionRefresh,
-                        onSearchQueryChange = onSearchQueryChange,
-                        onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
-                        onRequestSafAccess = onRequestSafAccess,
-                        onRequestFocus = { activePane = leftPaneState },
-                        isActive = activePane == leftPaneState,
-                        sortType = sortType,
-                         sortOrder = sortOrder,
-                         showDivider = paneMode == PaneMode.DUAL,
-                        onOpenViewer = { viewer = it }
-                    )
-                    
-                    // Right pane (only in dual mode)
-                    if (paneMode == PaneMode.DUAL) {
-                        FileListPane(
+                    // Animated content transition for folder navigation
+                    AnimatedContent(
+                        targetState = activePane.path,
+                        transitionSpec = {
+                            fadeIn() togetherWith fadeOut()
+                        },
+                        label = "folderNavigation"
+                    ) { currentPath ->
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            paneState = rightPaneState,
-                            fileOperator = fileOperator,
-                            safPermissionManager = safManager,
-                            settings = settings,
-                            searchQuery = searchQuery,
-                            searchResult = searchResult,
-                            permissionRefresh = permissionRefresh,
-                            onSearchQueryChange = onSearchQueryChange,
-                            onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
-                            onRequestSafAccess = onRequestSafAccess,
-                            onRequestFocus = { activePane = rightPaneState },
-                            isActive = activePane == rightPaneState,
-                            sortType = sortType,
-                             sortOrder = sortOrder,
-                             showDivider = false,
-                            onOpenViewer = { viewer = it }
-                        )
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                        ) {
+                            // Left pane (always visible)
+                            FileListPane(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                paneState = leftPaneState,
+                                fileOperator = fileOperator,
+                                safPermissionManager = safManager,
+                                settings = settings,
+                                searchQuery = searchQuery,
+                                searchResult = searchResult,
+                                permissionRefresh = permissionRefresh,
+                                onSearchQueryChange = onSearchQueryChange,
+                                onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                                onRequestSafAccess = onRequestSafAccess,
+                                onRequestFocus = { activePane = leftPaneState },
+                                isActive = activePane == leftPaneState,
+                                sortType = sortType,
+                                sortOrder = sortOrder,
+                                showDivider = paneMode == PaneMode.DUAL,
+                                onOpenViewer = { viewer = it }
+                            )
+                            
+                            // Right pane (only in dual mode)
+                            if (paneMode == PaneMode.DUAL) {
+                                FileListPane(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    paneState = rightPaneState,
+                                    fileOperator = fileOperator,
+                                    safPermissionManager = safManager,
+                                    settings = settings,
+                                    searchQuery = searchQuery,
+                                    searchResult = searchResult,
+                                    permissionRefresh = permissionRefresh,
+                                    onSearchQueryChange = onSearchQueryChange,
+                                    onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                                    onRequestSafAccess = onRequestSafAccess,
+                                    onRequestFocus = { activePane = rightPaneState },
+                                    isActive = activePane == rightPaneState,
+                                    sortType = sortType,
+                                    sortOrder = sortOrder,
+                                    showDivider = false,
+                                    onOpenViewer = { viewer = it }
+                                )
+                            }
+                        }
                     }
                 }
             }
