@@ -40,9 +40,11 @@ import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
+import com.droidexplorer.websim.storage.TorBoxStore
 import com.droidexplorer.websim.ui.DualPaneScreen
 import com.droidexplorer.websim.ui.ExplorerViewModel
 import com.droidexplorer.websim.ui.ExplorerViewModelFactory
+import com.droidexplorer.websim.ui.dialogs.TorBoxSetupDialog
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
@@ -54,13 +56,15 @@ class MainActivity : ComponentActivity() {
     private val safStore by lazy { DataStoreSafStore(applicationContext) }
     private val safPermissionManager by lazy { SafPermissionManager(applicationContext, safStore) }
     private val searchEngine by lazy { SearchEngine(FileSearcher(applicationContext)) }
+    private val torBoxStore by lazy { TorBoxStore(applicationContext) }
 
     private val viewModel: ExplorerViewModel by viewModels {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
             searchEngine,
-            contentResolver
+            contentResolver,
+            torBoxStore
         )
     }
 
@@ -101,6 +105,9 @@ class MainActivity : ComponentActivity() {
 
                         is UiEvent.RequestAllFilesAccess ->
                             requestAllFilesAccess()
+
+                        is UiEvent.ShowTorBoxSetup ->
+                            showTorBoxSetup = true
                     }
                 }
             }
@@ -115,6 +122,7 @@ class MainActivity : ComponentActivity() {
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
+            var showTorBoxSetup by rememberSaveable { mutableStateOf(false) }
 
             val storageInfoProvider = remember { StorageInfoProvider() }
             val storageInfo = remember(showStorage) {
@@ -214,6 +222,20 @@ class MainActivity : ComponentActivity() {
                     PermissionScreen(
                         showRationale = showPermissionRationale,
                         onRequestPermission = { checkAndRequestPermissions() }
+                    )
+                }
+                
+                // TorBox Setup Dialog
+                if (showTorBoxSetup) {
+                    TorBoxSetupDialog(
+                        onSave = { apiKey ->
+                            showTorBoxSetup = false
+                            viewModel.onTorBoxSetupSave(apiKey)
+                        },
+                        onCancel = {
+                            showTorBoxSetup = false
+                            viewModel.onTorBoxSetupCancel()
+                        }
                     )
                 }
             }

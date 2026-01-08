@@ -13,6 +13,7 @@ import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.storage.TorBoxStore
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageCategoryData
 import kotlinx.coroutines.channels.Channel
@@ -24,7 +25,8 @@ class ExplorerViewModel(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
     private val searchEngine: SearchEngine,
-    private val contentResolver: ContentResolver
+    private val contentResolver: ContentResolver,
+    private val torBoxStore: TorBoxStore
 ) : ViewModel() {
 
     // ─────────────────────────────────────────────
@@ -159,7 +161,27 @@ class ExplorerViewModel(
     }
 
     fun setTorBoxEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setTorBoxEnabled(enabled) }
+        viewModelScope.launch {
+            if (enabled && torBoxStore.getApiKey() == null) {
+                // Prompt for API key setup
+                _uiEvents.send(UiEvent.ShowTorBoxSetup)
+            } else {
+                settingsRepository.setTorBoxEnabled(enabled)
+            }
+        }
+    }
+
+    fun onTorBoxSetupSave(apiKey: String) {
+        torBoxStore.saveApiKey(apiKey)
+        viewModelScope.launch {
+            settingsRepository.setTorBoxEnabled(true)
+        }
+    }
+
+    fun onTorBoxSetupCancel() {
+        viewModelScope.launch {
+            settingsRepository.setTorBoxEnabled(false)
+        }
     }
 
     fun requestAllFilesAccess() {
@@ -190,7 +212,8 @@ class ExplorerViewModelFactory(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
     private val searchEngine: SearchEngine,
-    private val contentResolver: ContentResolver
+    private val contentResolver: ContentResolver,
+    private val torBoxStore: TorBoxStore
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExplorerViewModel::class.java)) {
@@ -199,7 +222,8 @@ class ExplorerViewModelFactory(
                 settingsRepository,
                 safPermissionManager,
                 searchEngine,
-                contentResolver
+                contentResolver,
+                torBoxStore
             ) as T
         }
         error("Unknown ViewModel class")

@@ -66,6 +66,9 @@ dependencies {
     // EXIF
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+    // Security - Encrypted Storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // ─────────────────────────────────────────────
     // ✅ REQUIRED EXPLICIT DEPENDENCIES (DO NOT REMOVE)
     // Fixes GitHub Actions Maven 403 failures
