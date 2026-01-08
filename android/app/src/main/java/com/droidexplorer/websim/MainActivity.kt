@@ -38,6 +38,7 @@ import com.droidexplorer.websim.search.SearchEngine
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.storage.DataStoreSafStore
+import com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
 import com.droidexplorer.websim.ui.DualPaneScreen
@@ -121,6 +122,14 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
+            val storageAnalyzer = remember { 
+                MediaStoreStorageAnalyzer(contentResolver) 
+            }
+            val categoryData = remember(showStorage) {
+                if (showStorage) storageAnalyzer.analyze()
+                else null
+            }
+
             XplorerTheme {
                 if (hasStoragePermission) {
                     if (showSettings) {
@@ -143,7 +152,10 @@ class MainActivity : ComponentActivity() {
                                                 contentDescription = "Back"
                                             )
                                         }
-                                    }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+                                    )
                                 )
                             }
                         ) { padding ->
@@ -157,6 +169,7 @@ class MainActivity : ComponentActivity() {
                                 if (isShowingStorage) {
                                     StorageScreen(
                                         info = storageInfo,
+                                        categoryData = categoryData,
                                         modifier = Modifier.padding(padding)
                                     )
                                 } else {

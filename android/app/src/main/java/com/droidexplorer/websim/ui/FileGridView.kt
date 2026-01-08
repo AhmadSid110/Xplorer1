@@ -82,7 +82,7 @@ fun FileGridView(
                 targetValue = if (selected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 } else {
-                    Color.Transparent
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
                 },
                 animationSpec = tween(durationMillis = 120),
                 label = "gridItemSelection"
@@ -102,7 +102,7 @@ fun FileGridView(
                     ),
                 tonalElevation = 0.dp,
                 shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                color = Color.Transparent
             ) {
                 Column(
                     modifier = Modifier
