@@ -1,14 +1,8 @@
 package com.droidexplorer.websim.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -102,17 +96,10 @@ fun FileRow(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon with fade + scale animation
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn(tween(100)) + scaleIn(initialScale = 0.95f, animationSpec = tween(100)),
-                exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.9f, animationSpec = tween(100))
-            ) {
-                FileIcon(
-                    file = file,
-                    size = iconSize
-                )
-            }
+            FileIcon(
+                file = file,
+                size = iconSize
+            )
             
             Spacer(modifier = Modifier.width(12.dp))
             
@@ -144,18 +131,12 @@ fun FileRow(
 
             if (requiresPermission) {
                 Spacer(modifier = Modifier.width(8.dp))
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(tween(100)) + scaleIn(initialScale = 0.95f, animationSpec = tween(100)),
-                    exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.9f, animationSpec = tween(100))
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Lock,
-                        contentDescription = "Permission required",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(iconSize)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = "Permission required",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(iconSize)
+                )
             }
         }
     }

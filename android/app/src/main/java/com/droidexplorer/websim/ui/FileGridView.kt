@@ -1,14 +1,8 @@
 package com.droidexplorer.websim.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -129,18 +123,11 @@ fun FileGridView(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Icon with fade + scale animation
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(tween(100)) + scaleIn(initialScale = 0.95f, animationSpec = tween(100)),
-                        exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.9f, animationSpec = tween(100))
-                    ) {
-                        FileIcon(
-                            file = file,
-                            size = 48.dp,
-                            tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
-                        )
-                    }
+                    FileIcon(
+                        file = file,
+                        size = 48.dp,
+                        tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
+                    )
                     Text(
                         text = file.name,
                         maxLines = 2,
