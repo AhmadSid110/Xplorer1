@@ -3,21 +3,10 @@ package com.droidexplorer.websim.ui.settings
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,11 +30,9 @@ fun StorageScreen(
     info: StorageInfo,
     modifier: Modifier = Modifier
 ) {
-    val progress = if (info.total > 0) {
-        (info.used.toFloat() / info.total.toFloat()).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val progress =
+        if (info.total > 0) (info.used.toFloat() / info.total.toFloat()).coerceIn(0f, 1f)
+        else 0f
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -53,16 +40,26 @@ fun StorageScreen(
         label = "storageProgress"
     )
 
+    // ✅ MUST be outside Canvas
+    val progressColor =
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("Storage", style = MaterialTheme.typography.titleLarge)
+        Text(
+            text = "Storage",
+            style = MaterialTheme.typography.titleLarge
+        )
+
         Spacer(Modifier.height(24.dp))
 
-        // Storage Hero Ring
+        // ─────────────────────────────
+        // STORAGE RING (Hero)
+        // ─────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -72,45 +69,39 @@ fun StorageScreen(
             Canvas(modifier = Modifier.size(200.dp)) {
                 val strokeWidth = 24.dp.toPx()
                 val diameter = min(size.width, size.height)
-                val radius = (diameter - strokeWidth) / 2
+                val arcSize = Size(diameter - strokeWidth, diameter - strokeWidth)
                 val topLeft = Offset(
-                    (size.width - diameter + strokeWidth) / 2,
-                    (size.height - diameter + strokeWidth) / 2
+                    (size.width - arcSize.width) / 2,
+                    (size.height - arcSize.height) / 2
                 )
 
-                // Background arc
+                // Background
                 drawArc(
-                    color = Color.Gray.copy(alpha = 0.2f),
+                    color = Color.Gray.copy(alpha = 0.18f),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
                     topLeft = topLeft,
-                    size = Size(diameter - strokeWidth, diameter - strokeWidth),
+                    size = arcSize,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
 
-                // Progress arc - using Material theme colors
-                val progressColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                // Progress
                 drawArc(
                     color = progressColor,
                     startAngle = -90f,
                     sweepAngle = animatedProgress * 360f,
                     useCenter = false,
                     topLeft = topLeft,
-                    size = Size(diameter - strokeWidth, diameter - strokeWidth),
+                    size = arcSize,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
             }
 
-            // Center text
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = formatFileSize(info.used),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.headlineSmall
                 )
                 Text(
                     text = "of ${formatFileSize(info.total)}",
@@ -122,37 +113,39 @@ fun StorageScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        // Category visualization
         Text(
-            "Estimated categories",
+            text = "Estimated categories",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
         Spacer(Modifier.height(12.dp))
 
-        // Placeholder data for categories - these are estimates only
-        // In production, these would be calculated from actual file system data
-        // Colors are specified per requirements for visual consistency
+        // ─────────────────────────────
+        // PHASE-1 PLACEHOLDER CATEGORIES
+        // (Phase-2 will replace data source)
+        // ─────────────────────────────
         val categories = remember {
             listOf(
-                StorageCategory("Images", 0.25f, Color(0xFF2196F3).copy(alpha = 0.7f)), // Blue
-                StorageCategory("Videos", 0.20f, Color(0xFF9C27B0).copy(alpha = 0.7f)), // Purple
-                StorageCategory("Audio", 0.15f, Color(0xFF009688).copy(alpha = 0.7f)), // Teal
-                StorageCategory("Apps", 0.18f, Color(0xFFFF9800).copy(alpha = 0.7f)), // Orange
-                StorageCategory("Archives", 0.12f, Color(0xFF757575).copy(alpha = 0.7f)), // Gray
-                StorageCategory("Other", 0.10f, Color(0xFF607D8B).copy(alpha = 0.7f)) // SurfaceTint-like
+                StorageCategory("Images", 0.25f, Color(0xFF2196F3)),
+                StorageCategory("Videos", 0.20f, Color(0xFF9C27B0)),
+                StorageCategory("Audio", 0.15f, Color(0xFF009688)),
+                StorageCategory("Apps", 0.18f, Color(0xFFFF9800)),
+                StorageCategory("Archives", 0.12f, Color(0xFF757575)),
+                StorageCategory("Other", 0.10f, Color(0xFF607D8B))
             )
         }
 
         categories.forEach { category ->
-            CategoryItem(
-                category = category,
-                totalBytes = info.total
-            )
-            Spacer(Modifier.height(8.dp))
+            CategoryItem(category, info.total)
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
+
+// ─────────────────────────────
+// MODELS
+// ─────────────────────────────
 
 data class StorageCategory(
     val name: String,
@@ -160,31 +153,32 @@ data class StorageCategory(
     val color: Color
 )
 
+// ─────────────────────────────
+// CATEGORY ROW
+// ─────────────────────────────
+
 @Composable
 private fun CategoryItem(
     category: StorageCategory,
     totalBytes: Long
 ) {
-    val animatedWidth by animateFloatAsState(
+    val animatedFraction by animateFloatAsState(
         targetValue = category.percentage,
-        animationSpec = tween(durationMillis = 600),
-        label = "categoryProgress"
+        animationSpec = tween(600),
+        label = "categoryBar"
     )
-    
+
     val estimatedSize = (totalBytes * category.percentage).toLong()
 
     Surface(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth()
+        color = MaterialTheme.colorScheme.surfaceVariant
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
+        Column(Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = category.name,
@@ -196,34 +190,28 @@ private fun CategoryItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             Spacer(Modifier.height(8.dp))
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
             ) {
-                // Background bar
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
+                    modifier = Modifier.fillMaxSize(),
                     shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 ) {}
-                
-                // Progress bar
+
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth(animatedWidth)
-                        .height(8.dp),
+                        .fillMaxWidth(animatedFraction)
+                        .fillMaxHeight(),
                     shape = RoundedCornerShape(4.dp),
-                    color = category.color
+                    color = category.color.copy(alpha = 0.85f)
                 ) {}
             }
         }
     }
 }
-
-private fun StorageInfo.usedReadable() = formatFileSize(used)
-private fun StorageInfo.freeReadable() = formatFileSize(free)
-private fun StorageInfo.totalReadable() = formatFileSize(total)
