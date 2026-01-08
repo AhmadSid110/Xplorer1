@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.droidexplorer.websim.search.FileSearcher
@@ -60,8 +59,7 @@ class MainActivity : ComponentActivity() {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
-            searchEngine,
-            contentResolver
+            searchEngine
         )
     }
 
@@ -71,9 +69,7 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             hasStoragePermission = permissions.all { it.value }
-            if (!hasStoragePermission) {
-                showPermissionRationale = true
-            }
+            if (!hasStoragePermission) showPermissionRationale = true
         }
 
     private val safLauncher =
@@ -114,7 +110,7 @@ class MainActivity : ComponentActivity() {
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
-            val storageCategoryData by viewModel.storageCategoryData.collectAsStateWithLifecycle()
+            val storageCategoryData by viewModel.storageCategoryData.collectAsState()
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
@@ -124,7 +120,6 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
-            // Refresh storage data when storage screen is shown
             LaunchedEffect(showStorage) {
                 if (showStorage) {
                     viewModel.refreshStorageData()
@@ -134,6 +129,7 @@ class MainActivity : ComponentActivity() {
             XplorerTheme {
                 if (hasStoragePermission) {
                     if (showSettings) {
+
                         BackHandler {
                             if (showStorage) showStorage = false
                             else showSettings = false
@@ -155,19 +151,22 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     colors = TopAppBarDefaults.topAppBarColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+                                        containerColor =
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
                                     )
                                 )
                             }
                         ) { padding ->
+
                             AnimatedContent(
                                 targetState = showStorage,
                                 transitionSpec = {
                                     fadeIn(tween(120)) togetherWith fadeOut(tween(120))
                                 },
-                                label = "settingsStorageTransition"
-                            ) { isShowingStorage ->
-                                if (isShowingStorage) {
+                                label = "settings-storage"
+                            ) { isStorage ->
+
+                                if (isStorage) {
                                     StorageScreen(
                                         info = storageInfo,
                                         categoryData = storageCategoryData,
@@ -208,7 +207,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🔥 CRITICAL: THIS FIXES YOUR ISSUE
     override fun onResume() {
         super.onResume()
         viewModel.onAllFilesAccessChanged()
