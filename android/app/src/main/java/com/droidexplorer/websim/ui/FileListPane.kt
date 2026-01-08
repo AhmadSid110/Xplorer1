@@ -599,13 +599,18 @@ fun FileListPane(
                     file = file,
                     onDismiss = { showContextMenu = false },
                     onDownload = { torBoxFile ->
-                        // Open browser to download
-                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(torBoxFile.downloadUrl))
-                        try {
-                            context.startActivity(intent)
-                            snackbarMessage = "Opening browser for download..."
-                        } catch (e: ActivityNotFoundException) {
-                            snackbarMessage = "No browser found to download file"
+                        // Validate URL is HTTPS before opening
+                        val url = torBoxFile.downloadUrl
+                        if (url.startsWith("https://", ignoreCase = true)) {
+                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            try {
+                                context.startActivity(intent)
+                                snackbarMessage = "Opening browser for download..."
+                            } catch (e: ActivityNotFoundException) {
+                                snackbarMessage = "No browser found to download file"
+                            }
+                        } else {
+                            snackbarMessage = "Invalid download URL - must use HTTPS"
                         }
                     }
                 )

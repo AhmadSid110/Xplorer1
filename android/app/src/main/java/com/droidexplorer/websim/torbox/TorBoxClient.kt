@@ -1,5 +1,7 @@
 package com.droidexplorer.websim.torbox
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -37,25 +39,27 @@ class TorBoxClient(private val apiKey: String) {
      * @return List of files, or empty list on error
      */
     suspend fun listFiles(): List<TorBoxFile> {
-        return try {
-            val request = Request.Builder()
-                .url("$API_BASE_URL/torrents/mylist")
-                .addHeader("Authorization", "Bearer $apiKey")
-                .get()
-                .build()
-            
-            val response = client.newCall(request).execute()
-            
-            if (!response.isSuccessful) {
-                return emptyList()
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("$API_BASE_URL/torrents/mylist")
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .get()
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                
+                if (!response.isSuccessful) {
+                    return@withContext emptyList()
+                }
+                
+                val body = response.body?.string() ?: return@withContext emptyList()
+                parseFiles(body)
+            } catch (e: IOException) {
+                emptyList()
+            } catch (e: Exception) {
+                emptyList()
             }
-            
-            val body = response.body?.string() ?: return emptyList()
-            parseFiles(body)
-        } catch (e: IOException) {
-            emptyList()
-        } catch (e: Exception) {
-            emptyList()
         }
     }
     

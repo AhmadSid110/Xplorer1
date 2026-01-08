@@ -120,7 +120,7 @@ fun FileRow(
                     if (file is FsNode.TorBox) {
                         Icon(
                             imageVector = Icons.Outlined.Lock,
-                            contentDescription = "Read-only",
+                            contentDescription = "Remote file - read only",
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                             modifier = Modifier.size(14.dp)
                         )
