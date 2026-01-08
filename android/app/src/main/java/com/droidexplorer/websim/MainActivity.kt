@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.droidexplorer.websim.search.FileSearcher
@@ -113,7 +114,7 @@ class MainActivity : ComponentActivity() {
             val searchQuery by viewModel.searchQuery.collectAsState()
             val searchResult by viewModel.searchResults.collectAsState()
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
-            val storageCategoryData by viewModel.storageCategoryData.collectAsState()
+            val storageCategoryData by viewModel.storageCategoryData.collectAsStateWithLifecycle()
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
