@@ -238,7 +238,7 @@ fun DualPaneScreen(
                             fadeIn() togetherWith fadeOut()
                         },
                         label = "folderNavigation"
-                    ) {
+                    ) { _ ->
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()

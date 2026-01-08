@@ -7,20 +7,36 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Glass theme colors for translucent surfaces
+ * 
+ * These are raw color constants used for creating glass-like effects.
+ * Use GlassThemeColors extension for theme-aware glass colors.
  */
 object GlassColors {
+    /** Light glass overlay - for use on dark backgrounds */
     val LightGlass = Color.White.copy(alpha = 0.08f)
+    
+    /** Dark glass overlay - for use on light backgrounds */
     val DarkGlass = Color.Black.copy(alpha = 0.12f)
     
+    /** Light glass surface - for use on dark backgrounds */
     val LightGlassSurface = Color.White.copy(alpha = 0.25f)
+    
+    /** Dark glass surface - for use on light backgrounds */
     val DarkGlassSurface = Color.Black.copy(alpha = 0.25f)
     
+    /** Light divider - for use on dark backgrounds */
     val LightDivider = Color.Black.copy(alpha = 0.15f)
+    
+    /** Dark divider - for use on light backgrounds */
     val DarkDivider = Color.White.copy(alpha = 0.15f)
 }
 
 /**
  * Glass theme extension for MaterialTheme
+ * 
+ * Provides theme-aware glass colors that automatically adapt based on
+ * the current MaterialTheme color scheme. Use this for components that
+ * need to adapt to the current theme.
  */
 val MaterialTheme.glassColors: GlassThemeColors
     @Composable
@@ -30,6 +46,12 @@ val MaterialTheme.glassColors: GlassThemeColors
         glassDivider = colorScheme.outline.copy(alpha = 0.15f)
     )
 
+/**
+ * Theme-aware glass colors
+ * 
+ * @param glassSurface Glass surface color derived from theme's surface color
+ * @param glassDivider Glass divider color derived from theme's outline color
+ */
 data class GlassThemeColors(
     val glassSurface: Color,
     val glassDivider: Color
