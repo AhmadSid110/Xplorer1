@@ -543,12 +543,12 @@ fun FileListPane(
                 }
             }
             
-            // Vertical divider for dual pane
+            // Vertical divider for dual pane - frosted glass style
             if (showDivider) {
                 VerticalDivider(
                     modifier = Modifier.fillMaxHeight(),
                     thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                 )
             }
         }

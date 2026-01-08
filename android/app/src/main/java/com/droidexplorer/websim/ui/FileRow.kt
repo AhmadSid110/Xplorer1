@@ -1,7 +1,8 @@
 package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -56,13 +58,17 @@ fun FileRow(
     val sizeText = remember(file.uniqueKey) { formatFileSize(file.size()) }
     val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
     
+    // Animated background with spring animation for smoother transitions
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.25f)
         },
-        animationSpec = tween(durationMillis = 120),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "fileRowSelection"
     )
     val iconSize = 18.dp
@@ -70,14 +76,15 @@ fun FileRow(
     Surface(
         modifier = modifier
             .fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.Transparent,
         tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
                 .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(backgroundColor)
                 .combinedClickable(
                     onClick = onClick,
