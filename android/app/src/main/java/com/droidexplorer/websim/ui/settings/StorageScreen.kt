@@ -127,14 +127,15 @@ fun StorageScreen(info: StorageInfo) {
 
         // Placeholder data for categories - these are estimates only
         // In production, these would be calculated from actual file system data
+        // Colors are specified per requirements for visual consistency
         val categories = remember {
             listOf(
-                StorageCategory("Images", 0.25f, Color(0xFF2196F3).copy(alpha = 0.7f)),
-                StorageCategory("Videos", 0.20f, Color(0xFF9C27B0).copy(alpha = 0.7f)),
-                StorageCategory("Audio", 0.15f, Color(0xFF009688).copy(alpha = 0.7f)),
-                StorageCategory("Apps", 0.18f, Color(0xFFFF9800).copy(alpha = 0.7f)),
-                StorageCategory("Archives", 0.12f, Color(0xFF757575).copy(alpha = 0.7f)),
-                StorageCategory("Other", 0.10f, Color(0xFF607D8B).copy(alpha = 0.7f))
+                StorageCategory("Images", 0.25f, Color(0xFF2196F3).copy(alpha = 0.7f)), // Blue
+                StorageCategory("Videos", 0.20f, Color(0xFF9C27B0).copy(alpha = 0.7f)), // Purple
+                StorageCategory("Audio", 0.15f, Color(0xFF009688).copy(alpha = 0.7f)), // Teal
+                StorageCategory("Apps", 0.18f, Color(0xFFFF9800).copy(alpha = 0.7f)), // Orange
+                StorageCategory("Archives", 0.12f, Color(0xFF757575).copy(alpha = 0.7f)), // Gray
+                StorageCategory("Other", 0.10f, Color(0xFF607D8B).copy(alpha = 0.7f)) // SurfaceTint-like
             )
         }
 
