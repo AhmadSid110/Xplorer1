@@ -4,11 +4,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,9 +33,15 @@ fun SettingsScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("View", style = MaterialTheme.typography.titleMedium)
+        // View Section
+        Text(
+            "View", 
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
 
         ViewMode.values().forEach { mode ->
             RadioButtonRow(
@@ -44,7 +51,15 @@ fun SettingsScreen(
             )
         }
 
-        Divider()
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Visibility Section
+        Text(
+            "Visibility", 
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
 
         SwitchRow(
             text = "Show hidden files",
@@ -58,21 +73,41 @@ fun SettingsScreen(
             onCheckedChange = onToggleSafSearch
         )
 
-        Divider()
+        Spacer(modifier = Modifier.height(12.dp))
 
-        ListItem(
-            headlineContent = { Text("Enable full storage access") },
-            supportingContent = { Text("Grant access to all file types (PDF, ZIP, APK, etc.)") },
-            modifier = Modifier.clickable { onRequestAllFilesAccess() }
+        // Storage Section
+        Text(
+            "Storage", 
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(4.dp))
 
-        Divider()
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ListItem(
+                headlineContent = { Text("Enable full storage access") },
+                supportingContent = { Text("Grant access to all file types (PDF, ZIP, APK, etc.)") },
+                modifier = Modifier.clickable { onRequestAllFilesAccess() }
+            )
+        }
 
-        ListItem(
-            headlineContent = { Text("Storage") },
-            supportingContent = { Text("View storage usage") },
-            modifier = Modifier.clickable { onOpenStorage() }
-        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ListItem(
+                headlineContent = { Text("Storage usage") },
+                supportingContent = { Text("View storage breakdown") },
+                modifier = Modifier.clickable { onOpenStorage() }
+            )
+        }
     }
 }
 

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -37,7 +36,7 @@ fun RestrictedFolderMenu(
             modifier = Modifier.padding(16.dp)
         )
 
-        Divider()
+        Spacer(modifier = Modifier.padding(top = 8.dp))
 
         ListItem(
             headlineContent = { Text("Grant access") },
@@ -86,7 +85,7 @@ fun RestrictedFolderItem(
             Icon(
                 imageVector = Icons.Outlined.Lock,
                 contentDescription = "Restricted",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         },

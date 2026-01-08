@@ -1,6 +1,7 @@
 package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -83,6 +84,7 @@ fun FileGridView(
                 } else {
                     Color.Transparent
                 },
+                animationSpec = tween(durationMillis = 120),
                 label = "gridItemSelection"
             )
 
@@ -98,9 +100,9 @@ fun FileGridView(
                             onLongClick(file)
                         }
                     ),
-                tonalElevation = if (selected) 1.dp else 0.dp,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
+                tonalElevation = 0.dp,
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Column(
                     modifier = Modifier
@@ -119,7 +121,7 @@ fun FileGridView(
                         text = file.name,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     if (permissionNeeded) {
                         Text(
