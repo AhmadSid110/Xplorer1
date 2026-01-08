@@ -81,7 +81,7 @@ object FileManager {
                 
                 // Debug logging to verify file enumeration
                 if (files != null && files.isNotEmpty()) {
-                    val fileList = files.take(10).joinToString(", ") { "${it.name} (${it.extension})" }
+                    val fileList = files.take(10).joinToString(", ") { it.name }
                     val more = if (files.size > 10) " and ${files.size - 10} more" else ""
                     Log.d("FILE_ENUM", "Listed ${files.size} files in $path (hasAllFilesAccess=${hasAllFilesAccess()}): $fileList$more")
                 }
