@@ -5,8 +5,10 @@ package com.droidexplorer.websim
 import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -90,6 +92,9 @@ class MainActivity : ComponentActivity() {
                         is UiEvent.RequestSafAccess -> {
                             safLauncher.launch(event.initialUri)
                         }
+                        is UiEvent.RequestAllFilesAccess -> {
+                            requestAllFilesAccess()
+                        }
                     }
                 }
             }
@@ -148,6 +153,7 @@ class MainActivity : ComponentActivity() {
                                     onViewModeChange = viewModel::setViewMode,
                                     onToggleHidden = viewModel::setShowHidden,
                                     onToggleSafSearch = viewModel::onToggleSafSearch,
+                                    onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                                     onOpenStorage = { showStorage = true },
                                     modifier = Modifier.padding(paddingValues)
                                 )
@@ -200,6 +206,16 @@ class MainActivity : ComponentActivity() {
         
         if (!hasStoragePermission) {
             permissionLauncher.launch(permissions)
+        }
+    }
+    
+    private fun requestAllFilesAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
         }
     }
 }

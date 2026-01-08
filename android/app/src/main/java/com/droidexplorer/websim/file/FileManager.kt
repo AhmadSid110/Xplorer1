@@ -2,10 +2,12 @@ package com.droidexplorer.websim.file
 
 import android.content.Context
 import android.os.Environment
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.droidexplorer.websim.data.ClipboardItem
 import com.droidexplorer.websim.data.ClipboardOperation
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.storage.hasAllFilesAccess
 import java.io.File
 
 enum class SortType { NAME, SIZE, DATE }
@@ -69,7 +71,26 @@ object FileManager {
                     FsNode.Saf(child, childPath)
                 } ?: emptyList()
             } else {
-                root.listFiles()?.map { FsNode.Local(it) } ?: emptyList()
+                // Use conditional file listing based on permission state
+                val files = if (hasAllFilesAccess()) {
+                    // FULL, UNFILTERED access - returns ALL file types
+                    root.listFiles()
+                } else {
+                    // LIMITED mode - falls back to SAF or returns limited files
+                    root.listFiles() // Will be filtered by Android in scoped mode
+                }
+                
+                val result = files?.map { FsNode.Local(it) } ?: emptyList()
+                
+                // Debug logging to verify file enumeration
+                if (files != null) {
+                    Log.d("FILE_ENUM", "Listed ${files.size} files in $path (hasAllFilesAccess=${hasAllFilesAccess()})")
+                    files.forEach { file ->
+                        Log.d("FILE_ENUM", "  ${file.name} (${file.extension})")
+                    }
+                }
+                
+                result
             }
             sortFiles(nodes.filterHidden(showHidden), sortType, sortOrder)
         } catch (e: SafRequired) {
