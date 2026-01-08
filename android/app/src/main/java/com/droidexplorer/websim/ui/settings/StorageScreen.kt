@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,7 +37,10 @@ import com.droidexplorer.websim.ui.formatFileSize
 import kotlin.math.min
 
 @Composable
-fun StorageScreen(info: StorageInfo) {
+fun StorageScreen(
+    info: StorageInfo,
+    modifier: Modifier = Modifier
+) {
     val progress = if (info.total > 0) {
         (info.used.toFloat() / info.total.toFloat()).coerceIn(0f, 1f)
     } else {
@@ -50,7 +54,8 @@ fun StorageScreen(info: StorageInfo) {
     )
 
     Column(
-        modifier = Modifier
+        modifier = modifier
+            .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
