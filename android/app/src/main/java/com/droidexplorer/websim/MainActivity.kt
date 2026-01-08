@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
-            searchEngine
+            searchEngine,
+            contentResolver
         )
     }
 
@@ -120,9 +121,20 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
+            // Analyze storage categories when storage screen is shown
             LaunchedEffect(showStorage) {
                 if (showStorage) {
-                    viewModel.refreshStorageData()
+                    val analyzer = com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer(contentResolver)
+                    val analyzerData = analyzer.analyze()
+                    // Convert to UI data class and update ViewModel
+                    val categoryData = com.droidexplorer.websim.ui.settings.StorageCategoryData(
+                        images = analyzerData.images,
+                        videos = analyzerData.videos,
+                        audio = analyzerData.audio,
+                        apks = analyzerData.apks,
+                        archives = analyzerData.archives
+                    )
+                    viewModel.updateStorageData(categoryData)
                 }
             }
 

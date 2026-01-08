@@ -12,7 +12,6 @@ import com.droidexplorer.websim.search.SearchRoot
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
-import com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageCategoryData
@@ -77,20 +76,8 @@ class ExplorerViewModel(
     private val _storageCategoryData = MutableStateFlow<StorageCategoryData?>(null)
     val storageCategoryData: StateFlow<StorageCategoryData?> = _storageCategoryData.asStateFlow()
 
-    private val storageAnalyzer = MediaStoreStorageAnalyzer(contentResolver)
-
-    fun refreshStorageData() {
-        viewModelScope.launch {
-            val analyzerData = storageAnalyzer.analyze()
-            // Convert MediaStoreStorageAnalyzer data to UI data class
-            _storageCategoryData.value = StorageCategoryData(
-                images = analyzerData.images,
-                videos = analyzerData.videos,
-                audio = analyzerData.audio,
-                apks = analyzerData.apks,
-                archives = analyzerData.archives
-            )
-        }
+    fun updateStorageData(data: StorageCategoryData?) {
+        _storageCategoryData.value = data
     }
 
     private var pendingPermissionPath: String? = null
