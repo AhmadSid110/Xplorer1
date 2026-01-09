@@ -71,6 +71,7 @@ private val GridCellMinSize = 140.dp
 fun FileListPane(
     modifier: Modifier,
     paneState: PaneState,
+    currentPath: String,
     fileOperator: FileOperator,
     safPermissionManager: SafPermissionManager,
     settings: SettingsState,
@@ -126,13 +127,14 @@ fun FileListPane(
     // Load files
     val files by produceState<List<FsNode>>(
         initialValue = emptyList(),
+        currentPath,
         paneState.path,
         permissionRefresh,
         torBoxClient
     ) {
         value = withContext(Dispatchers.IO) {
 
-            val isTorBox = paneState.path.startsWith("torbox")
+            val isTorBox = currentPath == "torbox:"
 
             if (isTorBox) {
                 Log.e("TORBOX_UI", "Listing TorBox files, path=${paneState.path}")
@@ -158,13 +160,13 @@ fun FileListPane(
 
             // ❌ LOCAL FILES ONLY IF NOT TORBOX
             FileManager.list(
-                paneState.path,
-                sortType,
-                sortOrder,
-                settings.showHiddenFiles,
-                safPermissionManager,
-                context
-            )
+            currentPath,
+            sortType,
+            sortOrder,
+            settings.showHiddenFiles,
+            safPermissionManager,
+            context
+           )
         }
     }
 
