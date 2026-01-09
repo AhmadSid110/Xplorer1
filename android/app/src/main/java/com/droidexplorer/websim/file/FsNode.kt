@@ -36,10 +36,10 @@ sealed class FsNode {
      * Read-only, no local File or SAF operations allowed.
      */
     data class TorBox(
-        val id: String,
+        val id: Long,
         override val name: String,
         override val size: Long?,
-        val downloadUrl: String
+        val absolutePath: String
     ) : FsNode() {
         override val isDirectory: Boolean = false
         override val uniqueKey: String = "torbox:$id"

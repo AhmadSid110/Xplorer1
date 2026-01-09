@@ -1,7 +1,7 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()   // Kotlin + compiler artifacts
         google()
+        gradlePluginPortal()
         mavenCentral()
     }
     plugins {
@@ -14,21 +14,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
 
     repositories {
-
-        // 🔒 Kotlin compiler & stdlib
-        exclusiveContent {
-            forRepository {
-                gradlePluginPortal()
-            }
-            filter {
-                includeGroup("org.jetbrains.kotlin")
-            }
-        }
-
-        // Android / Jetpack
         google()
-
-        // KotlinX, Coil, Coroutines, everything else
         mavenCentral()
     }
 }
