@@ -169,7 +169,7 @@ fun DualPaneScreen(
                                     // TorBox button (only visible when enabled)
                                     if (settings.torBoxEnabled) {
                                         IconButton(
-                                            onClick = { activePane.navigateToPath("torbox://") }
+                                            onClick = { activePane.navigateToPath("torbox:") }
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Filled.Cloud,

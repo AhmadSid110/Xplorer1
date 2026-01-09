@@ -4,6 +4,7 @@ package com.droidexplorer.websim.ui
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -134,18 +135,26 @@ fun FileListPane(
         value = withContext(Dispatchers.IO) {
             if (searchQuery.isBlank()) {
                 // Check if this is a TorBox path
-                if (paneState.path.startsWith("torbox://") && torBoxClient != null) {
-                    try {
-                        torBoxClient.listFiles().map { torBoxFile ->
-                            FsNode.TorBox(
-                                id = torBoxFile.id,
-                                name = torBoxFile.name,
-                                size = torBoxFile.size,
-                                downloadUrl = torBoxFile.downloadUrl
-                            )
-                        }
-                    } catch (e: Exception) {
+                val isTorBox = paneState.path.startsWith("torbox:")
+                if (isTorBox) {
+                    Log.d("TORBOX", "TorBox path detected: ${paneState.path}")
+                    if (torBoxClient == null) {
+                        Log.e("TORBOX", "TorBoxClient is NULL (API key missing)")
                         emptyList()
+                    } else {
+                        try {
+                            torBoxClient.listFiles().map { torBoxFile ->
+                                FsNode.TorBox(
+                                    id = torBoxFile.id,
+                                    name = torBoxFile.name,
+                                    size = torBoxFile.size,
+                                    downloadUrl = torBoxFile.downloadUrl
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("TORBOX", "Error loading TorBox files", e)
+                            emptyList()
+                        }
                     }
                 } else {
                     FileManager.list(

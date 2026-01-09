@@ -47,13 +47,18 @@ class TorBoxClient(private val apiKey: String) {
     suspend fun listFiles(): List<TorBoxFile> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "listFiles() called")
+                Log.d(TAG, "API key length=${apiKey.length}")
+                
                 val request = Request.Builder()
                     .url("$API_BASE_URL/torrents/mylist")
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("X-API-Key", apiKey)
                     .get()
                     .build()
 
                 val response = client.newCall(request).execute()
+                
+                Log.d(TAG, "HTTP ${response.code}")
 
                 if (!response.isSuccessful) {
                     Log.e(TAG, "HTTP error: ${response.code}")
@@ -66,7 +71,7 @@ class TorBoxClient(private val apiKey: String) {
                     return@withContext emptyList()
                 }
 
-                Log.d(TAG, "RAW RESPONSE: $body")
+                Log.d(TAG, "BODY=${body.take(2000)}")
 
                 parseFiles(body)
             } catch (e: IOException) {
