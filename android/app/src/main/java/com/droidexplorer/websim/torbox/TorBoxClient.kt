@@ -168,7 +168,7 @@ class TorBoxClient(private val apiKey: String) {
 
             val body = response.body?.string() ?: return@withContext null
             val json = JSONObject(body)
-            val link = json.optString("data", null)
+            val link = json.optString("data").takeIf { it.isNotBlank() }
             
             Log.d(TAG, "Share link retrieved: ${link?.take(50)}")
             link
