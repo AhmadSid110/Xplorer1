@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -95,7 +94,7 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
-        // UI events (lifecycle safe)
+        // Lifecycle-safe UI events
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiEvents.collect { event ->
@@ -119,7 +118,6 @@ class MainActivity : ComponentActivity() {
             val searchResult by viewModel.searchResults.collectAsState()
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
             val storageCategoryData by viewModel.storageCategoryData.collectAsState()
-
             val showTorBoxSetup by showTorBoxSetupFlow.collectAsState()
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -130,7 +128,7 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
-            // Storage analysis (Play-safe)
+            // Storage analyzer (Play Store safe)
             LaunchedEffect(showStorage) {
                 if (showStorage) {
                     val analyzer = MediaStoreStorageAnalyzer(contentResolver)
@@ -147,10 +145,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 🔒 CRITICAL FIX: TorBoxClient created ONCE and remembered
-            val torBoxClient: TorBoxClient? = remember {
-                torBoxStore.getApiKey()?.let { TorBoxClient(it) }
-            }
+            /**
+             * ✅ CRITICAL FIX
+             * TorBoxClient MUST be recreated when TorBox is enabled
+             */
+            val torBoxClient: TorBoxClient? =
+                remember(settingsState.torBoxEnabled) {
+                    if (settingsState.torBoxEnabled) {
+                        torBoxStore.getApiKey()?.let { TorBoxClient(it) }
+                    } else null
+                }
 
             XplorerTheme {
                 if (hasStoragePermission) {
