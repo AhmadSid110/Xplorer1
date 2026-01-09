@@ -58,11 +58,7 @@ fun FsNode.asFile(): File = when (this) {
     is FsNode.TorBox -> error("TorBox files have no local File representation")
 }
 
-fun FsNode.size(): Long = size ?: when (this) {
-    is FsNode.Local -> file.length()
-    is FsNode.Saf -> document.length()
-    is FsNode.TorBox -> 0L
-}
+fun FsNode.size(): Long = size ?: 0L
 
 fun FsNode.lastModified(): Long = when (this) {
     is FsNode.Local -> file.lastModified()
