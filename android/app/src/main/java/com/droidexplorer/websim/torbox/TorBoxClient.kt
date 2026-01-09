@@ -13,7 +13,7 @@ import java.io.IOException
  * Represents a single downloadable file.
  */
 data class TorBoxFile(
-    val id: String,               // ✅ STRING (CRITICAL)
+    val id: String,          // STRING (API returns numeric but we treat as string)
     val name: String,
     val size: Long,
     val absolutePath: String
@@ -24,7 +24,7 @@ data class TorBoxFile(
  *
  * ✔ Correct endpoint
  * ✔ Correct auth (Bearer)
- * ✔ Correct JSON structure
+ * ✔ Correct JSON structure (data.files[])
  * ✔ String IDs everywhere
  * ✔ Play Store safe
  */
@@ -40,8 +40,6 @@ class TorBoxClient(private val apiKey: String) {
 
     /**
      * Fetches all files from TorBox.
-     *
-     * @return list of TorBoxFile (empty only on real failure)
      */
     suspend fun listFiles(): List<TorBoxFile> {
         return withContext(Dispatchers.IO) {
@@ -83,21 +81,19 @@ class TorBoxClient(private val apiKey: String) {
     }
 
     /**
-     * Parses REAL TorBox response:
+     * ✅ CORRECT PARSER
+     *
+     * REAL TorBox response (CONFIRMED):
      *
      * {
      *   "success": true,
      *   "data": {
-     *     "torrents": [
+     *     "files": [
      *       {
-     *         "files": [
-     *           {
-     *             "id": 108,
-     *             "name": "file.mp4",
-     *             "size": 721727538,
-     *             "absolute_path": "/completed/..."
-     *           }
-     *         ]
+     *         "id": 78,
+     *         "name": "file.mp4",
+     *         "size": 723194829,
+     *         "absolute_path": "/completed/..."
      *       }
      *     ]
      *   }
@@ -107,32 +103,29 @@ class TorBoxClient(private val apiKey: String) {
         return try {
             val root = JSONObject(jsonString)
             val data = root.optJSONObject("data") ?: return emptyList()
-            val torrents = data.optJSONArray("torrents") ?: return emptyList()
+
+            // 🔥 THIS IS THE FIX — NO TORRENTS ARRAY
+            val filesArray = data.optJSONArray("files") ?: return emptyList()
 
             val files = mutableListOf<TorBoxFile>()
 
-            for (i in 0 until torrents.length()) {
-                val torrent = torrents.optJSONObject(i) ?: continue
-                val fileArray = torrent.optJSONArray("files") ?: continue
+            for (i in 0 until filesArray.length()) {
+                val f = filesArray.optJSONObject(i) ?: continue
 
-                for (j in 0 until fileArray.length()) {
-                    val f = fileArray.optJSONObject(j) ?: continue
+                val id = f.optString("id")
+                val name = f.optString("name")
+                val size = f.optLong("size", 0L)
+                val absolutePath = f.optString("absolute_path")
 
-                    val id = f.optString("id")          // ✅ STRING
-                    val name = f.optString("name")
-                    val size = f.optLong("size", 0L)
-                    val absolutePath = f.optString("absolute_path")
-
-                    if (id.isNotBlank() && name.isNotBlank()) {
-                        files.add(
-                            TorBoxFile(
-                                id = id,
-                                name = name,
-                                size = size,
-                                absolutePath = absolutePath
-                            )
+                if (id.isNotBlank() && name.isNotBlank()) {
+                    files.add(
+                        TorBoxFile(
+                            id = id,
+                            name = name,
+                            size = size,
+                            absolutePath = absolutePath
                         )
-                    }
+                    )
                 }
             }
 
@@ -147,9 +140,6 @@ class TorBoxClient(private val apiKey: String) {
 
     /**
      * Fetches temporary HTTPS share/download link for a file.
-     *
-     * @param fileId TorBox file ID (STRING)
-     * @return HTTPS URL or null
      */
     suspend fun getShareLink(fileId: String): String? =
         withContext(Dispatchers.IO) {
@@ -170,10 +160,7 @@ class TorBoxClient(private val apiKey: String) {
 
                 val body = response.body?.string() ?: return@withContext null
                 val json = JSONObject(body)
-                val link = json.optString("data").takeIf { it.isNotBlank() }
-
-                Log.d(TAG, "Share link OK")
-                link
+                json.optString("data").takeIf { it.isNotBlank() }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting share link", e)
