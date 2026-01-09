@@ -6,7 +6,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import java.io.IOException
 
 data class TorBoxFile(
     val id: String,
@@ -21,74 +20,58 @@ class TorBoxClient(private val apiKey: String) {
 
     companion object {
         private const val TAG = "TORBOX"
-        // 🔥 THIS IS THE CRITICAL FIX
-        private const val BASE_URL = "https://api.torbox.app/v1/api"
+        private const val API_BASE =
+            "https://api.torbox.app/v1/api/torrents/mylist"
     }
 
-    suspend fun listFiles(): List<TorBoxFile> {
-        return withContext(Dispatchers.IO) {
+    suspend fun listFiles(): List<TorBoxFile> =
+        withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "listFiles() called")
+                Log.d(TAG, "Calling TorBox API")
 
                 val request = Request.Builder()
-                    .url("$BASE_URL/torrents/mylist")
-                    // 🔥 CRITICAL: Bearer auth (NOT X-API-Key)
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .url(API_BASE)
+                    .addHeader("Authorization", "Bearer $apiKey") // ✅ REQUIRED
                     .get()
                     .build()
 
                 val response = client.newCall(request).execute()
                 Log.d(TAG, "HTTP ${response.code}")
 
-                if (!response.isSuccessful) {
-                    Log.e(TAG, "HTTP error ${response.code}")
-                    return@withContext emptyList()
-                }
+                if (!response.isSuccessful) return@withContext emptyList()
 
-                val body = response.body?.string().orEmpty()
-                Log.d(TAG, "BODY=${body.take(2000)}")
+                val body = response.body?.string() ?: return@withContext emptyList()
+                Log.d(TAG, "BODY=${body.take(1000)}")
 
                 parse(body)
-            } catch (e: IOException) {
-                Log.e(TAG, "Network error", e)
-                emptyList()
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error", e)
+                Log.e(TAG, "TorBox error", e)
                 emptyList()
             }
         }
-    }
 
     private fun parse(json: String): List<TorBoxFile> {
-        return try {
-            val root = JSONObject(json)
-            val data = root.optJSONObject("data") ?: return emptyList()
-            val torrents = data.optJSONArray("torrents") ?: return emptyList()
+        val root = JSONObject(json)
+        val data = root.getJSONObject("data")
+        val torrents = data.getJSONArray("torrents")
 
-            val out = mutableListOf<TorBoxFile>()
+        val out = mutableListOf<TorBoxFile>()
 
-            for (i in 0 until torrents.length()) {
-                val torrent = torrents.optJSONObject(i) ?: continue
-                val files = torrent.optJSONArray("files") ?: continue
+        for (i in 0 until torrents.length()) {
+            val torrent = torrents.getJSONObject(i)
+            val files = torrent.getJSONArray("files")
 
-                for (j in 0 until files.length()) {
-                    val f = files.optJSONObject(j) ?: continue
+            for (j in 0 until files.length()) {
+                val f = files.getJSONObject(j)
 
-                    val id = f.optString("id")
-                    val name = f.optString("name")
-                    val size = f.optLong("size", 0L)
-                    val url = f.optString("download_link")
-
-                    if (id.isNotBlank() && name.isNotBlank() && url.isNotBlank()) {
-                        out += TorBoxFile(id, name, size, url)
-                    }
-                }
+                out += TorBoxFile(
+                    id = f.getString("id"),
+                    name = f.getString("name"),
+                    size = f.optLong("size", 0),
+                    downloadUrl = f.getString("download_link")
+                )
             }
-
-            out
-        } catch (e: Exception) {
-            Log.e(TAG, "JSON parse error", e)
-            emptyList()
         }
+        return out
     }
 }
