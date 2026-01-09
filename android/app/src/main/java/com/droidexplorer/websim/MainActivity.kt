@@ -2,6 +2,7 @@
 
 package com.droidexplorer.websim
 
+import com.droidexplorer.websim.ui.PermissionScreen
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
