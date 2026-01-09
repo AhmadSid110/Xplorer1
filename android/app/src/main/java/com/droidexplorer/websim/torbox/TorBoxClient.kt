@@ -1,15 +1,16 @@
 package com.droidexplorer.websim.torbox
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
 /**
  * TorBox remote file data model.
+ * Read-only representation of a downloadable file.
  */
 data class TorBoxFile(
     val id: String,
@@ -20,23 +21,28 @@ data class TorBoxFile(
 
 /**
  * Read-only TorBox API client.
- * 
- * NO retries, NO polling, NO background work.
- * Returns empty list on any error.
+ *
+ * - NO retries
+ * - NO polling
+ * - NO background services
+ * - NO writes
+ *
+ * Safe for Play Store.
  */
 class TorBoxClient(private val apiKey: String) {
-    
-    private val client = OkHttpClient.Builder()
-        .build()
-    
+
+    private val client = OkHttpClient()
+
     companion object {
-        private const val API_BASE_URL = "https://api.torbox.app/v1/api"
+        // ✅ CORRECT BASE URL
+        private const val API_BASE_URL = "https://api.torbox.app/v1"
+        private const val TAG = "TORBOX"
     }
-    
+
     /**
-     * Lists all files from TorBox.
-     * 
-     * @return List of files, or empty list on error
+     * Lists all available TorBox files.
+     *
+     * @return list of TorBoxFile (empty on ANY failure)
      */
     suspend fun listFiles(): List<TorBoxFile> {
         return withContext(Dispatchers.IO) {
@@ -46,55 +52,79 @@ class TorBoxClient(private val apiKey: String) {
                     .addHeader("Authorization", "Bearer $apiKey")
                     .get()
                     .build()
-                
+
                 val response = client.newCall(request).execute()
-                
+
                 if (!response.isSuccessful) {
+                    Log.e(TAG, "HTTP error: ${response.code}")
                     return@withContext emptyList()
                 }
-                
-                val body = response.body?.string() ?: return@withContext emptyList()
+
+                val body = response.body?.string()
+                if (body.isNullOrBlank()) {
+                    Log.e(TAG, "Empty response body")
+                    return@withContext emptyList()
+                }
+
+                Log.d(TAG, "RAW RESPONSE: $body")
+
                 parseFiles(body)
             } catch (e: IOException) {
+                Log.e(TAG, "Network error", e)
                 emptyList()
             } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error", e)
                 emptyList()
             }
         }
     }
-    
+
     /**
-     * Safely parses JSON response into TorBoxFile list.
-     * Returns empty list on any parsing error.
+     * Parses TorBox API JSON safely.
+     *
+     * Expected format:
+     * {
+     *   "success": true,
+     *   "data": [
+     *     {
+     *       "id": "...",
+     *       "name": "...",
+     *       "size": 123,
+     *       "download_url": "https://..."
+     *     }
+     *   ]
+     * }
      */
     private fun parseFiles(jsonString: String): List<TorBoxFile> {
         return try {
-            val json = JSONObject(jsonString)
-            val data = json.optJSONObject("data") ?: return emptyList()
-            val torrents = data.optJSONArray("torrents") ?: return emptyList()
-            
+            val root = JSONObject(jsonString)
+            val dataArray = root.optJSONArray("data") ?: return emptyList()
+
             val files = mutableListOf<TorBoxFile>()
-            
-            for (i in 0 until torrents.length()) {
-                val torrent = torrents.optJSONObject(i) ?: continue
-                val torrentFiles = torrent.optJSONArray("files") ?: continue
-                
-                for (j in 0 until torrentFiles.length()) {
-                    val file = torrentFiles.optJSONObject(j) ?: continue
-                    
-                    val id = file.optString("id", "")
-                    val name = file.optString("name", "")
-                    val size = file.optLong("size", 0L)
-                    val downloadUrl = file.optString("download_link", "")
-                    
-                    if (id.isNotEmpty() && name.isNotEmpty() && downloadUrl.isNotEmpty()) {
-                        files.add(TorBoxFile(id, name, size, downloadUrl))
-                    }
+
+            for (i in 0 until dataArray.length()) {
+                val obj = dataArray.optJSONObject(i) ?: continue
+
+                val id = obj.optString("id")
+                val name = obj.optString("name")
+                val size = obj.optLong("size", 0L)
+                val downloadUrl = obj.optString("download_url")
+
+                if (id.isNotBlank() && name.isNotBlank() && downloadUrl.isNotBlank()) {
+                    files.add(
+                        TorBoxFile(
+                            id = id,
+                            name = name,
+                            size = size,
+                            downloadUrl = downloadUrl
+                        )
+                    )
                 }
             }
-            
+
             files
         } catch (e: Exception) {
+            Log.e(TAG, "JSON parse error", e)
             emptyList()
         }
     }
