@@ -246,7 +246,10 @@ fun FileListPane(
             file = file,
             openText = { onOpenViewer(Viewer.Text(it)) },
             openImage = { target ->
-                val images = files.filter { !it.isDirectory && it.asFile().isImage() }.map { it.asFile() }
+                val images = files
+                    .filter { !it.isDirectory && it !is FsNode.TorBox }
+                    .map { it.asFile() }
+                    .filter { it.isImage() }
                 val index = images.indexOfFirst { it.absolutePath == target.absolutePath }
                     .takeIf { it >= 0 } ?: 0
                 onOpenViewer(Viewer.Image(target, images, index))
@@ -409,6 +412,9 @@ fun FileListPane(
         }
 
         fun requiresPermission(node: FsNode): Boolean {
+            // TorBox is remote and never requires local filesystem permissions
+            if (node is FsNode.TorBox) return false
+            
             val file = node.asFile()
             if (!file.isDirectory) return false
             if (file.isDirectory && safPermissionManager.isPersisted(file)) return false
@@ -451,11 +457,21 @@ fun FileListPane(
                                             restrictedTarget = node
                                             return@FileRow
                                         }
-                                        if (node.isDirectory) {
-                                            paneState.navigateTo(node.path)
-                                            onSearchQueryChange("")
+                                        when (node) {
+                                            is FsNode.TorBox -> {
+                                                // TorBox files can't be opened directly
+                                                selectedFile = node
+                                                showContextMenu = true
+                                            }
+                                            else -> {
+                                                if (node.isDirectory) {
+                                                    paneState.navigateTo(node.path)
+                                                    onSearchQueryChange("")
+                                                } else {
+                                                    handleOpen(node.asFile())
+                                                }
+                                            }
                                         }
-                                        else handleOpen(node.asFile())
                                     },
                                     onLongClick = {
                                         if (requiresSaf) {
@@ -490,11 +506,22 @@ fun FileListPane(
                     onRequestFocus()
                     if (requiresPermission(node)) {
                         handleRestricted(node)
-                    } else if (node.isDirectory) {
-                        paneState.navigateTo(node.path)
-                        onSearchQueryChange("")
                     } else {
-                        handleOpen(node.asFile())
+                        when (node) {
+                            is FsNode.TorBox -> {
+                                // TorBox files can't be opened directly
+                                selectedFile = node
+                                showContextMenu = true
+                            }
+                            else -> {
+                                if (node.isDirectory) {
+                                    paneState.navigateTo(node.path)
+                                    onSearchQueryChange("")
+                                } else {
+                                    handleOpen(node.asFile())
+                                }
+                            }
+                        }
                     }
                 }
                 val handleItemLongClick: (FsNode) -> Unit = { node ->
@@ -687,7 +714,7 @@ fun FileListPane(
     }
 
     // Rename dialog
-    if (showRenameDialog && selectedFile != null) {
+    if (showRenameDialog && selectedFile != null && selectedFile !is FsNode.TorBox) {
         RenameDialog(
             file = selectedFile!!.asFile(),
             onDismiss = { showRenameDialog = false },
@@ -702,7 +729,7 @@ fun FileListPane(
     }
     
     // Delete confirmation dialog
-    if (showDeleteDialog && selectedFile != null) {
+    if (showDeleteDialog && selectedFile != null && selectedFile !is FsNode.TorBox) {
         DeleteConfirmDialog(
             file = selectedFile!!.asFile(),
             onDismiss = { showDeleteDialog = false },

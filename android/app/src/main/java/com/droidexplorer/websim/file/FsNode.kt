@@ -10,12 +10,14 @@ sealed class FsNode {
     abstract val isDirectory: Boolean
     abstract val uniqueKey: String
     abstract val path: String
+    abstract val size: Long?
 
     data class Local(val file: File) : FsNode() {
         override val name: String = file.name
         override val isDirectory: Boolean = file.isDirectory
         override val uniqueKey: String = file.absolutePath
         override val path: String = file.absolutePath
+        override val size: Long? = if (file.isFile) file.length() else null
     }
 
     data class Saf(
@@ -26,6 +28,7 @@ sealed class FsNode {
             ?: document.uri.lastPathSegment ?: UNKNOWN_NAME
         override val isDirectory: Boolean = document.isDirectory
         override val uniqueKey: String = document.uri.toString()
+        override val size: Long? = if (document.isFile) document.length() else null
     }
     
     /**
@@ -35,7 +38,7 @@ sealed class FsNode {
     data class TorBox(
         val id: String,
         override val name: String,
-        val size: Long,
+        override val size: Long?,
         val downloadUrl: String
     ) : FsNode() {
         override val isDirectory: Boolean = false
@@ -55,11 +58,7 @@ fun FsNode.asFile(): File = when (this) {
     is FsNode.TorBox -> error("TorBox files have no local File representation")
 }
 
-fun FsNode.size(): Long = when (this) {
-    is FsNode.Local -> file.length()
-    is FsNode.Saf -> document.length()
-    is FsNode.TorBox -> size
-}
+fun FsNode.size(): Long = size ?: 0L
 
 fun FsNode.lastModified(): Long = when (this) {
     is FsNode.Local -> file.lastModified()
