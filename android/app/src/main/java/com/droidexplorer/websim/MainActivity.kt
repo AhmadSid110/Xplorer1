@@ -2,7 +2,6 @@
 
 package com.droidexplorer.websim
 
-import com.droidexplorer.websim.ui.PermissionScreen
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -23,7 +22,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +37,7 @@ import com.droidexplorer.websim.search.SearchEngine
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
 import com.droidexplorer.websim.storage.*
+import com.droidexplorer.websim.torbox.TorBoxClient
 import com.droidexplorer.websim.ui.*
 import com.droidexplorer.websim.ui.dialogs.TorBoxSetupDialog
 import com.droidexplorer.websim.ui.events.UiEvent
@@ -65,7 +64,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // 🔒 Activity-owned UI state (lifecycle safe)
+    // Activity-owned UI state
     private val showTorBoxSetupFlow = MutableStateFlow(false)
 
     private var hasStoragePermission by mutableStateOf(false)
@@ -96,7 +95,7 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
-        // ✅ Lifecycle-safe event handling
+        // UI events (lifecycle safe)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiEvents.collect { event ->
@@ -131,7 +130,7 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
-            // Storage analyzer (Play Store safe)
+            // Storage analysis (Play-safe)
             LaunchedEffect(showStorage) {
                 if (showStorage) {
                     val analyzer = MediaStoreStorageAnalyzer(contentResolver)
@@ -146,6 +145,11 @@ class MainActivity : ComponentActivity() {
                         )
                     )
                 }
+            }
+
+            // 🔒 CRITICAL FIX: TorBoxClient created ONCE and remembered
+            val torBoxClient: TorBoxClient? = remember {
+                torBoxStore.getApiKey()?.let { TorBoxClient(it) }
             }
 
             XplorerTheme {
@@ -175,7 +179,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         ) { padding ->
-
                             AnimatedContent(
                                 targetState = showStorage,
                                 transitionSpec = {
@@ -204,15 +207,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
-
-                        val torBoxClient = remember(settingsState.torBoxEnabled) {
-                            if (settingsState.torBoxEnabled) {
-                                torBoxStore.getApiKey()?.let {
-                                    com.droidexplorer.websim.torbox.TorBoxClient(it)
-                                }
-                            } else null
-                        }
-
                         DualPaneScreen(
                             singlePane = false,
                             settings = settingsState,
@@ -232,7 +226,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                // ✅ TorBox setup dialog (correctly wired)
                 if (showTorBoxSetup) {
                     TorBoxSetupDialog(
                         onSave = { apiKey ->
