@@ -9,8 +9,13 @@ class TabState internal constructor(
     fun canGoBack() = navigator.canGoBack()
     fun canGoForward() = navigator.canGoForward()
 
-    fun navigateTo(newPath: String) = navigator.navigateTo(newPath)
-    fun navigateToPath(newPath: String) = navigator.navigateToPath(newPath)
+    fun navigateTo(newPath: String) =
+        navigator.navigateTo(newPath)
+
+    // ✅ FIX: delegate to navigateTo
+    fun navigateToPath(newPath: String) =
+        navigator.navigateTo(newPath)
+
     fun goBack() = navigator.goBack()
     fun goForward() = navigator.goForward()
 
@@ -21,14 +26,26 @@ class TabState internal constructor(
     )
 
     companion object {
-        fun create(startPath: String): TabState = TabState(PaneNavigator(startPath))
+        fun create(startPath: String): TabState =
+            TabState(PaneNavigator(startPath))
 
         fun fromSaved(data: Any?): TabState? {
             val map = data as? Map<*, *> ?: return null
             val current = map["current"] as? String ?: return null
-            val back = (map["back"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-            val forward = (map["forward"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-            return TabState(PaneNavigator(current, back, forward))
+            val back =
+                (map["back"] as? List<*>)?.mapNotNull { it as? String }
+                    ?: emptyList()
+            val forward =
+                (map["forward"] as? List<*>)?.mapNotNull { it as? String }
+                    ?: emptyList()
+
+            return TabState(
+                PaneNavigator(
+                    startPath = current,
+                    backStack = back,
+                    forwardStack = forward
+                )
+            )
         }
     }
 }
