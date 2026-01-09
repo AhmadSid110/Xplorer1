@@ -13,7 +13,7 @@ import java.io.IOException
  * Represents a single downloadable file.
  */
 data class TorBoxFile(
-    val id: Long,
+    val id: String,               // ✅ STRING (CRITICAL)
     val name: String,
     val size: Long,
     val absolutePath: String
@@ -23,8 +23,9 @@ data class TorBoxFile(
  * TorBox API client (READ-ONLY).
  *
  * ✔ Correct endpoint
- * ✔ Correct auth method
- * ✔ Correct JSON parsing
+ * ✔ Correct auth (Bearer)
+ * ✔ Correct JSON structure
+ * ✔ String IDs everywhere
  * ✔ Play Store safe
  */
 class TorBoxClient(private val apiKey: String) {
@@ -33,14 +34,14 @@ class TorBoxClient(private val apiKey: String) {
 
     companion object {
         private const val TAG = "TORBOX"
-        private const val API_URL =
+        private const val LIST_URL =
             "https://api.torbox.app/v1/api/torrents/mylist"
     }
 
     /**
      * Fetches all files from TorBox.
      *
-     * @return list of TorBoxFile (empty only if API truly returns no files)
+     * @return list of TorBoxFile (empty only on real failure)
      */
     suspend fun listFiles(): List<TorBoxFile> {
         return withContext(Dispatchers.IO) {
@@ -49,13 +50,12 @@ class TorBoxClient(private val apiKey: String) {
                 Log.d(TAG, "API key length=${apiKey.length}")
 
                 val request = Request.Builder()
-                    .url(API_URL)
+                    .url(LIST_URL)
                     .addHeader("Authorization", "Bearer $apiKey")
                     .get()
                     .build()
 
                 val response = client.newCall(request).execute()
-
                 Log.d(TAG, "HTTP ${response.code}")
 
                 if (!response.isSuccessful) {
@@ -70,8 +70,8 @@ class TorBoxClient(private val apiKey: String) {
                 }
 
                 Log.d(TAG, "BODY=${body.take(2000)}")
-
                 parseFiles(body)
+
             } catch (e: IOException) {
                 Log.e(TAG, "Network error", e)
                 emptyList()
@@ -117,12 +117,13 @@ class TorBoxClient(private val apiKey: String) {
 
                 for (j in 0 until fileArray.length()) {
                     val f = fileArray.optJSONObject(j) ?: continue
-                    val id = f.optLong("id", -1)
-                    val name = f.optString("name", "")
-                    val size = f.optLong("size", 0)
-                    val absolutePath = f.optString("absolute_path", "")
-                    
-                    if (id != -1L && name.isNotBlank()) {
+
+                    val id = f.optString("id")          // ✅ STRING
+                    val name = f.optString("name")
+                    val size = f.optLong("size", 0L)
+                    val absolutePath = f.optString("absolute_path")
+
+                    if (id.isNotBlank() && name.isNotBlank()) {
                         files.add(
                             TorBoxFile(
                                 id = id,
@@ -137,6 +138,7 @@ class TorBoxClient(private val apiKey: String) {
 
             Log.d(TAG, "Parsed ${files.size} files")
             files
+
         } catch (e: Exception) {
             Log.e(TAG, "JSON parse error", e)
             emptyList()
@@ -144,37 +146,38 @@ class TorBoxClient(private val apiKey: String) {
     }
 
     /**
-     * Fetches temporary HTTPS download link for a file.
-     * 
-     * @param fileId The file ID from TorBox
-     * @return HTTPS URL string, or null if failed
+     * Fetches temporary HTTPS share/download link for a file.
+     *
+     * @param fileId TorBox file ID (STRING)
+     * @return HTTPS URL or null
      */
-    suspend fun getShareLink(fileId: Long): String? = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("https://api.torbox.app/v1/api/files/$fileId/download")
-                .addHeader("Authorization", "Bearer $apiKey")
-                .get()
-                .build()
+    suspend fun getShareLink(fileId: String): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("https://api.torbox.app/v1/api/files/$fileId/download")
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .get()
+                    .build()
 
-            val response = client.newCall(request).execute()
-            
-            Log.d(TAG, "getShareLink HTTP ${response.code}")
-            
-            if (!response.isSuccessful) {
-                Log.e(TAG, "Failed to get share link: HTTP ${response.code}")
-                return@withContext null
+                val response = client.newCall(request).execute()
+                Log.d(TAG, "getShareLink HTTP ${response.code}")
+
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "Failed to get share link: HTTP ${response.code}")
+                    return@withContext null
+                }
+
+                val body = response.body?.string() ?: return@withContext null
+                val json = JSONObject(body)
+                val link = json.optString("data").takeIf { it.isNotBlank() }
+
+                Log.d(TAG, "Share link OK")
+                link
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting share link", e)
+                null
             }
-
-            val body = response.body?.string() ?: return@withContext null
-            val json = JSONObject(body)
-            val link = json.optString("data").takeIf { it.isNotBlank() }
-            
-            Log.d(TAG, "Share link retrieved: ${link?.take(50)}")
-            link
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting share link", e)
-            null
         }
-    }
 }
