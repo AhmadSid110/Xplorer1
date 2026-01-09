@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Sort
@@ -53,7 +54,8 @@ fun DualPaneScreen(
     permissionRefresh: Int,
     onSearchQueryChange: (String) -> Unit,
     onOpenSettings: () -> Unit = {},
-    onRequestSafAccess: (FsNode) -> Unit
+    onRequestSafAccess: (FsNode) -> Unit,
+    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -163,6 +165,19 @@ fun DualPaneScreen(
                                             contentDescription = "Forward"
                                         )
                                     }
+                                    
+                                    // TorBox button (only visible when enabled)
+                                    if (settings.torBoxEnabled) {
+                                        IconButton(
+                                            onClick = { activePane.navigateToPath("torbox://") }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Cloud,
+                                                contentDescription = "TorBox (Remote)",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
                                 }
                             },
                             actions = {
@@ -264,7 +279,8 @@ fun DualPaneScreen(
                                 sortType = sortType,
                                 sortOrder = sortOrder,
                                 showDivider = paneMode == PaneMode.DUAL,
-                                onOpenViewer = { viewer = it }
+                                onOpenViewer = { viewer = it },
+                                torBoxClient = torBoxClient
                             )
                             
                             // Right pane (only in dual mode)
@@ -288,7 +304,8 @@ fun DualPaneScreen(
                                     sortType = sortType,
                                     sortOrder = sortOrder,
                                     showDivider = false,
-                                    onOpenViewer = { viewer = it }
+                                    onOpenViewer = { viewer = it },
+                                    torBoxClient = torBoxClient
                                 )
                             }
                         }

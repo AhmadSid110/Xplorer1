@@ -13,6 +13,7 @@ import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.storage.TorBoxStore
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageCategoryData
 import kotlinx.coroutines.channels.Channel
@@ -24,7 +25,8 @@ class ExplorerViewModel(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
     private val searchEngine: SearchEngine,
-    private val contentResolver: ContentResolver
+    private val contentResolver: ContentResolver,
+    private val torBoxStore: TorBoxStore
 ) : ViewModel() {
 
     // ─────────────────────────────────────────────
@@ -40,7 +42,7 @@ class ExplorerViewModel(
     // ─────────────────────────────────────────────
     // UI events (one-shot)
     // ─────────────────────────────────────────────
-    private val _uiEvents = Channel<UiEvent>(capacity = Channel.BUFFERED)
+    private val _uiEvents = Channel<UiEvent>(Channel.BUFFERED)
     val uiEvents = _uiEvents.receiveAsFlow()
 
     // ─────────────────────────────────────────────
@@ -74,7 +76,8 @@ class ExplorerViewModel(
     // Storage category data
     // ─────────────────────────────────────────────
     private val _storageCategoryData = MutableStateFlow<StorageCategoryData?>(null)
-    val storageCategoryData: StateFlow<StorageCategoryData?> = _storageCategoryData.asStateFlow()
+    val storageCategoryData: StateFlow<StorageCategoryData?> =
+        _storageCategoryData.asStateFlow()
 
     fun updateStorageData(data: StorageCategoryData?) {
         _storageCategoryData.value = data
@@ -97,20 +100,37 @@ class ExplorerViewModel(
         }
     }
 
+    /**
+     * ❗ FIXED: TorBox explicitly handled
+     */
     fun requestSafAccessFor(folder: FsNode) {
-        if (!folder.isDirectory) return
+        when (folder) {
 
-        viewModelScope.launch {
-            val path = folder.path
-            if (safPermissionManager.isPersisted(File(path))) return@launch
+            is FsNode.Local,
+            is FsNode.Saf -> {
+                if (!folder.isDirectory) return
 
-            pendingPermissionPath = path
-            val initialUri = when (folder) {
-                is FsNode.Saf -> folder.document.uri
-                is FsNode.Local -> safPermissionManager.findStoredUri(path)
+                viewModelScope.launch {
+                    val path = folder.path
+                    if (safPermissionManager.isPersisted(File(path))) return@launch
+
+                    pendingPermissionPath = path
+
+                    val initialUri = when (folder) {
+                        is FsNode.Saf -> folder.document.uri
+                        is FsNode.Local -> safPermissionManager.findStoredUri(path)
+                        else -> null // unreachable
+                    }
+
+                    _uiEvents.send(UiEvent.RequestSafAccess(initialUri))
+                }
             }
 
-            _uiEvents.send(UiEvent.RequestSafAccess(initialUri))
+            is FsNode.TorBox -> {
+                // 🚫 TorBox is remote + read-only
+                // No SAF, no filesystem permissions
+                return
+            }
         }
     }
 
@@ -137,7 +157,7 @@ class ExplorerViewModel(
     }
 
     // ─────────────────────────────────────────────
-    // ❗ CRITICAL FIX: ALL FILES ACCESS CHANGE
+    // ALL FILES ACCESS
     // ─────────────────────────────────────────────
     fun onAllFilesAccessChanged() {
         _permissionRefresh.value++
@@ -158,6 +178,32 @@ class ExplorerViewModel(
         viewModelScope.launch { settingsRepository.setShowHidden(enabled) }
     }
 
+    // ─────────────────────────────────────────────
+    // TorBox
+    // ─────────────────────────────────────────────
+    fun setTorBoxEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled && torBoxStore.getApiKey() == null) {
+                _uiEvents.send(UiEvent.ShowTorBoxSetup)
+            } else {
+                settingsRepository.setTorBoxEnabled(enabled)
+            }
+        }
+    }
+
+    fun onTorBoxSetupSave(apiKey: String) {
+        torBoxStore.saveApiKey(apiKey)
+        viewModelScope.launch {
+            settingsRepository.setTorBoxEnabled(true)
+        }
+    }
+
+    fun onTorBoxSetupCancel() {
+        viewModelScope.launch {
+            settingsRepository.setTorBoxEnabled(false)
+        }
+    }
+
     fun requestAllFilesAccess() {
         viewModelScope.launch {
             _uiEvents.send(UiEvent.RequestAllFilesAccess)
@@ -172,7 +218,8 @@ class ExplorerViewModel(
         roots += SearchRoot.Local("/storage/emulated/0")
 
         if (settings.searchIncludeSaf) {
-            safPermissionManager.getPersistedRootIds()
+            safPermissionManager
+                .getPersistedRootIds()
                 .forEach { roots += SearchRoot.Saf(it) }
         }
         return roots
@@ -186,8 +233,10 @@ class ExplorerViewModelFactory(
     private val settingsRepository: SettingsRepository,
     private val safPermissionManager: SafPermissionManager,
     private val searchEngine: SearchEngine,
-    private val contentResolver: ContentResolver
+    private val contentResolver: ContentResolver,
+    private val torBoxStore: TorBoxStore
 ) : ViewModelProvider.Factory {
+
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExplorerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
@@ -195,7 +244,8 @@ class ExplorerViewModelFactory(
                 settingsRepository,
                 safPermissionManager,
                 searchEngine,
-                contentResolver
+                contentResolver,
+                torBoxStore
             ) as T
         }
         error("Unknown ViewModel class")

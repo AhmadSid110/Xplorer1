@@ -2,6 +2,7 @@
 
 package com.droidexplorer.websim
 
+import com.droidexplorer.websim.ui.PermissionScreen
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -37,15 +38,13 @@ import com.droidexplorer.websim.search.FileSearcher
 import com.droidexplorer.websim.search.SearchEngine
 import com.droidexplorer.websim.settings.SettingsRepository
 import com.droidexplorer.websim.settings.SettingsScreen
-import com.droidexplorer.websim.storage.DataStoreSafStore
-import com.droidexplorer.websim.storage.SafPermissionManager
-import com.droidexplorer.websim.storage.StorageInfoProvider
-import com.droidexplorer.websim.ui.DualPaneScreen
-import com.droidexplorer.websim.ui.ExplorerViewModel
-import com.droidexplorer.websim.ui.ExplorerViewModelFactory
+import com.droidexplorer.websim.storage.*
+import com.droidexplorer.websim.ui.*
+import com.droidexplorer.websim.ui.dialogs.TorBoxSetupDialog
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -54,15 +53,20 @@ class MainActivity : ComponentActivity() {
     private val safStore by lazy { DataStoreSafStore(applicationContext) }
     private val safPermissionManager by lazy { SafPermissionManager(applicationContext, safStore) }
     private val searchEngine by lazy { SearchEngine(FileSearcher(applicationContext)) }
+    private val torBoxStore by lazy { TorBoxStore(applicationContext) }
 
     private val viewModel: ExplorerViewModel by viewModels {
         ExplorerViewModelFactory(
             settingsRepository,
             safPermissionManager,
             searchEngine,
-            contentResolver
+            contentResolver,
+            torBoxStore
         )
     }
+
+    // 🔒 Activity-owned UI state (lifecycle safe)
+    private val showTorBoxSetupFlow = MutableStateFlow(false)
 
     private var hasStoragePermission by mutableStateOf(false)
     private var showPermissionRationale by mutableStateOf(false)
@@ -92,6 +96,7 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
+        // ✅ Lifecycle-safe event handling
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiEvents.collect { event ->
@@ -101,6 +106,9 @@ class MainActivity : ComponentActivity() {
 
                         is UiEvent.RequestAllFilesAccess ->
                             requestAllFilesAccess()
+
+                        is UiEvent.ShowTorBoxSetup ->
+                            showTorBoxSetupFlow.value = true
                     }
                 }
             }
@@ -113,6 +121,8 @@ class MainActivity : ComponentActivity() {
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
             val storageCategoryData by viewModel.storageCategoryData.collectAsState()
 
+            val showTorBoxSetup by showTorBoxSetupFlow.collectAsState()
+
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
 
@@ -121,20 +131,20 @@ class MainActivity : ComponentActivity() {
                 storageInfoProvider.internalStorage()
             }
 
-            // Analyze storage categories when storage screen is shown
+            // Storage analyzer (Play Store safe)
             LaunchedEffect(showStorage) {
                 if (showStorage) {
-                    val analyzer = com.droidexplorer.websim.storage.MediaStoreStorageAnalyzer(contentResolver)
-                    val analyzerData = analyzer.analyze()
-                    // Convert to UI data class and update ViewModel
-                    val categoryData = com.droidexplorer.websim.ui.settings.StorageCategoryData(
-                        images = analyzerData.images,
-                        videos = analyzerData.videos,
-                        audio = analyzerData.audio,
-                        apks = analyzerData.apks,
-                        archives = analyzerData.archives
+                    val analyzer = MediaStoreStorageAnalyzer(contentResolver)
+                    val data = analyzer.analyze()
+                    viewModel.updateStorageData(
+                        com.droidexplorer.websim.ui.settings.StorageCategoryData(
+                            images = data.images,
+                            videos = data.videos,
+                            audio = data.audio,
+                            apks = data.apks,
+                            archives = data.archives
+                        )
                     )
-                    viewModel.updateStorageData(categoryData)
                 }
             }
 
@@ -161,11 +171,7 @@ class MainActivity : ComponentActivity() {
                                                 contentDescription = "Back"
                                             )
                                         }
-                                    },
-                                    colors = TopAppBarDefaults.topAppBarColors(
-                                        containerColor =
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
-                                    )
+                                    }
                                 )
                             }
                         ) { padding ->
@@ -177,7 +183,6 @@ class MainActivity : ComponentActivity() {
                                 },
                                 label = "settings-storage"
                             ) { isStorage ->
-
                                 if (isStorage) {
                                     StorageScreen(
                                         info = storageInfo,
@@ -190,6 +195,7 @@ class MainActivity : ComponentActivity() {
                                         onViewModeChange = viewModel::setViewMode,
                                         onToggleHidden = viewModel::setShowHidden,
                                         onToggleSafSearch = viewModel::onToggleSafSearch,
+                                        onToggleTorBox = viewModel::setTorBoxEnabled,
                                         onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                                         onOpenStorage = { showStorage = true },
                                         modifier = Modifier.padding(padding)
@@ -198,6 +204,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
+
+                        val torBoxClient = remember(settingsState.torBoxEnabled) {
+                            if (settingsState.torBoxEnabled) {
+                                torBoxStore.getApiKey()?.let {
+                                    com.droidexplorer.websim.torbox.TorBoxClient(it)
+                                }
+                            } else null
+                        }
+
                         DualPaneScreen(
                             singlePane = false,
                             settings = settingsState,
@@ -206,13 +221,28 @@ class MainActivity : ComponentActivity() {
                             permissionRefresh = permissionRefresh,
                             onSearchQueryChange = viewModel::updateSearchQuery,
                             onOpenSettings = { showSettings = true },
-                            onRequestSafAccess = viewModel::requestSafAccessFor
+                            onRequestSafAccess = viewModel::requestSafAccessFor,
+                            torBoxClient = torBoxClient
                         )
                     }
                 } else {
                     PermissionScreen(
                         showRationale = showPermissionRationale,
                         onRequestPermission = { checkAndRequestPermissions() }
+                    )
+                }
+
+                // ✅ TorBox setup dialog (correctly wired)
+                if (showTorBoxSetup) {
+                    TorBoxSetupDialog(
+                        onSave = { apiKey ->
+                            showTorBoxSetupFlow.value = false
+                            viewModel.onTorBoxSetupSave(apiKey)
+                        },
+                        onCancel = {
+                            showTorBoxSetupFlow.value = false
+                            viewModel.onTorBoxSetupCancel()
+                        }
                     )
                 }
             }
@@ -258,54 +288,6 @@ class MainActivity : ComponentActivity() {
                     Uri.parse("package:$packageName")
                 )
             )
-        }
-    }
-}
-
-@Composable
-fun PermissionScreen(
-    showRationale: Boolean,
-    onRequestPermission: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier.padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Folder,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Text(
-                "Storage Permission Required",
-                style = MaterialTheme.typography.headlineSmall
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text =
-                    if (showRationale)
-                        "Xplorer needs storage access to browse and manage your files."
-                    else
-                        "Grant storage permission to continue.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Button(onClick = onRequestPermission) {
-                Text("Grant Permission")
-            }
         }
     }
 }

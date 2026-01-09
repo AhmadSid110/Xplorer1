@@ -8,4 +8,6 @@ sealed interface UiEvent {
     ) : UiEvent
     
     data object RequestAllFilesAccess : UiEvent
+    
+    data object ShowTorBoxSetup : UiEvent
 }

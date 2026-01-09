@@ -104,16 +104,43 @@ fun FileRow(
             Spacer(modifier = Modifier.width(12.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = file.name,
-                    style = if (file.isDirectory) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = file.name,
+                        style = if (file.isDirectory) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = if (file is FsNode.TorBox) 0.7f else 1f
+                        )
+                    )
+                    if (file is FsNode.TorBox) {
+                        Icon(
+                            imageVector = Icons.Outlined.Lock,
+                            contentDescription = "Remote file - read only",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (file is FsNode.TorBox) {
+                        Text(
+                            text = "Remote (read-only)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (!file.isDirectory) {
                         Text(
                             text = sizeText,
@@ -121,11 +148,13 @@ fun FileRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (file !is FsNode.TorBox) {
+                        Text(
+                            text = dateText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
