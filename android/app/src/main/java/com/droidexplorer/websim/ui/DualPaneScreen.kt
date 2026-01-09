@@ -14,14 +14,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.droidexplorer.websim.file.*
+import com.droidexplorer.websim.file.FileOperator
+import com.droidexplorer.websim.file.SortOrder
+import com.droidexplorer.websim.file.SortType
+import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
+import com.droidexplorer.websim.ui.viewer.*
 import com.droidexplorer.websim.ui.glass.GlassSurface
 import com.droidexplorer.websim.ui.theme.backgroundGradient
-import com.droidexplorer.websim.ui.viewer.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,58 +66,36 @@ fun DualPaneScreen(
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
 
-    /* ─────────────────────────────────────────────
-     * VIEWER HANDLING (✅ FIXED)
-     * ───────────────────────────────────────────── */
-
     when (val v = viewer) {
 
+        /* ✅ IMAGE VIEWER — CORRECT SIGNATURE */
         is Viewer.Image -> {
+            val next = v.items.getOrNull(v.index + 1)
+            val previous = v.items.getOrNull(v.index - 1)
+
             ImageViewerScreen(
                 file = v.file,
-                items = v.items,
-                startIndex = v.index,
-                onClose = { viewer = null }
-            )
-        }
-
-        is Viewer.Pdf -> {
-            PdfViewerScreen(
-                file = v.file,
-                onClose = { viewer = null }
-            )
-        }
-
-        is Viewer.Text -> {
-            TextViewerScreen(
-                file = v.file,
                 onClose = { viewer = null },
-                showLineNumbers = v.showLineNumbers
+                onNext = next?.let {
+                    { viewer = v.copy(file = it, index = v.index + 1) }
+                },
+                onPrevious = previous?.let {
+                    { viewer = v.copy(file = it, index = v.index - 1) }
+                }
             )
         }
 
-        is Viewer.Code -> {
-            CodeViewerScreen(
-                file = v.file,
-                language = v.language,
-                onClose = { viewer = null }
-            )
-        }
-
-        is Viewer.Zip -> {
-            ZipViewerScreen(
-                file = v.file,
-                onClose = { viewer = null }
-            )
-        }
+        is Viewer.Pdf -> PdfViewerScreen(v.file) { viewer = null }
+        is Viewer.Text -> TextViewerScreen(v.file, onClose = { viewer = null })
+        is Viewer.Code -> CodeViewerScreen(v.file, v.language) { viewer = null }
+        is Viewer.Zip -> ZipViewerScreen(v.file) { viewer = null }
 
         null -> {
             Scaffold(
                 topBar = {
                     GlassSurface(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 0.dp,
-                        enableBlur = false
+                        cornerRadius = 0.dp
                     ) {
                         TopAppBar(
                             colors = TopAppBarDefaults.topAppBarColors(
@@ -135,16 +116,20 @@ fun DualPaneScreen(
                                         onClick = { activePane.goBack() },
                                         enabled = activePane.canGoBack()
                                     ) {
-                                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
+                                        Icon(
+                                            Icons.AutoMirrored.Outlined.ArrowBack,
+                                            contentDescription = "Back"
+                                        )
                                     }
-
                                     IconButton(
                                         onClick = { activePane.goForward() },
                                         enabled = activePane.canGoForward()
                                     ) {
-                                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
+                                        Icon(
+                                            Icons.AutoMirrored.Outlined.ArrowForward,
+                                            contentDescription = "Forward"
+                                        )
                                     }
-
                                     if (settings.torBoxEnabled) {
                                         IconButton(
                                             onClick = { activePane.navigateToPath("torbox:") }
@@ -170,7 +155,7 @@ fun DualPaneScreen(
                 ) {
                     Row(Modifier.fillMaxSize()) {
 
-                        /* ───────── LEFT PANE ───────── */
+                        /* LEFT PANE */
                         FileListPane(
                             modifier = Modifier.weight(1f),
                             paneState = leftPaneState,
@@ -193,7 +178,7 @@ fun DualPaneScreen(
                             torBoxClient = torBoxClient
                         )
 
-                        /* ───────── RIGHT PANE ───────── */
+                        /* RIGHT PANE */
                         if (paneMode == PaneMode.DUAL) {
                             FileListPane(
                                 modifier = Modifier.weight(1f),
