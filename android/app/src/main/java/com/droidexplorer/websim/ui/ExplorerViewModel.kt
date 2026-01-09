@@ -42,7 +42,7 @@ class ExplorerViewModel(
     // ─────────────────────────────────────────────
     // UI events (one-shot)
     // ─────────────────────────────────────────────
-    private val _uiEvents = Channel<UiEvent>(capacity = Channel.BUFFERED)
+    private val _uiEvents = Channel<UiEvent>(Channel.BUFFERED)
     val uiEvents = _uiEvents.receiveAsFlow()
 
     // ─────────────────────────────────────────────
@@ -76,7 +76,8 @@ class ExplorerViewModel(
     // Storage category data
     // ─────────────────────────────────────────────
     private val _storageCategoryData = MutableStateFlow<StorageCategoryData?>(null)
-    val storageCategoryData: StateFlow<StorageCategoryData?> = _storageCategoryData.asStateFlow()
+    val storageCategoryData: StateFlow<StorageCategoryData?> =
+        _storageCategoryData.asStateFlow()
 
     fun updateStorageData(data: StorageCategoryData?) {
         _storageCategoryData.value = data
@@ -99,20 +100,37 @@ class ExplorerViewModel(
         }
     }
 
+    /**
+     * ❗ FIXED: TorBox explicitly handled
+     */
     fun requestSafAccessFor(folder: FsNode) {
-        if (!folder.isDirectory) return
+        when (folder) {
 
-        viewModelScope.launch {
-            val path = folder.path
-            if (safPermissionManager.isPersisted(File(path))) return@launch
+            is FsNode.Local,
+            is FsNode.Saf -> {
+                if (!folder.isDirectory) return
 
-            pendingPermissionPath = path
-            val initialUri = when (folder) {
-                is FsNode.Saf -> folder.document.uri
-                is FsNode.Local -> safPermissionManager.findStoredUri(path)
+                viewModelScope.launch {
+                    val path = folder.path
+                    if (safPermissionManager.isPersisted(File(path))) return@launch
+
+                    pendingPermissionPath = path
+
+                    val initialUri = when (folder) {
+                        is FsNode.Saf -> folder.document.uri
+                        is FsNode.Local -> safPermissionManager.findStoredUri(path)
+                        else -> null // unreachable
+                    }
+
+                    _uiEvents.send(UiEvent.RequestSafAccess(initialUri))
+                }
             }
 
-            _uiEvents.send(UiEvent.RequestSafAccess(initialUri))
+            is FsNode.TorBox -> {
+                // 🚫 TorBox is remote + read-only
+                // No SAF, no filesystem permissions
+                return
+            }
         }
     }
 
@@ -139,7 +157,7 @@ class ExplorerViewModel(
     }
 
     // ─────────────────────────────────────────────
-    // ❗ CRITICAL FIX: ALL FILES ACCESS CHANGE
+    // ALL FILES ACCESS
     // ─────────────────────────────────────────────
     fun onAllFilesAccessChanged() {
         _permissionRefresh.value++
@@ -160,10 +178,12 @@ class ExplorerViewModel(
         viewModelScope.launch { settingsRepository.setShowHidden(enabled) }
     }
 
+    // ─────────────────────────────────────────────
+    // TorBox
+    // ─────────────────────────────────────────────
     fun setTorBoxEnabled(enabled: Boolean) {
         viewModelScope.launch {
             if (enabled && torBoxStore.getApiKey() == null) {
-                // Prompt for API key setup
                 _uiEvents.send(UiEvent.ShowTorBoxSetup)
             } else {
                 settingsRepository.setTorBoxEnabled(enabled)
@@ -198,7 +218,8 @@ class ExplorerViewModel(
         roots += SearchRoot.Local("/storage/emulated/0")
 
         if (settings.searchIncludeSaf) {
-            safPermissionManager.getPersistedRootIds()
+            safPermissionManager
+                .getPersistedRootIds()
                 .forEach { roots += SearchRoot.Saf(it) }
         }
         return roots
@@ -215,6 +236,7 @@ class ExplorerViewModelFactory(
     private val contentResolver: ContentResolver,
     private val torBoxStore: TorBoxStore
 ) : ViewModelProvider.Factory {
+
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExplorerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
