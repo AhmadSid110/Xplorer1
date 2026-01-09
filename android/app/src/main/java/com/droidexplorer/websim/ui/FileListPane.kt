@@ -128,6 +128,7 @@ fun FileListPane(
         initialValue = emptyList(),
         paneState.path,
         permissionRefresh
+        torBoxClient
     ) {
         value = withContext(Dispatchers.IO) {
 
