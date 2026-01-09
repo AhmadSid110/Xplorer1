@@ -50,28 +50,39 @@ class TorBoxClient(private val apiKey: String) {
             }
         }
 
-    private fun parse(json: String): List<TorBoxFile> {
-        val root = JSONObject(json)
-        val data = root.getJSONObject("data")
-        val torrents = data.getJSONArray("torrents")
+    private fun parseFiles(jsonString: String): List<TorBoxFile> {
+    return try {
+        val root = JSONObject(jsonString)
+        val dataArray = root.optJSONArray("data") ?: return emptyList()
 
-        val out = mutableListOf<TorBoxFile>()
+        val files = mutableListOf<TorBoxFile>()
 
-        for (i in 0 until torrents.length()) {
-            val torrent = torrents.getJSONObject(i)
-            val files = torrent.getJSONArray("files")
+        for (i in 0 until dataArray.length()) {
+            val obj = dataArray.optJSONObject(i) ?: continue
 
-            for (j in 0 until files.length()) {
-                val f = files.getJSONObject(j)
+            val id = obj.optString("id")
+            val name = obj.optString("name")
+            val size = obj.optLong("size", 0L)
 
-                out += TorBoxFile(
-                    id = f.getString("id"),
-                    name = f.getString("name"),
-                    size = f.optLong("size", 0),
-                    downloadUrl = f.getString("download_link")
+            // TorBox does NOT give direct download_url here
+            // Use absolute_path as identifier (download handled elsewhere)
+            val path = obj.optString("absolute_path")
+
+            if (id.isNotBlank() && name.isNotBlank()) {
+                files.add(
+                    TorBoxFile(
+                        id = id,
+                        name = name,
+                        size = size,
+                        downloadUrl = path
+                    )
                 )
             }
         }
-        return out
+
+        files
+    } catch (e: Exception) {
+        Log.e("TORBOX", "JSON parse failed", e)
+        emptyList()
     }
 }
