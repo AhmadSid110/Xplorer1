@@ -13,7 +13,7 @@ import java.io.IOException
  * Represents a single downloadable file.
  */
 data class TorBoxFile(
-    val id: String,
+    val id: Long,
     val name: String,
     val size: Long,
     val absolutePath: String
@@ -87,38 +87,42 @@ class TorBoxClient(private val apiKey: String) {
      *
      * {
      *   "success": true,
-     *   "data": [
-     *     {
-     *       "id": 108,
-     *       "name": "file.mp4",
-     *       "size": 721727538,
-     *       "absolute_path": "/completed/..."
-     *     }
-     *   ]
+     *   "data": {
+     *     "torrents": [
+     *       {
+     *         "files": [
+     *           {
+     *             "id": 108,
+     *             "name": "file.mp4",
+     *             "size": 721727538,
+     *             "absolute_path": "/completed/..."
+     *           }
+     *         ]
+     *       }
+     *     ]
+     *   }
      * }
      */
     private fun parseFiles(jsonString: String): List<TorBoxFile> {
         return try {
             val root = JSONObject(jsonString)
-            val dataArray = root.optJSONArray("data") ?: return emptyList()
+            val data = root.optJSONObject("data") ?: return emptyList()
+            val torrents = data.optJSONArray("torrents") ?: return emptyList()
 
             val files = mutableListOf<TorBoxFile>()
 
-            for (i in 0 until dataArray.length()) {
-                val obj = dataArray.optJSONObject(i) ?: continue
+            for (i in 0 until torrents.length()) {
+                val torrent = torrents.getJSONObject(i)
+                val fileArray = torrent.optJSONArray("files") ?: continue
 
-                val id = obj.optString("id")
-                val name = obj.optString("name")
-                val size = obj.optLong("size", 0L)
-                val absolutePath = obj.optString("absolute_path")
-
-                if (id.isNotBlank() && name.isNotBlank()) {
+                for (j in 0 until fileArray.length()) {
+                    val f = fileArray.getJSONObject(j)
                     files.add(
                         TorBoxFile(
-                            id = id,
-                            name = name,
-                            size = size,
-                            absolutePath = absolutePath
+                            id = f.getLong("id"),
+                            name = f.getString("name"),
+                            size = f.getLong("size"),
+                            absolutePath = f.getString("absolute_path")
                         )
                     )
                 }
@@ -129,6 +133,41 @@ class TorBoxClient(private val apiKey: String) {
         } catch (e: Exception) {
             Log.e(TAG, "JSON parse error", e)
             emptyList()
+        }
+    }
+
+    /**
+     * Fetches temporary HTTPS download link for a file.
+     * 
+     * @param fileId The file ID from TorBox
+     * @return HTTPS URL string, or null if failed
+     */
+    suspend fun getShareLink(fileId: Long): String? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("https://api.torbox.app/v1/api/files/$fileId/download")
+                .addHeader("Authorization", "Bearer $apiKey")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            
+            Log.d(TAG, "getShareLink HTTP ${response.code}")
+            
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Failed to get share link: HTTP ${response.code}")
+                return@withContext null
+            }
+
+            val body = response.body?.string() ?: return@withContext null
+            val json = JSONObject(body)
+            val link = json.optString("data", null)
+            
+            Log.d(TAG, "Share link retrieved: ${link?.take(50)}")
+            link
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting share link", e)
+            null
         }
     }
 }

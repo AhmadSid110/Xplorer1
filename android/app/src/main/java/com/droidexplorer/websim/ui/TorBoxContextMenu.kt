@@ -3,7 +3,7 @@ package com.droidexplorer.websim.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,19 +12,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import kotlinx.coroutines.launch
 
 /**
  * Context menu for TorBox remote files.
- * Only shows the Download action.
+ * Fetches download link on-demand and copies to clipboard.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TorBoxContextMenu(
     file: FsNode.TorBox,
+    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient?,
     onDismiss: () -> Unit,
-    onDownload: (FsNode.TorBox) -> Unit
+    onCopyLink: (String) -> Unit,
+    onError: (String) -> Unit
 ) {
-    var showDownloadDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -51,48 +55,38 @@ fun TorBoxContextMenu(
             
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
-            TorBoxContextMenuItem(
-                icon = Icons.Filled.Download,
-                text = "Download",
-                onClick = {
-                    showDownloadDialog = true
-                }
-            )
-        }
-    }
-    
-    // Download confirmation dialog
-    if (showDownloadDialog) {
-        AlertDialog(
-            onDismissRequest = { showDownloadDialog = false },
-            title = { Text("Download File") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Download \"${file.name}\" from TorBox?")
-                    Text(
-                        "This will open your browser to download the file.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDownloadDialog = false
-                        onDownload(file)
-                        onDismiss()
-                    }
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Download")
+                    CircularProgressIndicator()
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDownloadDialog = false }) {
-                    Text("Cancel")
-                }
+            } else {
+                TorBoxContextMenuItem(
+                    icon = Icons.Filled.ContentCopy,
+                    text = "Copy download link",
+                    onClick = {
+                        if (torBoxClient == null) {
+                            onError("TorBox client not available")
+                            return@TorBoxContextMenuItem
+                        }
+                        isLoading = true
+                        scope.launch {
+                            val link = torBoxClient.getShareLink(file.id)
+                            isLoading = false
+                            if (link != null) {
+                                onCopyLink(link)
+                            } else {
+                                onError("Failed to get download link")
+                            }
+                        }
+                    }
+                )
             }
-        )
+        }
     }
 }
 

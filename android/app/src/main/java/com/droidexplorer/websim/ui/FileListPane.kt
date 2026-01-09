@@ -3,6 +3,9 @@
 package com.droidexplorer.websim.ui
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
@@ -56,6 +59,7 @@ import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -85,6 +89,7 @@ fun FileListPane(
     torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var editorFile by remember { mutableStateOf<File?>(null) }
@@ -148,7 +153,7 @@ fun FileListPane(
                                     id = torBoxFile.id,
                                     name = torBoxFile.name,
                                     size = torBoxFile.size,
-                                    downloadUrl = torBoxFile.downloadUrl
+                                    absolutePath = torBoxFile.absolutePath
                                 )
                             }
                         } catch (e: Exception) {
@@ -633,21 +638,17 @@ fun FileListPane(
                 // TorBox-specific context menu
                 TorBoxContextMenu(
                     file = file,
+                    torBoxClient = torBoxClient,
                     onDismiss = { showContextMenu = false },
-                    onDownload = { torBoxFile ->
-                        // Validate URL is HTTPS before opening
-                        val url = torBoxFile.downloadUrl
-                        if (url.startsWith("https://", ignoreCase = true)) {
-                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                            try {
-                                context.startActivity(intent)
-                                snackbarMessage = "Opening browser for download..."
-                            } catch (e: ActivityNotFoundException) {
-                                snackbarMessage = "No browser found to download file"
-                            }
-                        } else {
-                            snackbarMessage = "Invalid download URL - must use HTTPS"
-                        }
+                    onCopyLink = { link ->
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
+                        snackbarMessage = "Link copied to clipboard"
+                        showContextMenu = false
+                    },
+                    onError = { message ->
+                        snackbarMessage = message
+                        showContextMenu = false
                     }
                 )
             }
