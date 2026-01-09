@@ -6,10 +6,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Sort
-import androidx.compose.material.icons.outlined.ViewAgenda
-import androidx.compose.material.icons.outlined.ViewWeek
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,8 +19,9 @@ import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
-import com.droidexplorer.websim.ui.viewer.*
+import com.droidexplorer.websim.ui.glass.GlassSurface
 import com.droidexplorer.websim.ui.theme.backgroundGradient
+import com.droidexplorer.websim.ui.viewer.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,92 +63,114 @@ fun DualPaneScreen(
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
 
+    /* ─────────────────────────────────────────────
+     * VIEWER HANDLING (✅ FIXED)
+     * ───────────────────────────────────────────── */
+
     when (val v = viewer) {
-        is Viewer.Image -> ImageViewerScreen(v.file, { viewer = null }, {}, {})
-        is Viewer.Pdf -> PdfViewerScreen(v.file) { viewer = null }
-        is Viewer.Text -> TextViewerScreen(v.file) { viewer = null }
-        is Viewer.Code -> CodeViewerScreen(v.file, v.language) { viewer = null }
-        is Viewer.Zip -> ZipViewerScreen(v.file) { viewer = null }
+
+        is Viewer.Image -> {
+            ImageViewerScreen(
+                file = v.file,
+                items = v.items,
+                startIndex = v.index,
+                onClose = { viewer = null }
+            )
+        }
+
+        is Viewer.Pdf -> {
+            PdfViewerScreen(
+                file = v.file,
+                onClose = { viewer = null }
+            )
+        }
+
+        is Viewer.Text -> {
+            TextViewerScreen(
+                file = v.file,
+                onClose = { viewer = null },
+                showLineNumbers = v.showLineNumbers
+            )
+        }
+
+        is Viewer.Code -> {
+            CodeViewerScreen(
+                file = v.file,
+                language = v.language,
+                onClose = { viewer = null }
+            )
+        }
+
+        is Viewer.Zip -> {
+            ZipViewerScreen(
+                file = v.file,
+                onClose = { viewer = null }
+            )
+        }
 
         null -> {
             Scaffold(
-                containerColor = MaterialTheme.colorScheme.surface,
                 topBar = {
-                    TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                            actionIconContentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        title = {
-                            Column {
-                                Text("Xplorer", style = MaterialTheme.typography.titleMedium)
-                                BreadcrumbBar(
-                                    currentPath = activePane.path,
-                                    onNavigateToPath = { activePane.navigateToPath(it) }
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            Row {
-                                IconButton(
-                                    onClick = { activePane.goBack() },
-                                    enabled = activePane.canGoBack()
-                                ) {
-                                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
+                    GlassSurface(
+                        modifier = Modifier.fillMaxWidth(),
+                        cornerRadius = 0.dp,
+                        enableBlur = false
+                    ) {
+                        TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent
+                            ),
+                            title = {
+                                Column {
+                                    Text("Xplorer")
+                                    BreadcrumbBar(
+                                        currentPath = activePane.path,
+                                        onNavigateToPath = { activePane.navigateToPath(it) }
+                                    )
                                 }
-                                IconButton(
-                                    onClick = { activePane.goForward() },
-                                    enabled = activePane.canGoForward()
-                                ) {
-                                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
-                                }
-                                if (settings.torBoxEnabled) {
-                                    IconButton(onClick = {
-                                        activePane.navigateToPath("torbox:")
-                                    }) {
-                                        Icon(
-                                            Icons.Filled.Cloud,
-                                            contentDescription = "TorBox",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                            },
+                            navigationIcon = {
+                                Row {
+                                    IconButton(
+                                        onClick = { activePane.goBack() },
+                                        enabled = activePane.canGoBack()
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
+                                    }
+
+                                    IconButton(
+                                        onClick = { activePane.goForward() },
+                                        enabled = activePane.canGoForward()
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
+                                    }
+
+                                    if (settings.torBoxEnabled) {
+                                        IconButton(
+                                            onClick = { activePane.navigateToPath("torbox:") }
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Cloud,
+                                                contentDescription = "TorBox",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        },
-                        actions = {
-                            IconToggleButton(
-                                checked = paneMode == PaneMode.DUAL,
-                                onCheckedChange = {
-                                    paneMode = if (it) PaneMode.DUAL else PaneMode.SINGLE
-                                    if (!it) activePane = leftPaneState
-                                }
-                            ) {
-                                Icon(
-                                    if (paneMode == PaneMode.DUAL)
-                                        Icons.Outlined.ViewWeek
-                                    else
-                                        Icons.Outlined.ViewAgenda,
-                                    contentDescription = "Toggle pane mode"
-                                )
-                            }
-
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Settings")
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
             ) { padding ->
                 Box(
-                    modifier = Modifier
+                    Modifier
                         .fillMaxSize()
-                        .padding(padding)
                         .background(backgroundGradient())
+                        .padding(padding)
                 ) {
                     Row(Modifier.fillMaxSize()) {
 
+                        /* ───────── LEFT PANE ───────── */
                         FileListPane(
                             modifier = Modifier.weight(1f),
                             paneState = leftPaneState,
@@ -174,6 +193,7 @@ fun DualPaneScreen(
                             torBoxClient = torBoxClient
                         )
 
+                        /* ───────── RIGHT PANE ───────── */
                         if (paneMode == PaneMode.DUAL) {
                             FileListPane(
                                 modifier = Modifier.weight(1f),
