@@ -90,6 +90,9 @@ fun FileListPane(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val clipboardManager = remember { 
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager 
+    }
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var editorFile by remember { mutableStateOf<File?>(null) }
@@ -641,9 +644,8 @@ fun FileListPane(
                     torBoxClient = torBoxClient,
                     onDismiss = { showContextMenu = false },
                     onCopyLink = { link ->
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        if (clipboard != null) {
-                            clipboard.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
+                        if (clipboardManager != null) {
+                            clipboardManager.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
                             snackbarMessage = "Link copied to clipboard"
                         } else {
                             snackbarMessage = "Failed to access clipboard"

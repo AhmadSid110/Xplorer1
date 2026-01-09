@@ -82,6 +82,8 @@ fun TorBoxContextMenu(
                                 } else {
                                     onError("Failed to get download link")
                                 }
+                            } catch (e: Exception) {
+                                onError("Error: ${e.message ?: "Unknown error"}")
                             } finally {
                                 isLoading = false
                             }
