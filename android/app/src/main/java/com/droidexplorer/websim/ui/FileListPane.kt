@@ -246,7 +246,10 @@ fun FileListPane(
             file = file,
             openText = { onOpenViewer(Viewer.Text(it)) },
             openImage = { target ->
-                val images = files.filter { !it.isDirectory && it !is FsNode.TorBox && it.asFile().isImage() }.map { it.asFile() }
+                val images = files
+                    .filter { !it.isDirectory && it !is FsNode.TorBox }
+                    .map { it.asFile() }
+                    .filter { it.isImage() }
                 val index = images.indexOfFirst { it.absolutePath == target.absolutePath }
                     .takeIf { it >= 0 } ?: 0
                 onOpenViewer(Viewer.Image(target, images, index))
