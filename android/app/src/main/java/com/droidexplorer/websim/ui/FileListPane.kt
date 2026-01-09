@@ -127,7 +127,7 @@ fun FileListPane(
     val files by produceState<List<FsNode>>(
         initialValue = emptyList(),
         paneState.path,
-        permissionRefresh
+        permissionRefresh,
         torBoxClient
     ) {
         value = withContext(Dispatchers.IO) {
