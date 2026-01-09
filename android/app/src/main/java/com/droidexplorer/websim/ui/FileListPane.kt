@@ -105,7 +105,7 @@ fun FileListPane(
             isSearching = true
         }
     }
-    
+
     // Context menu state
     var selectedFile by remember { mutableStateOf<FsNode?>(null) }
     var showContextMenu by remember { mutableStateOf(false) }
@@ -118,71 +118,52 @@ fun FileListPane(
             refreshTrigger++
         }
     }
-    
+
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
-    
-    // Load files
-    val sortFiles = remember(sortType, sortOrder) {
-        { files: List<FsNode> ->
-            FileManager.sortFiles(files, sortType, sortOrder)
-        }
-    }
 
-    val files by produceState(
-        initialValue = emptyList<FsNode>(),
+    // Load files
+    val files by produceState<List<FsNode>>(
+        initialValue = emptyList(),
         paneState.path,
-        searchQuery,
-        searchResult,
-        sortType,
-        sortOrder,
-        settings.showHiddenFiles,
-        refreshTrigger
+        permissionRefresh
     ) {
         value = withContext(Dispatchers.IO) {
-            if (searchQuery.isBlank()) {
-                // Check if this is a TorBox path
-                val isTorBox = paneState.path.startsWith("torbox:")
-                if (isTorBox) {
-                    Log.d("TORBOX", "TorBox path detected: ${paneState.path}")
-                    if (torBoxClient == null) {
-                        Log.e("TORBOX", "TorBoxClient is NULL (API key missing)")
-                        emptyList()
-                    } else {
-                        try {
-                            torBoxClient.listFiles().map { torBoxFile ->
-                                FsNode.TorBox(
-                                    id = torBoxFile.id,
-                                    name = torBoxFile.name,
-                                    size = torBoxFile.size,
-                                    absolutePath = torBoxFile.absolutePath
-                                )
-                            }
-                        } catch (e: Exception) {
-                            Log.e("TORBOX", "Error loading TorBox files", e)
-                            emptyList()
-                        }
-                    }
-                } else {
-                    FileManager.list(
-                        paneState.path,
-                        sortType,
-                        sortOrder,
-                        settings.showHiddenFiles,
-                        safPermissionManager,
-                        context
+
+            val isTorBox = paneState.path.startsWith("torbox")
+
+            if (isTorBox) {
+                Log.e("TORBOX_UI", "Listing TorBox files, path=${paneState.path}")
+
+                val client = torBoxClient
+                if (client == null) {
+                    Log.e("TORBOX_UI", "TorBoxClient is NULL")
+                    return@withContext emptyList()
+                }
+
+                val torFiles = client.listFiles()
+                Log.e("TORBOX_UI", "TorBox files count=${torFiles.size}")
+
+                return@withContext torFiles.map {
+                    FsNode.TorBox(
+                        id = it.id,
+                        name = it.name,
+                        size = it.size,
+                        absolutePath = it.absolutePath
                     )
                 }
-            } else {
-                val matches = searchResult?.matches ?: emptyList()
-                val visible = if (settings.showHiddenFiles) {
-                    matches
-                } else {
-                    matches.filterNot { it.name.startsWith(".") }
-                }
-                sortFiles(visible)
             }
+
+            // ❌ LOCAL FILES ONLY IF NOT TORBOX
+            FileManager.list(
+                paneState.path,
+                sortType,
+                sortOrder,
+                settings.showHiddenFiles,
+                safPermissionManager,
+                context
+            )
         }
     }
 
@@ -215,7 +196,7 @@ fun FileListPane(
     }
 
     val permissionMessage = "Android requires permission to write here.\nSelect this folder once."
-    
+
     fun handleSaf(e: Throwable): Boolean {
         return if (e is SafRequired) {
             onSafRequired(e.directory)
@@ -337,7 +318,6 @@ fun FileListPane(
                     )
                 }
 
-                // Top bar with search only (breadcrumbs moved to scaffold)
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     tonalElevation = 2.dp
@@ -349,17 +329,15 @@ fun FileListPane(
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Search toggle
                             IconButton(onClick = { isSearching = !isSearching }) {
                                 Icon(
                                     if (isSearching) Icons.Filled.Close else Icons.Filled.Search,
                                     contentDescription = "Search"
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.weight(1f))
-                            
-                            // Paste button
+
                             if (FileClipboard.hasItem()) {
                                 IconButton(
                                     onClick = {
@@ -386,8 +364,7 @@ fun FileListPane(
                                 }
                             }
                         }
-                        
-                        // Search bar (conditional)
+
                         if (isSearching) {
                             OutlinedTextField(
                                 value = searchQuery,
@@ -411,107 +388,29 @@ fun FileListPane(
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            if (searchQuery.isNotBlank()) {
-                                Text(
-                                    text = "Searching…",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier
-                                        .padding(start = 8.dp, bottom = 4.dp)
-                                        .semantics { contentDescription = "Search status: Searching" }
-                                )
-                            }
-                }
-            }
-        }
-
-        if (searchQuery.isNotBlank()) {
-            SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
-        }
-
-        fun requiresPermission(node: FsNode): Boolean {
-            // TorBox is remote and never requires local filesystem permissions
-            if (node is FsNode.TorBox) return false
-            
-            val file = node.asFile()
-            if (!file.isDirectory) return false
-            if (file.isDirectory && safPermissionManager.isPersisted(file)) return false
-            if (file.isDirectory && safPermissionManager.isRevoked(file)) return true
-            return when {
-                node is FsNode.Local && node.isDirectory -> {
-                    val cached = writeProbeCache[node.path]
-                    val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
-                        writeProbeCache[node.path] = it
-                    }
-                    !writable
-                }
-                else -> false
-            }
-        }
-
-                @Composable
-                fun FileListContent(showDetails: Boolean) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 4.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(
-                            items = files,
-                            key = { it.path }
-                        ) { node ->
-                            val requiresSaf = remember(node.path, permissionRefresh) {
-                                requiresPermission(node)
-                            }
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                FileRow(
-                                    file = node,
-                                    isSelected = selectedFile?.uniqueKey == node.uniqueKey && showContextMenu,
-                                    requiresPermission = requiresSaf,
-                                    onClick = {
-                                        onRequestFocus()
-                                        if (requiresSaf) {
-                                            restrictedTarget = node
-                                            return@FileRow
-                                        }
-                                        when (node) {
-                                            is FsNode.TorBox -> {
-                                                // TorBox files can't be opened directly
-                                                selectedFile = node
-                                                showContextMenu = true
-                                            }
-                                            else -> {
-                                                if (node.isDirectory) {
-                                                    paneState.navigateTo(node.path)
-                                                    onSearchQueryChange("")
-                                                } else {
-                                                    handleOpen(node.asFile())
-                                                }
-                                            }
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (requiresSaf) {
-                                            restrictedTarget = node
-                                            showContextMenu = false
-                                            return@FileRow
-                                        }
-                                        selectedFile = node
-                                        showContextMenu = true
-                                        onRequestFocus()
-                                    }
-                                )
-                                if (showDetails) {
-                                    Text(
-                                        text = node.path,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .padding(start = 16.dp, end = 8.dp, bottom = 8.dp, top = 4.dp)
-                                    )
-                                }
-                            }
                         }
+                    }
+                }
+
+                if (searchQuery.isNotBlank()) {
+                    SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
+                }
+
+                fun requiresPermission(node: FsNode): Boolean {
+                    if (node is FsNode.TorBox) return false
+                    val file = node.asFile()
+                    if (!file.isDirectory) return false
+                    if (file.isDirectory && safPermissionManager.isPersisted(file)) return false
+                    if (file.isDirectory && safPermissionManager.isRevoked(file)) return true
+                    return when {
+                        node is FsNode.Local && node.isDirectory -> {
+                            val cached = writeProbeCache[node.path]
+                            val writable = cached ?: FileOperator.canWrite(node.asFile()).also {
+                                writeProbeCache[node.path] = it
+                            }
+                            !writable
+                        }
+                        else -> false
                     }
                 }
 
@@ -526,7 +425,6 @@ fun FileListPane(
                     } else {
                         when (node) {
                             is FsNode.TorBox -> {
-                                // TorBox files can't be opened directly
                                 selectedFile = node
                                 showContextMenu = true
                             }
@@ -552,7 +450,6 @@ fun FileListPane(
                     }
                 }
 
-                // File list or empty state with animated transitions
                 AnimatedContent(
                     targetState = paneState.path,
                     transitionSpec = {
@@ -603,8 +500,7 @@ fun FileListPane(
                     }
                 }
             }
-            
-            // Vertical divider for dual pane - frosted glass style
+
             if (showDivider) {
                 VerticalDivider(
                     modifier = Modifier.fillMaxHeight(),
@@ -613,14 +509,13 @@ fun FileListPane(
                 )
             }
         }
-        
-        // Snackbar host
+
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
-    
+
     restrictedTarget?.let { target ->
         RestrictedFolderMenu(
             folderName = target.name,
@@ -629,16 +524,14 @@ fun FileListPane(
             onDismiss = { restrictedTarget = null }
         )
     }
-    
+
     if (showExplain) {
         PermissionExplanationDialog { showExplain = false }
     }
-    
-    // Context menu bottom sheet
+
     if (showContextMenu && selectedFile != null) {
         when (val file = selectedFile!!) {
             is FsNode.TorBox -> {
-                // TorBox-specific context menu
                 TorBoxContextMenu(
                     file = file,
                     torBoxClient = torBoxClient,
@@ -717,8 +610,7 @@ fun FileListPane(
             }
         }
     }
-    
-    // Text editor
+
     editorFile?.let { target ->
         TextEditorSheet(
             file = target,
@@ -729,7 +621,6 @@ fun FileListPane(
         )
     }
 
-    // Rename dialog
     if (showRenameDialog && selectedFile != null && selectedFile !is FsNode.TorBox) {
         RenameDialog(
             file = selectedFile!!.asFile(),
@@ -743,8 +634,7 @@ fun FileListPane(
             }
         )
     }
-    
-    // Delete confirmation dialog
+
     if (showDeleteDialog && selectedFile != null && selectedFile !is FsNode.TorBox) {
         DeleteConfirmDialog(
             file = selectedFile!!.asFile(),
@@ -848,51 +738,5 @@ private fun openApk(context: android.content.Context, file: File) {
         Toast.makeText(context, "Permission denied opening APK", Toast.LENGTH_SHORT).show()
     } catch (_: IllegalArgumentException) {
         Toast.makeText(context, "Unable to open APK", Toast.LENGTH_SHORT).show()
-    }
-}
-
-@Composable
-private fun FileGridItem(
-    file: FsNode,
-    isSelected: Boolean,
-    requiresPermission: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .padding(4.dp)
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        tonalElevation = if (isSelected) 4.dp else 0.dp,
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = if (file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description,
-                contentDescription = null,
-                tint = if (requiresPermission) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = file.name.ifBlank { file.path },
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (requiresPermission) {
-                Text(
-                    text = "Permission needed",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
     }
 }
