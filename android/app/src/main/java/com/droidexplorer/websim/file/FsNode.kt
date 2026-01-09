@@ -42,8 +42,8 @@ sealed class FsNode {
         val downloadUrl: String
     ) : FsNode() {
         override val isDirectory: Boolean = false
-        override val uniqueKey: String = "torbox://$id"
-        override val path: String = "torbox://$id"
+        override val uniqueKey: String = "torbox:$id"
+        override val path: String = "torbox:$id"
     }
 }
 

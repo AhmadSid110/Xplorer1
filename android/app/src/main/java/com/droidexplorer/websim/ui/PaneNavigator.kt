@@ -28,7 +28,7 @@ class PaneNavigator(
 
     fun navigateTo(newPath: String) {
         // TorBox paths are always normalized to root (no folder navigation)
-        val normalizedPath = if (newPath.startsWith("torbox://")) "torbox://" else newPath
+        val normalizedPath = if (newPath.startsWith("torbox:")) "torbox:" else newPath
         
         if (normalizedPath == currentPath) return
         backStack.addLast(currentPath)
