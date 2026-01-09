@@ -27,20 +27,19 @@ data class TorBoxFile(
  * - NO background services
  * - NO writes
  *
- * Safe for Play Store.
+ * Play Store safe.
  */
 class TorBoxClient(private val apiKey: String) {
 
     private val client = OkHttpClient()
 
     companion object {
-        // ✅ CORRECT BASE URL
         private const val API_BASE_URL = "https://api.torbox.app/v1"
         private const val TAG = "TORBOX"
     }
 
     /**
-     * Lists all available TorBox files.
+     * Lists all available TorBox torrents as files.
      *
      * @return list of TorBoxFile (empty on ANY failure)
      */
@@ -49,19 +48,19 @@ class TorBoxClient(private val apiKey: String) {
             try {
                 Log.d(TAG, "listFiles() called")
                 Log.d(TAG, "API key length=${apiKey.length}")
-                
+
                 val request = Request.Builder()
-                    .url("$API_BASE_URL/torrents/mylist")
+                    .url("$API_BASE_URL/torrents")
                     .addHeader("X-API-Key", apiKey)
                     .get()
                     .build()
 
                 val response = client.newCall(request).execute()
-                
+
                 Log.d(TAG, "HTTP ${response.code}")
 
                 if (!response.isSuccessful) {
-                    Log.e(TAG, "HTTP error: ${response.code}")
+                    Log.e(TAG, "HTTP error ${response.code}")
                     return@withContext emptyList()
                 }
 
@@ -73,7 +72,10 @@ class TorBoxClient(private val apiKey: String) {
 
                 Log.d(TAG, "BODY=${body.take(2000)}")
 
-                parseFiles(body)
+                val files = parseFiles(body)
+                Log.d(TAG, "Parsed files count=${files.size}")
+
+                files
             } catch (e: IOException) {
                 Log.e(TAG, "Network error", e)
                 emptyList()
@@ -87,7 +89,7 @@ class TorBoxClient(private val apiKey: String) {
     /**
      * Parses TorBox API JSON safely.
      *
-     * Expected format:
+     * Actual format (2025):
      * {
      *   "success": true,
      *   "data": [
@@ -95,7 +97,7 @@ class TorBoxClient(private val apiKey: String) {
      *       "id": "...",
      *       "name": "...",
      *       "size": 123,
-     *       "download_url": "https://..."
+     *       "download": "https://..."
      *     }
      *   ]
      * }
@@ -113,7 +115,9 @@ class TorBoxClient(private val apiKey: String) {
                 val id = obj.optString("id")
                 val name = obj.optString("name")
                 val size = obj.optLong("size", 0L)
-                val downloadUrl = obj.optString("download_url")
+
+                // ✅ CORRECT FIELD NAME
+                val downloadUrl = obj.optString("download")
 
                 if (id.isNotBlank() && name.isNotBlank() && downloadUrl.isNotBlank()) {
                     files.add(
