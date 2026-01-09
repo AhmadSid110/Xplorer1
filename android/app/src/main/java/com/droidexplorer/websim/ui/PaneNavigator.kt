@@ -2,13 +2,16 @@ package com.droidexplorer.websim.ui
 
 import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.mapSaver
 
 enum class PaneMode { SINGLE, DUAL }
 
+/* ─────────────────────────────────────────────
+ * PaneNavigator
+ * ───────────────────────────────────────────── */
 class PaneNavigator(
     startPath: String,
     backStack: List<String> = emptyList(),
@@ -18,48 +21,44 @@ class PaneNavigator(
     var currentPath: String = startPath
         private set
 
-    private val backStack = ArrayDeque(backStack)
-    private val forwardStack = ArrayDeque(forwardStack)
+    private val backStackDeque = ArrayDeque(backStack)
+    private val forwardStackDeque = ArrayDeque(forwardStack)
 
-    fun canGoBack(): Boolean = backStack.isNotEmpty()
-    fun canGoForward(): Boolean = forwardStack.isNotEmpty()
+    fun canGoBack(): Boolean = backStackDeque.isNotEmpty()
+    fun canGoForward(): Boolean = forwardStackDeque.isNotEmpty()
 
     fun navigateTo(newPath: String) {
-        // ✅ TORBOX NORMALIZATION (CORRECT)
-        val normalizedPath =
+        val normalized =
             if (newPath.startsWith("torbox:")) "torbox:" else newPath
 
-        if (normalizedPath == currentPath) return
+        if (normalized == currentPath) return
 
-        backStack.addLast(currentPath)
-        forwardStack.clear()
-        currentPath = normalizedPath
+        backStackDeque.addLast(currentPath)
+        forwardStackDeque.clear()
+        currentPath = normalized
     }
 
     fun goBack() {
-        if (backStack.isNotEmpty()) {
-            forwardStack.addLast(currentPath)
-            currentPath = backStack.removeLast()
+        if (backStackDeque.isNotEmpty()) {
+            forwardStackDeque.addLast(currentPath)
+            currentPath = backStackDeque.removeLast()
         }
     }
 
     fun goForward() {
-        if (forwardStack.isNotEmpty()) {
-            backStack.addLast(currentPath)
-            currentPath = forwardStack.removeLast()
+        if (forwardStackDeque.isNotEmpty()) {
+            backStackDeque.addLast(currentPath)
+            currentPath = forwardStackDeque.removeLast()
         }
     }
 
-    fun navigateToPath(path: String) {
-        if (path != currentPath) {
-            navigateTo(path)
-        }
-    }
-
-    internal fun backStackSnapshot(): List<String> = backStack.toList()
-    internal fun forwardStackSnapshot(): List<String> = forwardStack.toList()
+    fun backStackSnapshot(): List<String> = backStackDeque.toList()
+    fun forwardStackSnapshot(): List<String> = forwardStackDeque.toList()
 }
 
+/* ─────────────────────────────────────────────
+ * PaneState
+ * ───────────────────────────────────────────── */
 class PaneState private constructor(
     private val defaultPath: String,
     initialTabs: List<TabState>,
@@ -70,23 +69,26 @@ class PaneState private constructor(
         addAll(initialTabs.ifEmpty { listOf(TabState.create(defaultPath)) })
     }
 
-    val tabs: List<TabState> get() = _tabs
+    val tabs: List<TabState>
+        get() = _tabs
 
-    var activeTabIndex by mutableIntStateOf(
-        initialActiveIndex.coerceIn(0, _tabs.lastIndex)
-    )
-        private set
+    private val _activeTabIndex =
+        mutableIntStateOf(initialActiveIndex.coerceIn(0, _tabs.lastIndex))
 
-    var path: String by mutableStateOf(
-        _tabs.getOrNull(activeTabIndex)?.path ?: defaultPath
-    )
-        private set
+    val activeTabIndex: Int
+        get() = _activeTabIndex.intValue
+
+    private val _path =
+        mutableStateOf(_tabs[activeTabIndex].path)
+
+    val path: String
+        get() = _path.value
 
     val activeTab: TabState?
         get() = _tabs.getOrNull(activeTabIndex)
 
-    fun canGoBack() = activeTab?.canGoBack() == true
-    fun canGoForward() = activeTab?.canGoForward() == true
+    fun canGoBack(): Boolean = activeTab?.canGoBack() == true
+    fun canGoForward(): Boolean = activeTab?.canGoForward() == true
 
     fun navigateTo(newPath: String) {
         activeTab?.navigateTo(newPath)
@@ -110,25 +112,26 @@ class PaneState private constructor(
 
     fun addTab(path: String = activeTab?.path ?: defaultPath) {
         _tabs.add(TabState.create(path))
-        activeTabIndex = _tabs.lastIndex
+        _activeTabIndex.intValue = _tabs.lastIndex
         syncPath()
     }
 
     fun closeTab(index: Int) {
         if (_tabs.size <= 1 || index !in _tabs.indices) return
         _tabs.removeAt(index)
-        activeTabIndex = activeTabIndex.coerceAtMost(_tabs.lastIndex)
+        _activeTabIndex.intValue =
+            _activeTabIndex.intValue.coerceAtMost(_tabs.lastIndex)
         syncPath()
     }
 
     fun selectTab(index: Int) {
         if (index !in _tabs.indices) return
-        activeTabIndex = index
+        _activeTabIndex.intValue = index
         syncPath()
     }
 
     private fun syncPath() {
-        path = activeTab?.path ?: defaultPath
+        _path.value = activeTab?.path ?: defaultPath
     }
 
     fun snapshot(): Map<String, Any> = mapOf(
@@ -142,17 +145,22 @@ class PaneState private constructor(
         fun saver(defaultPath: String): Saver<PaneState, Any> = mapSaver(
             save = { it.snapshot() },
             restore = { restored ->
-                val basePath = restored["default"] as? String ?: defaultPath
-                val rawTabs = restored["tabs"] as? List<*>
-                val restoredTabs = rawTabs
-                    ?.mapNotNull { TabState.fromSaved(it) }
-                    .orEmpty()
+                val basePath =
+                    restored["default"] as? String ?: defaultPath
+
+                val rawTabs =
+                    restored["tabs"] as? List<*>
+
+                val restoredTabs =
+                    rawTabs?.mapNotNull { TabState.fromSaved(it) }.orEmpty()
+
+                val active =
+                    restored["active"] as? Int ?: 0
 
                 if (rawTabs?.isNotEmpty() == true && restoredTabs.isEmpty()) {
-                    Log.w("PaneState", "Failed to restore tabs, falling back to default")
+                    Log.w("PaneState", "Failed to restore tabs, falling back")
                 }
 
-                val active = (restored["active"] as? Int) ?: 0
                 val effectiveTabs =
                     if (restoredTabs.isEmpty())
                         listOf(TabState.create(basePath))
@@ -161,7 +169,8 @@ class PaneState private constructor(
                 PaneState(
                     defaultPath = basePath,
                     initialTabs = effectiveTabs,
-                    initialActiveIndex = active.coerceIn(0, effectiveTabs.lastIndex)
+                    initialActiveIndex =
+                        active.coerceIn(0, effectiveTabs.lastIndex)
                 )
             }
         )
