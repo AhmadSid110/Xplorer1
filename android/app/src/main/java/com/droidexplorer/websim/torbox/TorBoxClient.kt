@@ -112,7 +112,7 @@ class TorBoxClient(private val apiKey: String) {
             val files = mutableListOf<TorBoxFile>()
 
             for (i in 0 until torrents.length()) {
-                val torrent = torrents.getJSONObject(i)
+                val torrent = torrents.optJSONObject(i) ?: continue
                 val fileArray = torrent.optJSONArray("files") ?: continue
 
                 for (j in 0 until fileArray.length()) {
