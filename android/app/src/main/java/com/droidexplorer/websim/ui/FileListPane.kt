@@ -641,9 +641,13 @@ fun FileListPane(
                     torBoxClient = torBoxClient,
                     onDismiss = { showContextMenu = false },
                     onCopyLink = { link ->
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
-                        snackbarMessage = "Link copied to clipboard"
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        if (clipboard != null) {
+                            clipboard.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
+                            snackbarMessage = "Link copied to clipboard"
+                        } else {
+                            snackbarMessage = "Failed to access clipboard"
+                        }
                         showContextMenu = false
                     },
                     onError = { message ->

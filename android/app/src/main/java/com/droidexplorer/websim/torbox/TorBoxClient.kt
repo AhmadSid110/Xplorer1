@@ -116,15 +116,22 @@ class TorBoxClient(private val apiKey: String) {
                 val fileArray = torrent.optJSONArray("files") ?: continue
 
                 for (j in 0 until fileArray.length()) {
-                    val f = fileArray.getJSONObject(j)
-                    files.add(
-                        TorBoxFile(
-                            id = f.getLong("id"),
-                            name = f.getString("name"),
-                            size = f.getLong("size"),
-                            absolutePath = f.getString("absolute_path")
+                    val f = fileArray.optJSONObject(j) ?: continue
+                    val id = f.optLong("id", -1)
+                    val name = f.optString("name", "")
+                    val size = f.optLong("size", 0)
+                    val absolutePath = f.optString("absolute_path", "")
+                    
+                    if (id != -1L && name.isNotBlank()) {
+                        files.add(
+                            TorBoxFile(
+                                id = id,
+                                name = name,
+                                size = size,
+                                absolutePath = absolutePath
+                            )
                         )
-                    )
+                    }
                 }
             }
 

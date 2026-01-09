@@ -75,12 +75,15 @@ fun TorBoxContextMenu(
                         }
                         isLoading = true
                         scope.launch {
-                            val link = torBoxClient.getShareLink(file.id)
-                            isLoading = false
-                            if (link != null) {
-                                onCopyLink(link)
-                            } else {
-                                onError("Failed to get download link")
+                            try {
+                                val link = torBoxClient.getShareLink(file.id)
+                                if (link != null) {
+                                    onCopyLink(link)
+                                } else {
+                                    onError("Failed to get download link")
+                                }
+                            } finally {
+                                isLoading = false
                             }
                         }
                     }
