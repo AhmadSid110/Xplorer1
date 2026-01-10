@@ -64,38 +64,57 @@ fun DualPaneScreen(
     var viewer by remember { mutableStateOf<Viewer?>(null) }
 
     var paneMode by rememberSaveable {
-        mutableStateOf(
-            if (isTablet && !singlePane) PaneMode.DUAL else PaneMode.SINGLE
-        )
+        mutableStateOf(if (isTablet && !singlePane) PaneMode.DUAL else PaneMode.SINGLE)
     }
 
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
 
-    /* ───────────────────────── VIEWERS ───────────────────────── */
+    /* ───────────────────── VIEWERS ───────────────────── */
 
     when (val v = viewer) {
-        is Viewer.Image -> ImageViewerScreen(
-            file = v.file,
-            items = v.items,
-            startIndex = v.index,
-            onClose = { viewer = null }
-        )
 
-        is Viewer.Pdf -> PdfViewerScreen(v.file) { viewer = null }
-        is Viewer.Text -> TextViewerScreen(v.file, onClose = { viewer = null })
-        is Viewer.Code -> CodeViewerScreen(v.file, v.language, onClose = { viewer = null })
-        is Viewer.Zip -> ZipViewerScreen(v.file) { viewer = null }
+        is Viewer.Image -> {
+            val next =
+                v.items.getOrNull(v.index + 1)?.let {
+                    { viewer = v.copy(file = it, index = v.index + 1) }
+                }
+
+            val previous =
+                v.items.getOrNull(v.index - 1)?.let {
+                    { viewer = v.copy(file = it, index = v.index - 1) }
+                }
+
+            ImageViewerScreen(
+                file = v.file,
+                onClose = { viewer = null },
+                onNext = next,
+                onPrevious = previous
+            )
+        }
+
+        is Viewer.Pdf ->
+            PdfViewerScreen(v.file) { viewer = null }
+
+        is Viewer.Text ->
+            TextViewerScreen(v.file, onClose = { viewer = null })
+
+        is Viewer.Code ->
+            CodeViewerScreen(v.file, v.language, onClose = { viewer = null })
+
+        is Viewer.Zip ->
+            ZipViewerScreen(v.file) { viewer = null }
 
         null -> {
-            /* ───────────────────────── MAIN UI ───────────────────────── */
+
+            /* ───────────────────── MAIN UI ───────────────────── */
 
             Scaffold(
                 topBar = {
                     GlassSurface(
                         modifier = Modifier.fillMaxWidth(),
                         cornerRadius = 0.dp,
-                        enableBlur = false   // ✅ CRITICAL
+                        enableBlur = false
                     ) {
                         TopAppBar(
                             colors = TopAppBarDefaults.topAppBarColors(
@@ -118,12 +137,14 @@ fun DualPaneScreen(
                                     ) {
                                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
                                     }
+
                                     IconButton(
                                         onClick = { activePane.goForward() },
                                         enabled = activePane.canGoForward()
                                     ) {
                                         Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                                     }
+
                                     if (settings.torBoxEnabled) {
                                         IconButton(
                                             onClick = {
@@ -153,7 +174,7 @@ fun DualPaneScreen(
                                             Icons.Outlined.ViewWeek
                                         else
                                             Icons.Outlined.ViewAgenda,
-                                        contentDescription = "Toggle pane mode"
+                                        contentDescription = "Toggle panes"
                                     )
                                 }
 
@@ -173,18 +194,33 @@ fun DualPaneScreen(
                         .background(backgroundGradient())
                 ) {
 
-                    /* ───────── LEFT PANE ───────── */
-                    AnimatedContent(
-                        targetState = leftPaneState.path,
-                        transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
-                        },
-                        label = "leftPane"
-                    ) {
+                    FileListPane(
+                        modifier = Modifier.weight(1f),
+                        paneState = leftPaneState,
+                        currentPath = leftPaneState.path,
+                        fileOperator = fileOperator,
+                        safPermissionManager = safManager,
+                        settings = settings,
+                        searchQuery = searchQuery,
+                        searchResult = searchResult,
+                        permissionRefresh = permissionRefresh,
+                        onSearchQueryChange = onSearchQueryChange,
+                        onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                        onRequestSafAccess = onRequestSafAccess,
+                        onRequestFocus = { activePane = leftPaneState },
+                        isActive = activePane == leftPaneState,
+                        sortType = sortType,
+                        sortOrder = sortOrder,
+                        showDivider = paneMode == PaneMode.DUAL,
+                        onOpenViewer = { viewer = it },
+                        torBoxClient = torBoxClient
+                    )
+
+                    if (paneMode == PaneMode.DUAL) {
                         FileListPane(
                             modifier = Modifier.weight(1f),
-                            paneState = leftPaneState,
-                            currentPath = leftPaneState.path,
+                            paneState = rightPaneState,
+                            currentPath = rightPaneState.path,
                             fileOperator = fileOperator,
                             safPermissionManager = safManager,
                             settings = settings,
@@ -194,47 +230,14 @@ fun DualPaneScreen(
                             onSearchQueryChange = onSearchQueryChange,
                             onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
                             onRequestSafAccess = onRequestSafAccess,
-                            onRequestFocus = { activePane = leftPaneState },
-                            isActive = activePane == leftPaneState,
+                            onRequestFocus = { activePane = rightPaneState },
+                            isActive = activePane == rightPaneState,
                             sortType = sortType,
                             sortOrder = sortOrder,
-                            showDivider = paneMode == PaneMode.DUAL,
+                            showDivider = false,
                             onOpenViewer = { viewer = it },
                             torBoxClient = torBoxClient
                         )
-                    }
-
-                    /* ───────── RIGHT PANE ───────── */
-                    if (paneMode == PaneMode.DUAL) {
-                        AnimatedContent(
-                            targetState = rightPaneState.path,
-                            transitionSpec = {
-                                fadeIn() togetherWith fadeOut()
-                            },
-                            label = "rightPane"
-                        ) {
-                            FileListPane(
-                                modifier = Modifier.weight(1f),
-                                paneState = rightPaneState,
-                                currentPath = rightPaneState.path,
-                                fileOperator = fileOperator,
-                                safPermissionManager = safManager,
-                                settings = settings,
-                                searchQuery = searchQuery,
-                                searchResult = searchResult,
-                                permissionRefresh = permissionRefresh,
-                                onSearchQueryChange = onSearchQueryChange,
-                                onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
-                                onRequestSafAccess = onRequestSafAccess,
-                                onRequestFocus = { activePane = rightPaneState },
-                                isActive = activePane == rightPaneState,
-                                sortType = sortType,
-                                sortOrder = sortOrder,
-                                showDivider = false,
-                                onOpenViewer = { viewer = it },
-                                torBoxClient = torBoxClient
-                            )
-                        }
                     }
                 }
             }
