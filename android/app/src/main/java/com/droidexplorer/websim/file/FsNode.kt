@@ -8,10 +8,10 @@ private const val UNKNOWN_NAME = "Unknown"
 /**
  * Unified filesystem node abstraction.
  *
- * IMPORTANT RULES:
- * - FsNode.Local  → real filesystem
- * - FsNode.Saf    → SAF-backed filesystem
- * - FsNode.TorBox → REMOTE, VIRTUAL, READ-ONLY (NO FILE IO, NO NAVIGATION)
+ * RULES:
+ * - Local  → real filesystem (java.io.File)
+ * - SAF    → Storage Access Framework
+ * - TorBox → REMOTE, READ-ONLY, VIRTUAL (NO FILE IO, NO NAVIGATION)
  */
 sealed class FsNode {
 
@@ -25,10 +25,13 @@ sealed class FsNode {
      * LOCAL FILESYSTEM
      * ───────────────────────────────────────────── */
 
-    data class Local(val file: File) : FsNode() {
+    data class Local(
+        val file: File
+    ) : FsNode() {
+
         override val name: String = file.name
         override val isDirectory: Boolean = file.isDirectory
-        override val uniqueKey: String = file.absolutePath
+        override val uniqueKey: String = "local:${file.absolutePath}"
         override val path: String = file.absolutePath
         override val size: Long? = if (file.isFile) file.length() else null
     }
@@ -48,7 +51,7 @@ sealed class FsNode {
                 ?: UNKNOWN_NAME
 
         override val isDirectory: Boolean = document.isDirectory
-        override val uniqueKey: String = document.uri.toString()
+        override val uniqueKey: String = "saf:${document.uri}"
         override val size: Long? = if (document.isFile) document.length() else null
     }
 
@@ -57,14 +60,14 @@ sealed class FsNode {
      * ───────────────────────────────────────────── */
 
     /**
-     * Remote file from TorBox.
+     * TorBox remote file.
      *
-     * CRITICAL DESIGN DECISIONS:
-     * - id is STRING (matches API)
-     * - path is ALWAYS "torbox:" (flat virtual root)
-     * - uniqueKey is stable for Compose
-     * - NEVER treated as directory
+     * CRITICAL DESIGN:
+     * - id is STRING (API accurate)
+     * - NOT a directory
+     * - UNIQUE path per file
      * - NO filesystem navigation
+     * - NO java.io.File usage
      */
     data class TorBox(
         val id: String,
@@ -75,11 +78,11 @@ sealed class FsNode {
 
         override val isDirectory: Boolean = false
 
-        // Stable + Compose-safe
+        // Compose-stable unique identity
         override val uniqueKey: String = "torbox:file:$id"
 
-        // Virtual root (DO NOT CHANGE)
-        override val path: String = "torbox:"
+        // Virtual path (MUST be unique per file)
+        override val path: String = "torbox:file:$id"
     }
 }
 
@@ -90,7 +93,7 @@ sealed class FsNode {
 /**
  * Convert FsNode to java.io.File.
  *
- * NOTE:
+ * WARNING:
  * - TorBox has NO local file representation.
  */
 fun FsNode.asFile(): File = when (this) {
@@ -103,7 +106,7 @@ fun FsNode.asFile(): File = when (this) {
 /**
  * Safe size accessor.
  */
-fun FsNode.size(): Long = size ?: 0L
+fun FsNode.safeSize(): Long = size ?: 0L
 
 /**
  * Last-modified timestamp.
@@ -111,5 +114,5 @@ fun FsNode.size(): Long = size ?: 0L
 fun FsNode.lastModified(): Long = when (this) {
     is FsNode.Local -> file.lastModified()
     is FsNode.Saf -> document.lastModified()
-    is FsNode.TorBox -> 0L // Remote files have no local timestamp
+    is FsNode.TorBox -> 0L
 }
