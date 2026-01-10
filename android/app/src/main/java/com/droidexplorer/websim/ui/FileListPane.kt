@@ -58,6 +58,8 @@ import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
+import com.droidexplorer.websim.ui.debug.DebugOverlay
+import com.droidexplorer.websim.ui.debug.DebugOverlayState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -101,6 +103,10 @@ fun FileListPane(
     var showExplain by remember { mutableStateOf(false) }
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
 
+    // Debug overlay state
+    var debugEnabled by remember { mutableStateOf(false) }
+    var debugState by remember { mutableStateOf(DebugOverlayState()) }
+
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
             isSearching = true
@@ -143,6 +149,15 @@ LaunchedEffect(
         val client = torBoxClient
         if (client == null) {
             Log.e("TORBOX_UI", "TorBoxClient is NULL")
+            debugState = debugState.copy(
+                currentPath = currentPath,
+                torBoxClientPresent = false,
+                fileCount = 0,
+                torBoxFileCount = 0,
+                localFileCount = 0,
+                lastTrigger = "LaunchedEffect",
+                filesSnapshot = emptyList()
+            )
             return@LaunchedEffect
         }
 
@@ -152,15 +167,25 @@ LaunchedEffect(
 
         Log.e("TORBOX_UI", "TorBox files count=${torFiles.size}")
 
-        files.addAll(
-            torFiles.map {
-                FsNode.TorBox(
-                    id = it.id,
-                    name = it.name,
-                    size = it.size,
-                    absolutePath = it.absolutePath
-                )
-            }
+        val result = torFiles.map {
+            FsNode.TorBox(
+                id = it.id,
+                name = it.name,
+                size = it.size,
+                absolutePath = it.absolutePath
+            )
+        }
+        
+        files.addAll(result)
+        
+        debugState = debugState.copy(
+            currentPath = currentPath,
+            torBoxClientPresent = true,
+            fileCount = result.size,
+            torBoxFileCount = result.count { it is FsNode.TorBox },
+            localFileCount = result.count { it !is FsNode.TorBox },
+            lastTrigger = "LaunchedEffect",
+            filesSnapshot = result
         )
     } else {
         val localFiles = withContext(Dispatchers.IO) {
@@ -174,6 +199,16 @@ LaunchedEffect(
             )
         }
         files.addAll(localFiles)
+        
+        debugState = debugState.copy(
+            currentPath = currentPath,
+            torBoxClientPresent = torBoxClient != null,
+            fileCount = localFiles.size,
+            torBoxFileCount = localFiles.count { it is FsNode.TorBox },
+            localFileCount = localFiles.count { it !is FsNode.TorBox },
+            lastTrigger = "LaunchedEffect",
+            filesSnapshot = localFiles
+        )
     }
 }
 
@@ -523,6 +558,11 @@ LaunchedEffect(
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
+        )
+
+        DebugOverlay(
+            state = debugState.copy(enabled = debugEnabled),
+            onToggle = { debugEnabled = !debugEnabled }
         )
     }
 
