@@ -32,6 +32,9 @@ class TorBoxClient(private val apiKey: String) {
 
     private val client = OkHttpClient()
 
+    @Volatile
+    var lastRawResponse: String = ""
+
     companion object {
         private const val TAG = "TORBOX"
         private const val LIST_URL =
@@ -67,6 +70,7 @@ class TorBoxClient(private val apiKey: String) {
                     return@withContext emptyList()
                 }
 
+                lastRawResponse = body
                 Log.d(TAG, "BODY=${body.take(2000)}")
                 parseFiles(body)
 

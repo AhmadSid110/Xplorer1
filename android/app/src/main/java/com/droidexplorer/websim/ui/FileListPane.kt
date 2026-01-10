@@ -104,8 +104,9 @@ fun FileListPane(
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
 
     // Debug overlay state
-    var debugEnabled by remember { mutableStateOf(false) }
-    var debugState by remember { mutableStateOf(DebugOverlayState()) }
+    var debugState by remember {
+        mutableStateOf(DebugOverlayState())
+    }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
@@ -150,13 +151,13 @@ LaunchedEffect(
         if (client == null) {
             Log.e("TORBOX_UI", "TorBoxClient is NULL")
             debugState = debugState.copy(
-                currentPath = currentPath,
+                path = currentPath,
                 torBoxClientPresent = false,
-                fileCount = 0,
-                torBoxFileCount = 0,
-                localFileCount = 0,
+                totalFiles = 0,
+                torBoxFiles = 0,
+                localFiles = 0,
                 lastTrigger = "LaunchedEffect",
-                filesSnapshot = emptyList()
+                rawTorBoxResponse = ""
             )
             return@LaunchedEffect
         }
@@ -179,13 +180,13 @@ LaunchedEffect(
         files.addAll(result)
         
         debugState = debugState.copy(
-            currentPath = currentPath,
+            path = currentPath,
             torBoxClientPresent = true,
-            fileCount = result.size,
-            torBoxFileCount = result.count { it is FsNode.TorBox },
-            localFileCount = result.count { it !is FsNode.TorBox },
+            totalFiles = result.size,
+            torBoxFiles = result.count { it is FsNode.TorBox },
+            localFiles = result.count { it !is FsNode.TorBox },
             lastTrigger = "LaunchedEffect",
-            filesSnapshot = result
+            rawTorBoxResponse = client.lastRawResponse.take(600)
         )
     } else {
         val localFiles = withContext(Dispatchers.IO) {
@@ -201,13 +202,13 @@ LaunchedEffect(
         files.addAll(localFiles)
         
         debugState = debugState.copy(
-            currentPath = currentPath,
+            path = currentPath,
             torBoxClientPresent = torBoxClient != null,
-            fileCount = localFiles.size,
-            torBoxFileCount = localFiles.count { it is FsNode.TorBox },
-            localFileCount = localFiles.count { it !is FsNode.TorBox },
+            totalFiles = localFiles.size,
+            torBoxFiles = localFiles.count { it is FsNode.TorBox },
+            localFiles = localFiles.count { it !is FsNode.TorBox },
             lastTrigger = "LaunchedEffect",
-            filesSnapshot = localFiles
+            rawTorBoxResponse = torBoxClient?.lastRawResponse?.take(600) ?: ""
         )
     }
 }
@@ -561,8 +562,10 @@ LaunchedEffect(
         )
 
         DebugOverlay(
-            state = debugState.copy(enabled = debugEnabled),
-            onToggle = { debugEnabled = !debugEnabled }
+            state = debugState,
+            onClose = {
+                debugState = debugState.copy(visible = false)
+            }
         )
     }
 
