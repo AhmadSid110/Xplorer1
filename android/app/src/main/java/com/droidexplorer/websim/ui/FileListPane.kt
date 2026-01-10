@@ -291,7 +291,7 @@ LaunchedEffect(
             openText = { onOpenViewer(Viewer.Text(it)) },
             openImage = { target ->
                 val images = files
-                    .filter { !it.isDirectory && it !is FsNode.TorBox }
+                    .filter { !it.isDirectory }
                     .map { it.asFile() }
                     .filter { it.isImage() }
                 val index = images.indexOfFirst { it.absolutePath == target.absolutePath }

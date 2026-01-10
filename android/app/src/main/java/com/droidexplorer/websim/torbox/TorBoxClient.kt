@@ -84,42 +84,20 @@ class TorBoxClient(private val apiKey: String) {
         }
     }
 
-    /**
-     * ✅ CORRECT PARSER
-     *
-     * REAL TorBox response (CONFIRMED):
-     *
-     * {
-     *   "success": true,
-     *   "data": {
-     *     "files": [
-     *       {
-     *         "id": 78,
-     *         "name": "file.mp4",
-     *         "size": 723194829,
-     *         "absolute_path": "/completed/..."
-     *       }
-     *     ]
-     *   }
-     * }
-     */
     private fun parseFiles(jsonString: String): List<TorBoxFile> {
         return try {
             val root = JSONObject(jsonString)
-            val data = root.optJSONObject("data") ?: return emptyList()
-
-            // 🔥 THIS IS THE FIX — NO TORRENTS ARRAY
-            val filesArray = data.optJSONArray("files") ?: return emptyList()
+            val dataArray = root.optJSONArray("data") ?: return emptyList()
 
             val files = mutableListOf<TorBoxFile>()
 
-            for (i in 0 until filesArray.length()) {
-                val f = filesArray.optJSONObject(i) ?: continue
+            for (i in 0 until dataArray.length()) {
+                val obj = dataArray.getJSONObject(i)
 
-                val id = f.optString("id")
-                val name = f.optString("name")
-                val size = f.optLong("size", 0L)
-                val absolutePath = f.optString("absolute_path")
+                val id = obj.optString("id")
+                val name = obj.optString("name")
+                val size = obj.optLong("size", 0L)
+                val absolutePath = obj.optString("absolute_path")
 
                 if (id.isNotBlank() && name.isNotBlank()) {
                     files.add(
@@ -133,11 +111,8 @@ class TorBoxClient(private val apiKey: String) {
                 }
             }
 
-            Log.d(TAG, "Parsed ${files.size} files")
             files
-
         } catch (e: Exception) {
-            Log.e(TAG, "JSON parse error", e)
             emptyList()
         }
     }
