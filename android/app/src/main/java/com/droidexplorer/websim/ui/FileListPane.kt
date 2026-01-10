@@ -136,8 +136,7 @@ LaunchedEffect(
 ) {
     files.clear()
 
-    val isTorBox = currentPath == "torbox:"
-
+    val isTorBox = currentPath.startsWith("torbox")
     if (isTorBox) {
         Log.e("TORBOX_UI", "Loading TorBox files")
 
