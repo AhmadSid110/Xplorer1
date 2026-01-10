@@ -124,51 +124,59 @@ fun FileListPane(
     val snackbarHostState = remember { SnackbarHostState() }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
-    // Load files
-    val files by produceState<List<FsNode>>(
-        initialValue = emptyList(),
-        currentPath,
-        paneState.path,
-        permissionRefresh,
-        torBoxClient
-    ) {
-        value = withContext(Dispatchers.IO) {
+    // ─────────────────────────────────────────────
+// Load files (FIXED – works with TorBox)
+// ─────────────────────────────────────────────
 
-            val isTorBox = currentPath == "torbox:"
+val files = remember { mutableStateListOf<FsNode>() }
 
-            if (isTorBox) {
-                Log.e("TORBOX_UI", "Listing TorBox files, path=${paneState.path}")
+LaunchedEffect(
+    currentPath,
+    permissionRefresh
+) {
+    files.clear()
 
-                val client = torBoxClient
-                if (client == null) {
-                    Log.e("TORBOX_UI", "TorBoxClient is NULL")
-                    return@withContext emptyList()
-                }
+    val isTorBox = currentPath == "torbox:"
 
-                val torFiles = client.listFiles()
-                Log.e("TORBOX_UI", "TorBox files count=${torFiles.size}")
+    if (isTorBox) {
+        Log.e("TORBOX_UI", "Loading TorBox files")
 
-                return@withContext torFiles.map {
-                    FsNode.TorBox(
-                        id = it.id,
-                        name = it.name,
-                        size = it.size,
-                        absolutePath = it.absolutePath
-                    )
-                }
-            }
-
-            // ❌ LOCAL FILES ONLY IF NOT TORBOX
-            FileManager.list(
-            currentPath,
-            sortType,
-            sortOrder,
-            settings.showHiddenFiles,
-            safPermissionManager,
-            context
-           )
+        val client = torBoxClient
+        if (client == null) {
+            Log.e("TORBOX_UI", "TorBoxClient is NULL")
+            return@LaunchedEffect
         }
+
+        val torFiles = withContext(Dispatchers.IO) {
+            client.listFiles()
+        }
+
+        Log.e("TORBOX_UI", "TorBox files count=${torFiles.size}")
+
+        files.addAll(
+            torFiles.map {
+                FsNode.TorBox(
+                    id = it.id,
+                    name = it.name,
+                    size = it.size,
+                    absolutePath = it.absolutePath
+                )
+            }
+        )
+    } else {
+        val localFiles = withContext(Dispatchers.IO) {
+            FileManager.list(
+                currentPath,
+                sortType,
+                sortOrder,
+                settings.showHiddenFiles,
+                safPermissionManager,
+                context
+            )
+        }
+        files.addAll(localFiles)
     }
+}
 
     // Show snackbar when message is set
     LaunchedEffect(snackbarMessage) {
