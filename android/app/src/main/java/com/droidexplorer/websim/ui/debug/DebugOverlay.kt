@@ -68,7 +68,7 @@ fun DebugOverlay(
                             else -> "🟩 Local → ${it.name}"
                         },
                         color = Color.White,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 
