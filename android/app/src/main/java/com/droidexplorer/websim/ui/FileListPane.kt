@@ -132,7 +132,7 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
     // ─────────────────────────────────────────────
-// Load files (FIXED – works with TorBox)
+// Load files (FINAL – TorBox + Local SAFE)
 // ─────────────────────────────────────────────
 
 val files = remember { mutableStateListOf<FsNode>() }
@@ -143,20 +143,19 @@ LaunchedEffect(
 ) {
     files.clear()
 
-    val isTorBox = currentPath.startsWith("torbox")
-    if (isTorBox) {
-        Log.e("TORBOX_UI", "Loading TorBox files")
+    // ✅ ONLY root triggers TorBox
+    val isTorBoxRoot = currentPath == "torbox:"
 
+    if (isTorBoxRoot) {
         val client = torBoxClient
         if (client == null) {
-            Log.e("TORBOX_UI", "TorBoxClient is NULL")
             debugState = debugState.copy(
                 path = currentPath,
                 torBoxClientPresent = false,
                 totalFiles = 0,
                 torBoxFiles = 0,
                 localFiles = 0,
-                lastTrigger = "LaunchedEffect",
+                lastTrigger = "TorBox (client null)",
                 rawTorBoxResponse = ""
             )
             return@LaunchedEffect
@@ -166,8 +165,6 @@ LaunchedEffect(
             client.listFiles()
         }
 
-        Log.e("TORBOX_UI", "TorBox files count=${torFiles.size}")
-
         val result = torFiles.map {
             FsNode.TorBox(
                 id = it.id,
@@ -176,19 +173,22 @@ LaunchedEffect(
                 absolutePath = it.absolutePath
             )
         }
-        
+
+        // ✅ SAFE state mutation
         files.addAll(result)
-        
+
         debugState = debugState.copy(
             path = currentPath,
             torBoxClientPresent = true,
             totalFiles = result.size,
-            torBoxFiles = result.count { it is FsNode.TorBox },
-            localFiles = result.count { it !is FsNode.TorBox },
-            lastTrigger = "LaunchedEffect",
+            torBoxFiles = result.size,
+            localFiles = 0,
+            lastTrigger = "TorBox root",
             rawTorBoxResponse = client.lastRawResponse.take(600)
         )
+
     } else {
+        // ✅ LOCAL FILE SYSTEM
         val localFiles = withContext(Dispatchers.IO) {
             FileManager.list(
                 currentPath,
@@ -199,6 +199,20 @@ LaunchedEffect(
                 context
             )
         }
+
+        files.addAll(localFiles)
+
+        debugState = debugState.copy(
+            path = currentPath,
+            torBoxClientPresent = false,
+            totalFiles = localFiles.size,
+            torBoxFiles = 0,
+            localFiles = localFiles.size,
+            lastTrigger = "Local FS",
+            rawTorBoxResponse = ""
+        )
+    }
+}
         files.addAll(localFiles)
         
         debugState = debugState.copy(
