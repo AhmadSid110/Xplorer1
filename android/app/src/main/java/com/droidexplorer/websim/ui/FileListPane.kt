@@ -58,8 +58,6 @@ import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
-import com.droidexplorer.websim.ui.debug.DebugOverlay
-import com.droidexplorer.websim.ui.debug.DebugOverlayState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,10 +101,6 @@ fun FileListPane(
     var showExplain by remember { mutableStateOf(false) }
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
 
-    // Debug overlay state
-    var debugState by remember {
-        mutableStateOf(DebugOverlayState())
-    }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
@@ -517,12 +511,7 @@ fun FileListPane(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        DebugOverlay(
-            state = debugState,
-            onClose = {
-                debugState = debugState.copy(visible = false)
-            }
-        )
+        // Debug overlay removed
     }
 
     restrictedTarget?.let { target ->
