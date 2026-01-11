@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
-import com.droidexplorer.websim.file.size
+import com.droidexplorer.websim.file.safeSize
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -75,7 +75,7 @@ fun FileDetailsView(
             val formattedDate = remember(lastModified) {
                 formatter.format(Date(lastModified))
             }
-            val sizeBytes = file.size()
+            val sizeBytes = file.safeSize()
             val sizeText = remember(sizeBytes) {
                 sizeBytes.sizeReadable()
             }

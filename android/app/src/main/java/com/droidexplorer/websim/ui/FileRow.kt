@@ -25,7 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
-import com.droidexplorer.websim.file.size
+import com.droidexplorer.websim.file.safeSize
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,7 +55,7 @@ fun FileRow(
 ) {
     val haptic = LocalHapticFeedback.current
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val sizeText = remember(file.uniqueKey) { formatFileSize(file.size()) }
+    val sizeText = remember(file.uniqueKey) { formatFileSize(file.safeSize()) }
     val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
     
     // Animated background with spring animation for smoother transitions

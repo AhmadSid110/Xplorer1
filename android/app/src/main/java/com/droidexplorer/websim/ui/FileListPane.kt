@@ -132,64 +132,24 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
     // ─────────────────────────────────────────────
-// Load files (FINAL – TorBox + Local SAFE)
-// ─────────────────────────────────────────────
+    // Load files (FINAL – TorBox + Local SAFE)
+    // ─────────────────────────────────────────────
 
-val files = remember { mutableStateListOf<FsNode>() }
-
-LaunchedEffect(
-    currentPath,
-    permissionRefresh
-) {
-    files.clear()
-
-    // ✅ ONLY root triggers TorBox
-    val isTorBoxRoot = currentPath == "torbox:"
-
-    if (isTorBoxRoot) {
-        val client = torBoxClient
-        if (client == null) {
-            debugState = debugState.copy(
-                path = currentPath,
-                torBoxClientPresent = false,
-                totalFiles = 0,
-                torBoxFiles = 0,
-                localFiles = 0,
-                lastTrigger = "TorBox (client null)",
-                rawTorBoxResponse = ""
-            )
-            return@LaunchedEffect
-        }
-
-        val torFiles = withContext(Dispatchers.IO) {
-            client.listFiles()
-        }
-
-        val result = torFiles.map {
-            FsNode.TorBox(
-                id = it.id,
-                name = it.name,
-                size = it.size,
-                absolutePath = it.absolutePath
-            )
-        }
-
-        // ✅ SAFE state mutation
-        files.addAll(result)
-
-        debugState = debugState.copy(
-            path = currentPath,
-            torBoxClientPresent = true,
-            totalFiles = result.size,
-            torBoxFiles = result.size,
-            localFiles = 0,
-            lastTrigger = "TorBox root",
-            rawTorBoxResponse = client.lastRawResponse.take(600)
-        )
-
-    } else {
-        // ✅ LOCAL FILE SYSTEM
-        val localFiles = withContext(Dispatchers.IO) {
+    val files by produceState<List<FsNode>>(
+        initialValue = emptyList(),
+        currentPath,
+        permissionRefresh
+    ) {
+        value = if (currentPath == "torbox:") {
+            torBoxClient?.listFiles()?.map {
+                FsNode.TorBox(
+                    id = it.id,
+                    name = it.name,
+                    size = it.size,
+                    absolutePath = it.absolutePath
+                )
+            } ?: emptyList()
+        } else {
             FileManager.list(
                 currentPath,
                 sortType,
@@ -199,33 +159,7 @@ LaunchedEffect(
                 context
             )
         }
-
-        files.addAll(localFiles)
-
-        debugState = debugState.copy(
-            path = currentPath,
-            torBoxClientPresent = false,
-            totalFiles = localFiles.size,
-            torBoxFiles = 0,
-            localFiles = localFiles.size,
-            lastTrigger = "Local FS",
-            rawTorBoxResponse = ""
-        )
     }
-}
-        files.addAll(localFiles)
-        
-        debugState = debugState.copy(
-            path = currentPath,
-            torBoxClientPresent = torBoxClient != null,
-            totalFiles = localFiles.size,
-            torBoxFiles = localFiles.count { it is FsNode.TorBox },
-            localFiles = localFiles.count { it !is FsNode.TorBox },
-            lastTrigger = "LaunchedEffect",
-            rawTorBoxResponse = torBoxClient?.lastRawResponse?.take(600) ?: ""
-        )
-    }
-}
 
     // Show snackbar when message is set
     LaunchedEffect(snackbarMessage) {
@@ -505,8 +439,16 @@ LaunchedEffect(
                         handleRestricted(node)
                         showContextMenu = false
                     } else {
-                        selectedFile = node
-                        showContextMenu = true
+                        when (node) {
+                            is FsNode.TorBox -> {
+                                selectedFile = node
+                                showContextMenu = true
+                            }
+                            else -> {
+                                selectedFile = node
+                                showContextMenu = true
+                            }
+                        }
                     }
                 }
 

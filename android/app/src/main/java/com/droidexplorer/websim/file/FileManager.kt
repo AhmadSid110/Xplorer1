@@ -153,7 +153,7 @@ object FileManager {
 
         val sorted = when (sortType) {
             SortType.NAME -> files.sortedBy { it.name.lowercase() }
-            SortType.SIZE -> files.sortedBy { it.size() }
+            SortType.SIZE -> files.sortedBy { it.safeSize() }
             SortType.DATE -> files.sortedBy { it.lastModified() }
         }
 
