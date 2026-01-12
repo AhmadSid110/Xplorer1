@@ -1,18 +1,18 @@
-# Gradle build files
 .gradle/
 build/
+**/build/
 local.properties
-
-# IDE files
-.idea/
-*.iml
-
-# Android build outputs
 *.apk
 *.aab
-*.dex
-
-# Temporary files
-*.tmp
-*.bak
-*.swp
+sdk/
+android-sdk/
+tools/
+platform-tools/
+node_modules/
+dist/
+.cache/
+.vscode/
+.DS_Store
+Thumbs.db
+# Android native / CMake
+.cxx/
