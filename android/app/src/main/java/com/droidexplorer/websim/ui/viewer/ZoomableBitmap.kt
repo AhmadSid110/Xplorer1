@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 
+private const val DOUBLE_TAP_ZOOM_THRESHOLD = 1.2f
+
 @Composable
 fun ZoomableBitmap(
     bitmap: Bitmap,
@@ -43,7 +45,7 @@ fun ZoomableBitmap(
                 detectTapGestures(
                     onDoubleTap = {
                         scale =
-                            if (scale > initialScale * 1.2f)
+                            if (scale > initialScale * DOUBLE_TAP_ZOOM_THRESHOLD)
                                 initialScale
                             else
                                 initialScale * 2.5f

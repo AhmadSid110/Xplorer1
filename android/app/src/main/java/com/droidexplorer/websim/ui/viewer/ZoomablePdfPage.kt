@@ -10,13 +10,15 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
+private const val MAX_BITMAP_SIZE = 4096
+
 @Composable
 fun ZoomablePdfPage(
     renderer: PdfRenderer,
     pageIndex: Int
 ) {
-    val page = remember { renderer.openPage(pageIndex) }
-    DisposableEffect(Unit) {
+    val page = remember(pageIndex) { renderer.openPage(pageIndex) }
+    DisposableEffect(pageIndex) {
         onDispose { page.close() }
     }
 
@@ -25,16 +27,18 @@ fun ZoomablePdfPage(
         configuration.screenWidthDp.dp.toPx()
     }
 
-    // Create bitmap at page resolution
-    val bitmap = remember {
+    // Create bitmap at page resolution with size limits
+    val bitmap = remember(pageIndex) {
+        val width = page.width.coerceAtMost(MAX_BITMAP_SIZE)
+        val height = page.height.coerceAtMost(MAX_BITMAP_SIZE)
         Bitmap.createBitmap(
-            page.width,
-            page.height,
+            width,
+            height,
             Bitmap.Config.ARGB_8888
         )
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(pageIndex) {
         page.render(
             bitmap,
             null,
@@ -44,7 +48,7 @@ fun ZoomablePdfPage(
     }
 
     // 🔑 FIT-TO-WIDTH SCALE
-    val fitScale = remember {
+    val fitScale = remember(pageIndex) {
         screenWidthPx / page.width.toFloat()
     }
 

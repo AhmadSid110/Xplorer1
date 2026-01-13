@@ -14,12 +14,19 @@ import java.io.File
 
 @Composable
 fun PdfPageList(file: File) {
+    val fileDescriptor = remember { 
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY) 
+    }
+    
     val renderer = remember { 
-        PdfRenderer(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)) 
+        PdfRenderer(fileDescriptor) 
     }
 
     DisposableEffect(Unit) {
-        onDispose { renderer.close() }
+        onDispose { 
+            renderer.close()
+            fileDescriptor.close()
+        }
     }
 
     LazyColumn(
