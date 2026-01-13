@@ -32,7 +32,7 @@ fun ZoomableBitmap(
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     val transformState = rememberTransformableState { zoom, pan, _ ->
-        scale = (scale * zoom).coerceIn(initialScale, initialScale * 4f)
+        scale = (scale * zoom).coerceIn(1f, 4f)
         offset += pan
     }
 

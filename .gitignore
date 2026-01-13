@@ -16,3 +16,4 @@ dist/
 Thumbs.db
 # Android native / CMake
 .cxx/
+.jdk17
