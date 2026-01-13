@@ -97,6 +97,8 @@ fun DualPaneScreen(
 
             ImageViewerScreen(
                 file = v.file,
+                items = v.items,
+                index = v.index,
                 onClose = { viewer = null },
                 onNext = next,
                 onPrevious = previous
