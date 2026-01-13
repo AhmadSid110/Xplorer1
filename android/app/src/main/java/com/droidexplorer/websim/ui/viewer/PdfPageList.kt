@@ -14,15 +14,15 @@ import java.io.File
 
 @Composable
 fun PdfPageList(file: File) {
-    val fileDescriptor = remember { 
+    val fileDescriptor = remember(file) { 
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY) 
     }
     
-    val renderer = remember { 
+    val renderer = remember(file) { 
         PdfRenderer(fileDescriptor) 
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(file) {
         onDispose { 
             renderer.close()
             fileDescriptor.close()
