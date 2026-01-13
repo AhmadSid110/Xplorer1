@@ -1,5 +1,5 @@
 package com.droidexplorer.websim.ui.viewer
-
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
