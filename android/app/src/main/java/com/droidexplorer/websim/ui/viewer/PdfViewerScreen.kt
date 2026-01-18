@@ -41,8 +41,7 @@ fun PdfViewerScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showControls by remember { mutableStateOf(true) }
 
-    // Debug state (non-interfering)
-    val debugState = remember { mutableStateOf(PdfDebugState()) }
+
 
     // Initialize Renderer
     DisposableEffect(file) {
@@ -112,8 +111,7 @@ fun PdfViewerScreen(
                     pageIndex = index,
                     modifier = Modifier.fillMaxSize(),
                     onTap = { showControls = !showControls },
-                    onRegisterZoom = { p, z -> if (z == null) pageZoomStates.remove(p) else pageZoomStates[p] = z },
-                    debugState = debugState
+                    onRegisterZoom = { p, z -> if (z == null) pageZoomStates.remove(p) else pageZoomStates[p] = z }
                 )
             }
 
@@ -173,10 +171,7 @@ fun PdfViewerScreen(
 
                 LaunchedEffect(currentPage) { sliderPos = currentPage.toFloat() }
 
-                // TEMP: log pager changes for isolation testing
-                LaunchedEffect(pagerState.currentPage) {
-                    Log.d("PAGER", "Page=${pagerState.currentPage}")
-                }
+
             }
 
             // 4. UI Overlay — controls only (do NOT cover full screen)
@@ -223,14 +218,7 @@ fun PdfViewerScreen(
                 }
             }
 
-            // Debug overlay (visual only, non-intercepting)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 48.dp)
-            ) {
-                PdfDebugOverlay(debugState.value)
-            }
+
         } else {
              CircularProgressIndicator(
                  modifier = Modifier.align(Alignment.Center),

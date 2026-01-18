@@ -28,8 +28,7 @@ fun PdfPageRenderer(
     pageIndex: Int,
     modifier: Modifier = Modifier,
     onTap: (() -> Unit)? = null,
-    onRegisterZoom: ((Int, ZoomState?) -> Unit)? = null,
-    debugState: MutableState<PdfDebugState>? = null
+    onRegisterZoom: ((Int, ZoomState?) -> Unit)? = null
 ) {
     // Use an LRU cache and render only when the page is visible
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -39,10 +38,8 @@ fun PdfPageRenderer(
     // to a single-threaded executor which opens/closes the page on the worker thread.
     LaunchedEffect(pageIndex) {
         // Try cache first
-        // Try cache first
         PdfBitmapCache.get(pageIndex)?.let {
             bitmap = it
-            debugState?.let { it.value = it.value.copy(bitmapInfo = "cached", lastEvent = "cache hit") }
             return@LaunchedEffect
         }
 
@@ -50,12 +47,11 @@ fun PdfPageRenderer(
         val screenWidth = Resources.getSystem().displayMetrics.widthPixels.coerceAtLeast(100)
         val targetWidth = screenWidth.coerceAtMost(MAX_BITMAP_DIMENSION)
 
-        debugState?.let { it.value = it.value.copy(bitmapInfo = "requested=${targetWidth}x?", lastEvent = "render start (dispatch)", pageOpened = true, pageDisposed = false) }
+        /* debug removed */
 
         // Check cache one more time (in case another render produced it)
         PdfBitmapCache.get(pageIndex)?.let {
             bitmap = it
-            debugState?.let { it.value = it.value.copy(bitmapInfo = "cached", lastEvent = "cache hit") }
             return@LaunchedEffect
         }
 
@@ -64,12 +60,10 @@ fun PdfPageRenderer(
             val (workerThread, bmp) = PdfRenderExecutor.renderPage(renderer, pageIndex, targetWidth)
 
             // Back on Main: update debug state and UI bitmap
-            debugState?.let { it.value = it.value.copy(renderThread = workerThread, lastEvent = "render done", bitmapInfo = "${bmp.width}x${bmp.height}") }
+
             bitmap = bmp
-            debugState?.let { it.value = it.value.copy(pageDisposed = true, lastEvent = "dispose page") }
         } catch (e: Exception) {
             e.printStackTrace()
-            debugState?.let { it.value = it.value.copy(lastEvent = "render error: ${e.message}") }
         }
     }
 
