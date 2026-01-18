@@ -17,3 +17,4 @@ Thumbs.db
 # Android native / CMake
 .cxx/
 .jdk17
+docs/session-pdf-image-viewer-gesture-fix.md

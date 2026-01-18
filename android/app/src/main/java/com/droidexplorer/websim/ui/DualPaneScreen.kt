@@ -85,23 +85,10 @@ fun DualPaneScreen(
     when (val v = viewer) {
 
         is Viewer.Image -> {
-            val next =
-                v.items.getOrNull(v.index + 1)?.let {
-                    { viewer = v.copy(file = it, index = v.index + 1) }
-                }
-
-            val previous =
-                v.items.getOrNull(v.index - 1)?.let {
-                    { viewer = v.copy(file = it, index = v.index - 1) }
-                }
-
             ImageViewerScreen(
-                file = v.file,
                 items = v.items,
                 index = v.index,
-                onClose = { viewer = null },
-                onNext = next,
-                onPrevious = previous
+                onClose = { viewer = null }
             )
         }
 

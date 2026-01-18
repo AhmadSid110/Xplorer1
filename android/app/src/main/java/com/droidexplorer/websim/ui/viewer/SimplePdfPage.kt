@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
@@ -27,39 +28,35 @@ fun SimplePdfPage(
         configuration.screenWidthDp.dp.toPx().toInt()
     }
 
-    val page = remember(pageIndex) {
-        renderer.openPage(pageIndex)
+    // Render using single-threaded executor to avoid concurrent PdfRenderer access
+    val bitmapState = remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(pageIndex, screenWidthPx) {
+        // try cache first
+        PdfBitmapCache.get(pageIndex)?.let {
+            bitmapState.value = it
+            return@LaunchedEffect
+        }
+
+        try {
+            val (workerThread, bmp) = PdfRenderExecutor.renderPage(renderer, pageIndex, screenWidthPx)
+            bitmapState.value = bmp
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
-    DisposableEffect(Unit) {
-        onDispose { page.close() }
-    }
+    val bitmap = bitmapState.value
 
-    val aspectRatio = page.height.toFloat() / page.width.toFloat()
-    val heightPx = (screenWidthPx * aspectRatio).toInt()
-
-    val bitmap = remember {
-        Bitmap.createBitmap(
-            screenWidthPx,
-            heightPx,
-            Bitmap.Config.ARGB_8888
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         )
+    } else {
+        androidx.compose.material3.CircularProgressIndicator()
     }
-
-    LaunchedEffect(Unit) {
-        page.render(
-            bitmap,
-            null,
-            null,
-            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-        )
-    }
-
-    Image(
-        bitmap = bitmap.asImageBitmap(),
-        contentDescription = null,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    )
 }

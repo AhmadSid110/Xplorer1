@@ -1,91 +1,200 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.droidexplorer.websim.ui.viewer
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.ZipManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZipViewerScreen(
     file: File,
     onClose: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val entriesResult by produceState(initialValue = Result.success(emptyList<String>()), key1 = file.absolutePath) {
-        value = runCatching { withContext(Dispatchers.IO) { ZipManager.list(file) } }
-    }
-    val entries = entriesResult.getOrElse { emptyList() }
+    
+    // State
+    var allEntries by remember { mutableStateOf<List<String>>(emptyList()) }
+    var currentPath by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(entriesResult.exceptionOrNull()) {
-        entriesResult.exceptionOrNull()?.let {
-            val reason = it.message ?: "Unknown error"
-            snackbarHostState.showSnackbar("Failed to open zip: $reason")
+    // Load ALL entries once
+    LaunchedEffect(file) {
+        withContext(Dispatchers.IO) {
+            runCatching { 
+                ZipManager.list(file) 
+            }.fold(
+                onSuccess = { 
+                    allEntries = it 
+                    isLoading = false
+                },
+                onFailure = { 
+                    error = it.message 
+                    isLoading = false
+                }
+            )
         }
+    }
+
+    // Filter entries for current view
+    val currentNodes = remember(allEntries, currentPath) {
+        val nodes = mutableListOf<ZipEntryNode>()
+        val seenFolders = mutableSetOf<String>()
+        
+        // Define prefix for current level
+        val prefix = if (currentPath.isEmpty()) "" else "$currentPath/"
+        val prefixLen = prefix.length
+
+        allEntries.forEach { entry ->
+            if (entry.startsWith(prefix)) {
+                val sub = entry.substring(prefixLen)
+                if (sub.isNotEmpty()) {
+                    val slashIndex = sub.indexOf('/')
+                    if (slashIndex == -1) {
+                        // It's a file in this folder
+                        nodes.add(ZipEntryNode.File(sub, entry))
+                    } else {
+                        // It's a subfolder
+                        val folderName = sub.substring(0, slashIndex)
+                        if (folderName !in seenFolders) {
+                            seenFolders.add(folderName)
+                            nodes.add(ZipEntryNode.Directory(folderName, "$prefix$folderName"))
+                        }
+                    }
+                }
+            }
+        }
+        nodes.sortedBy { it is ZipEntryNode.File } // Folders first
+    }
+
+    // Navigation logic
+    fun navigateUp() {
+        if (currentPath.isEmpty()) {
+            onClose()
+        } else {
+            val lastSlash = currentPath.lastIndexOf('/')
+            currentPath = if (lastSlash == -1) "" else currentPath.substring(0, lastSlash)
+        }
+    }
+
+    BackHandler {
+        navigateUp()
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(file.name) },
+                title = { 
+                    Column {
+                        Text(file.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                        if (currentPath.isNotEmpty()) {
+                            Text(currentPath, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = onClose) {
+                    IconButton(onClick = { navigateUp() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
                 },
-                actions = {
-                    TextButton(onClick = {
-                        val outDir = File(file.parentFile, file.nameWithoutExtension)
-                        scope.launch {
-                            runCatching { ZipManager.extract(file, outDir) }.fold(
-                                onSuccess = {
-                                    snackbarHostState.showSnackbar("Extracted to ${outDir.absolutePath}")
-                                },
-                                onFailure = {
-                                    val reason = it.message ?: "Unknown error"
-                                    snackbarHostState.showSnackbar("Failed to extract: $reason")
-                                }
-                            )
-                        }
-                    }) {
-                        Text("Extract")
-                    }
-                }
+                 actions = {
+                    // Read-only indicator
+                    Text(
+                        text = "READ-ONLY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding)) {
-            items(entries) { entry ->
-                Text(entry, modifier = Modifier.padding(8.dp))
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (error != null) {
+                Text(
+                    text = "Error: $error",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else if (currentNodes.isEmpty()) {
+                Text(
+                     text = "Empty Folder",
+                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                     modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(currentNodes) { node ->
+                        ListItem(
+                            headlineContent = { Text(node.name) },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = when(node) {
+                                        is ZipEntryNode.Directory -> Icons.Default.Folder
+                                        is ZipEntryNode.File -> Icons.Outlined.Description
+                                    },
+                                    contentDescription = null,
+                                    tint = if (node is ZipEntryNode.Directory) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                if (node is ZipEntryNode.Directory) {
+                                    currentPath = node.path
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
+
+

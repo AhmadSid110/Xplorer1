@@ -4,15 +4,10 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -20,50 +15,73 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-
-private const val DOUBLE_TAP_ZOOM_THRESHOLD = 1.2f
+import androidx.compose.ui.unit.IntSize
 
 @Composable
 fun ZoomableBitmap(
     bitmap: Bitmap,
-    initialScale: Float = 1f
+    zoom: ZoomState,
+    onTap: (() -> Unit)? = null
 ) {
-    var scale by remember { mutableStateOf(initialScale) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    val transformState = rememberTransformableState { zoom, pan, _ ->
-        scale = (scale * zoom).coerceIn(1f, 4f)
-        offset += pan
-    }
+    // SAFE transform pattern: always detect pinch (zoom) but only pan when zoomed
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .background(Color.Black)
-            .transformable(transformState)
+            // Always listen for tap/double-tap
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onTap?.invoke() },
                     onDoubleTap = {
-                        scale =
-                            if (scale > initialScale * DOUBLE_TAP_ZOOM_THRESHOLD)
-                                initialScale
-                            else
-                                initialScale * 2.5f
-                        offset = Offset.Zero
+                        if (zoom.scale > 1f) {
+                            zoom.scale = 1f
+                            zoom.offset = Offset.Zero
+                            zoom.rotation = 0f
+                        } else {
+                            zoom.scale = 2.5f
+                        }
                     }
                 )
+            }
+            // Only run transform detection while two or more pointers are present.
+            // Keyed on zoom.scale so the pointer handler is recreated when the scale changes
+            // — this prevents lingering velocities from stealing pager flings after pinch.
+            .pointerInput(zoom.scale) {
+                while (true) {
+                    val ev = awaitPointerEventScope { awaitPointerEvent() }
+                    if (ev.changes.size >= 2) {
+                        detectTransformGestures { _, pan, gestureZoom, gestureRotation ->
+                            val gz = gestureZoom
+                            val gr = gestureRotation
+                            // Always apply pinch (zoom)
+                            val newScale = (zoom.scale * gz).coerceIn(1f, 5f)
+                            // Apply pan only if resulting scale > 1f
+                            if (newScale > 1f) {
+                                zoom.offset = zoom.offset + pan
+                            }
+                            zoom.scale = newScale
+                            // Apply rotation regardless (optional)
+                            zoom.rotation = (zoom.rotation + gr) % 360f
+                        }
+                    }
+                }
             },
+
+
         contentAlignment = Alignment.Center
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = null,
-            modifier = Modifier.graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationX = offset.x
-                translationY = offset.y
-            }
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = zoom.scale
+                    scaleY = zoom.scale
+                    translationX = zoom.offset.x
+                    translationY = zoom.offset.y
+                    rotationZ = zoom.rotation
+                }
         )
     }
 }

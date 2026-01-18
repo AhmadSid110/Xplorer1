@@ -3,8 +3,7 @@ package com.droidexplorer.websim.ui.viewer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -23,33 +22,53 @@ import coil.compose.rememberAsyncImagePainter
 import java.io.File
 
 @Composable
-fun ZoomableImage(file: File) {
+fun ZoomableImage(file: File, zoom: ZoomState, onTap: (() -> Unit)? = null) {
     val painter = rememberAsyncImagePainter(
         model = file,
         contentScale = ContentScale.Fit
     )
 
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        scale = (scale * zoomChange).coerceIn(1f, 5f)
-        offset += panChange
-    }
+    // SAFE transform pattern: always detect pinch (zoom) but only pan when zoomed
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .transformable(transformState)
+            // Always listen for tap/double-tap
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onTap?.invoke() },
                     onDoubleTap = {
-                        scale = if (scale > 1f) 1f else 3f
-                        offset = Offset.Zero
+                        if (zoom.scale > 1f) {
+                            zoom.scale = 1f
+                            zoom.offset = Offset.Zero
+                            zoom.rotation = 0f
+                        } else {
+                            zoom.scale = 3f
+                        }
                     }
                 )
+            }
+            // Only start transform detection when two or more pointers are present.
+            // Keyed on zoom.scale so the pointer handler detaches when scale changes to 1f,
+            // avoiding the "lingering velocity" issue that can steal pager flings.
+            .pointerInput(zoom.scale) {
+                while (true) {
+                    val ev = awaitPointerEventScope { awaitPointerEvent() }
+                    if (ev.changes.size >= 2) {
+                        detectTransformGestures { _, pan, gestureZoom, gestureRotation ->
+                            val gz = gestureZoom
+                            val gr = gestureRotation
+                            val newScale = (zoom.scale * gz).coerceIn(1f, 5f)
+                            if (newScale > 1f) zoom.offset = zoom.offset + pan
+                            zoom.scale = newScale
+                            zoom.rotation = (zoom.rotation + gr) % 360f
+                        }
+                    }
+                }
             },
+
+
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -57,10 +76,11 @@ fun ZoomableImage(file: File) {
             contentDescription = null,
             modifier = Modifier
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
+                    scaleX = zoom.scale
+                    scaleY = zoom.scale
+                    translationX = zoom.offset.x
+                    translationY = zoom.offset.y
+                    rotationZ = zoom.rotation
                 }
         )
     }
