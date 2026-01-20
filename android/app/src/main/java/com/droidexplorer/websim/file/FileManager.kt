@@ -14,6 +14,8 @@ enum class SortType { NAME, SIZE, DATE }
 enum class SortOrder { ASC, DESC }
 
 private const val DEFAULT_MAX_SEARCH_RESULTS = 500
+private const val DEFAULT_LARGE_FILE_MIN_BYTES = 100L * 1024 * 1024
+private const val DEFAULT_LARGE_FILE_RESULTS = 50
 
 /**
  * ONLY allowed visibility filter: hidden files
@@ -286,6 +288,32 @@ object FileManager {
             }
         } catch (_: Exception) {}
         return count
+    }
+
+    fun findLargeFiles(
+        rootPath: String,
+        minSizeBytes: Long = DEFAULT_LARGE_FILE_MIN_BYTES,
+        maxResults: Int = DEFAULT_LARGE_FILE_RESULTS
+    ): List<File> {
+        return runCatching {
+            val queue = java.util.PriorityQueue<File>(compareBy { it.length() })
+            File(rootPath).walkTopDown().forEach { file ->
+                if (!file.isFile) return@forEach
+                val size = file.length()
+                if (size < minSizeBytes) return@forEach
+
+                if (queue.size < maxResults) {
+                    queue.add(file)
+                } else {
+                    val smallest = queue.peek()
+                    if (smallest != null && size > smallest.length()) {
+                        queue.poll()
+                        queue.add(file)
+                    }
+                }
+            }
+            queue.sortedByDescending { it.length() }
+        }.getOrElse { emptyList() }
     }
 
     /**

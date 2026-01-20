@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -26,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -119,9 +121,11 @@ class MainActivity : ComponentActivity() {
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
             val storageCategoryData by viewModel.storageCategoryData.collectAsState()
             val showTorBoxSetup by showTorBoxSetupFlow.collectAsState()
+            val context = LocalContext.current
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
             var showStorage by rememberSaveable { mutableStateOf(false) }
+            var showCleaner by rememberSaveable { mutableStateOf(false) }
 
             val storageInfoProvider = remember { StorageInfoProvider() }
             val storageInfo = remember(showStorage) {
@@ -205,6 +209,7 @@ class MainActivity : ComponentActivity() {
                                         onToggleTorBox = viewModel::setTorBoxEnabled,
                                         onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                                         onOpenStorage = { showStorage = true },
+                                        onOpenCleaner = { showCleaner = true },
                                         modifier = Modifier.padding(padding)
                                     )
                                 }
@@ -239,6 +244,17 @@ class MainActivity : ComponentActivity() {
                         onCancel = {
                             showTorBoxSetupFlow.value = false
                             viewModel.onTorBoxSetupCancel()
+                        }
+                    )
+                }
+
+                if (showCleaner) {
+                    CleanerDialog(
+                        context = context,
+                        rootPath = "/storage/emulated/0",
+                        onDismiss = { showCleaner = false },
+                        onResult = { message ->
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         }
                     )
                 }

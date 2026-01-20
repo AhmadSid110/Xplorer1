@@ -30,7 +30,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,6 +93,7 @@ fun FileListPane(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
     val clipboardManager = remember { 
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager 
     }
@@ -154,6 +157,14 @@ fun FileListPane(
             )
         }
     }
+
+    val isSearchActive = searchQuery.isNotBlank()
+    val activeFiles = if (isSearchActive) {
+        FileManager.sortFiles(searchResult?.matches ?: emptyList(), sortType, sortOrder)
+    } else {
+        files
+    }
+    val searchLoading = isSearchActive && searchResult == null
 
     // Show snackbar when message is set
     LaunchedEffect(snackbarMessage) {
@@ -232,7 +243,7 @@ fun FileListPane(
             file = file,
             openText = { onOpenViewer(Viewer.Text(it)) },
             openImage = { target ->
-                val images = files
+                val images = activeFiles
                     .filter { !it.isDirectory }
                     .map { it.asFile() }
                     .filter { it.isImage() }
@@ -317,7 +328,10 @@ fun FileListPane(
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { isSearching = !isSearching }) {
+                            IconButton(onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isSearching = !isSearching
+                            }) {
                                 Icon(
                                     if (isSearching) Icons.Filled.Close else Icons.Filled.Search,
                                     contentDescription = "Search"
@@ -365,7 +379,10 @@ fun FileListPane(
                                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                                        IconButton(onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onSearchQueryChange("")
+                                        }) {
                                             Icon(Icons.Filled.Clear, contentDescription = "Clear")
                                         }
                                     }
@@ -455,11 +472,13 @@ fun FileListPane(
                 ) { _ ->
                     when (settings.defaultViewMode) {
                         ViewMode.LIST -> {
-                            if (files.isEmpty()) {
+                            if (searchLoading) {
+                                SearchLoadingState()
+                            } else if (activeFiles.isEmpty()) {
                                 EmptyState(searchQuery.isNotEmpty())
                             } else {
                                 FileListView(
-                                    files = files,
+                                    files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
                                     isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
@@ -468,11 +487,13 @@ fun FileListPane(
                             }
                         }
                         ViewMode.GRID -> {
-                            if (files.isEmpty()) {
+                            if (searchLoading) {
+                                SearchLoadingState()
+                            } else if (activeFiles.isEmpty()) {
                                 EmptyState(searchQuery.isNotEmpty())
                             } else {
                                 FileGridView(
-                                    files = files,
+                                    files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
                                     isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
@@ -481,11 +502,13 @@ fun FileListPane(
                             }
                         }
                         ViewMode.DETAILS -> {
-                            if (files.isEmpty()) {
+                            if (searchLoading) {
+                                SearchLoadingState()
+                            } else if (activeFiles.isEmpty()) {
                                 EmptyState(searchQuery.isNotEmpty())
                             } else {
                                 FileDetailsView(
-                                    files = files,
+                                    files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
                                     isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
@@ -692,6 +715,28 @@ private fun EmptyState(hasSearchQuery: Boolean) {
                 text = if (hasSearchQuery) "Try another keyword" else "No files to display",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchLoadingState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator()
+            Text(
+                text = "Searching storage…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
