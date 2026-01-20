@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -14,33 +15,32 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = NeonCyan,
-    secondary = NeonPurple,
-    tertiary = NeonPink,
-    background = DarkBase,
-    surface = DarkSurface,
-    surfaceVariant = DarkSurfaceAlt,
-    outline = DividerSoft
+    secondary = NeonCyanSoft,
+    tertiary = NeonCyanSoft,
+    background = CyberBlack,
+    surface = CyberDarkSurface,
+    surfaceVariant = CyberElevated,
+    outline = DividerSoft,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
+    error = ErrorRed,
+    onError = TextPrimary
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF3F5EE6),
-    onPrimary = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFFD8E2FF),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF001A42),
-    secondary = androidx.compose.ui.graphics.Color(0xFF555F71),
-    onSecondary = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-    secondaryContainer = androidx.compose.ui.graphics.Color(0xFFD8E2F9),
-    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF121C2B),
-    tertiary = androidx.compose.ui.graphics.Color(0xFF705574),
-    onTertiary = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-    surface = androidx.compose.ui.graphics.Color(0xFFFBFDF8),
-    onSurface = androidx.compose.ui.graphics.Color(0xFF1A1C19),
-    surfaceVariant = androidx.compose.ui.graphics.Color(0xFFE3E4E8),
-    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFF44474E),
-    error = androidx.compose.ui.graphics.Color(0xFFBA1A1A),
-    onError = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
-    background = androidx.compose.ui.graphics.Color(0xFFFBFDF8),
-    onBackground = androidx.compose.ui.graphics.Color(0xFF1A1C19)
+    primary = NeonCyan,
+    secondary = NeonCyanSoft,
+    tertiary = NeonCyanSoft,
+    background = CyberBlack,
+    surface = CyberDarkSurface,
+    surfaceVariant = CyberElevated,
+    outline = DividerSoft,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
+    error = ErrorRed,
+    onError = TextPrimary
 )
 
 @Composable
@@ -59,11 +59,13 @@ fun XplorerTheme(
         }
     }
     
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalCyberAccent provides NeonCyan) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
 
 val Typography = Typography()
@@ -76,15 +78,15 @@ fun backgroundGradient(darkTheme: Boolean = isSystemInDarkTheme()): Brush {
     return if (darkTheme) {
         Brush.linearGradient(
             listOf(
-                Color(0xFF121212),
-                Color(0xFF1F1F1F)
+                CyberBlack,
+                CyberDarkSurface
             )
         )
     } else {
         Brush.linearGradient(
             listOf(
-                Color(0xFFFBFDF8),
-                Color(0xFFE8EAE6)
+                CyberBlack,
+                CyberDarkSurface
             )
         )
     }

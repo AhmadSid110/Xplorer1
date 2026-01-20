@@ -5,15 +5,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
+val CyberBlack = Color(0xFF0B0F14)
+val CyberDarkSurface = Color(0xFF111722)
+val CyberElevated = Color(0xFF161D2A)
+
 val NeonCyan = Color(0xFF00E5FF)
-val NeonPurple = Color(0xFFB388FF)
-val NeonPink = Color(0xFFFF4D9D)
+val NeonCyanSoft = Color(0xFF00B8D4)
+val NeonMagenta = Color(0xFFFF2D95)
+val NeonMagentaSoft = Color(0xFFB0005A)
 
-val DarkBase = Color(0xFF0B0F14)
-val DarkSurface = Color(0xFF121823)
-val DarkSurfaceAlt = Color(0xFF1A2233)
+val NeonPurple = Color(0xFF8A6BFF)
+val NeonGreen = Color(0xFF00E676)
+val NeonBlue = Color(0xFF4FC3F7)
+val NeonAmber = Color(0xFFFFC400)
+val NeonPink = Color(0xFFFF5CA7)
 
-val DividerSoft = Color.White.copy(alpha = 0.08f)
+val TextPrimary = Color(0xFFE6EBF2)
+val TextSecondary = Color(0xFF9AA4B2)
+val TextMuted = Color(0xFF6B7280)
+
+val SuccessGreen = Color(0xFF00E676)
+val WarningAmber = Color(0xFFFFC400)
+val ErrorRed = Color(0xFFFF5252)
+
+val DividerSoft = Color.White.copy(alpha = 0.06f)
 
 /**
  * Glass theme colors for translucent surfaces

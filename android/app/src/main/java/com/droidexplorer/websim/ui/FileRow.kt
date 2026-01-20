@@ -5,8 +5,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
@@ -24,6 +26,9 @@ import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
 import com.droidexplorer.websim.ui.theme.DividerSoft
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.TextMuted
+import com.droidexplorer.websim.ui.theme.cyberGlow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,11 +60,12 @@ fun FileRow(
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val sizeText = remember(file.uniqueKey) { formatFileSize(file.safeSize()) }
     val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
+    val accent = LocalCyberAccent.current
     
     // Animated background with spring animation for smoother transitions
     val highlightColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            accent.copy(alpha = 0.08f)
         } else {
             Color.Transparent
         },
@@ -74,7 +80,20 @@ fun FileRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(highlightColor)
+            .background(highlightColor, RoundedCornerShape(12.dp))
+            .then(
+                if (isSelected) {
+                    Modifier
+                        .border(
+                            1.dp,
+                            accent.copy(alpha = 0.5f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .cyberGlow(accent)
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -91,7 +110,7 @@ fun FileRow(
             FileIcon(
                 file = file,
                 size = iconSize,
-                tint = MaterialTheme.colorScheme.primary
+                tint = null
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -114,7 +133,7 @@ fun FileRow(
                         Icon(
                             imageVector = Icons.Outlined.Lock,
                             contentDescription = "Remote file - read only",
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            tint = accent.copy(alpha = 0.7f),
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -124,26 +143,26 @@ fun FileRow(
                         Text(
                             text = "Remote (read-only)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            color = accent.copy(alpha = 0.7f)
                         )
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = TextMuted
                         )
                     }
                     if (!file.isDirectory) {
                         Text(
                             text = sizeText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = TextMuted
                         )
                     }
                     if (file !is FsNode.TorBox) {
                         Text(
                             text = dateText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = TextMuted
                         )
                     }
                 }
@@ -154,7 +173,7 @@ fun FileRow(
                 Icon(
                     imageVector = Icons.Outlined.Lock,
                     contentDescription = "Permission required",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = accent,
                     modifier = Modifier.size(20.dp)
                 )
             }

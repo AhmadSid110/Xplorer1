@@ -7,24 +7,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.FolderDelete
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.VideoFile
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,12 +39,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
-import com.droidexplorer.websim.ui.glass.neonGlass
-import com.droidexplorer.websim.ui.theme.DarkSurfaceAlt
+import com.droidexplorer.websim.ui.theme.CyberDarkSurface
+import com.droidexplorer.websim.ui.theme.CyberElevated
 import com.droidexplorer.websim.ui.theme.DividerSoft
-import com.droidexplorer.websim.ui.theme.NeonCyan
-import com.droidexplorer.websim.ui.theme.NeonPink
-import com.droidexplorer.websim.ui.theme.NeonPurple
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.TextMuted
+import com.droidexplorer.websim.ui.theme.TextPrimary
+import com.droidexplorer.websim.ui.theme.cyberGlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,8 +58,15 @@ enum class CleanerCategory {
     VIDEOS,
     IMAGES,
     AUDIO,
-    EMPTY_FOLDERS
+    CACHE
 }
+
+private data class CleanerCategorySpec(
+    val category: CleanerCategory,
+    val title: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
 
 @Composable
 fun CleanerScreen(
@@ -70,6 +78,7 @@ fun CleanerScreen(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val accent = LocalCyberAccent.current
 
     val storageInfo = remember { StorageInfoProvider().internalStorage() }
     val usedFraction = if (storageInfo.total > 0) {
@@ -77,23 +86,81 @@ fun CleanerScreen(
     } else 0f
 
     var isProcessing by remember { mutableStateOf(false) }
-    var isScanning by remember { mutableStateOf(false) }
-    var largeFiles by remember { mutableStateOf<List<File>>(emptyList()) }
-    var selectedCategory by remember { mutableStateOf<CleanerCategory?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf<CleanerCategory?>(null) }
+    val categoryFiles = remember { mutableStateMapOf<CleanerCategory, List<File>>() }
+    val categorySizes = remember { mutableStateMapOf<CleanerCategory, Long>() }
+    val scanning = remember { mutableStateMapOf<CleanerCategory, Boolean>() }
     val selectedFiles = remember { mutableStateMapOf<String, Boolean>() }
 
-    val background = Brush.verticalGradient(
+    val categories = remember {
         listOf(
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            CleanerCategorySpec(
+                CleanerCategory.LARGE_FILES,
+                "Large files",
+                "> 100 MB",
+                Icons.Outlined.VideoFile
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.UNUSED_APKS,
+                "APKs",
+                "Installers",
+                Icons.Outlined.Android
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.ARCHIVES,
+                "Archives",
+                "ZIP, RAR, 7z",
+                Icons.Outlined.Archive
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.VIDEOS,
+                "Videos",
+                "Media",
+                Icons.Outlined.VideoFile
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.IMAGES,
+                "Images",
+                "Screenshots & photos",
+                Icons.Outlined.Image
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.AUDIO,
+                "Audio",
+                "Music & recordings",
+                Icons.Outlined.LibraryMusic
+            ),
+            CleanerCategorySpec(
+                CleanerCategory.CACHE,
+                "Cache",
+                "App temporary files",
+                Icons.Outlined.CleaningServices
+            )
         )
-    )
+    }
+
+    fun startScan(category: CleanerCategory) {
+        if (scanning[category] == true) return
+        scanning[category] = true
+        scope.launch {
+            val results = withContext(Dispatchers.IO) {
+                scanCategoryFiles(context, category)
+            }
+            categoryFiles[category] = results
+            categorySizes[category] = results.sumOf { it.length() }
+            selectedFiles.clear()
+            scanning[category] = false
+        }
+    }
+
+    val totalJunk = categorySizes.values.sum()
+    val previewFiles = selectedCategory?.let { categoryFiles[it].orEmpty() }.orEmpty()
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(background)
+            .background(CyberDarkSurface)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -108,52 +175,61 @@ fun CleanerScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Clear space",
-                            style = MaterialTheme.typography.titleLarge
+                            text = "Cleaner",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "Review storage and clean safely",
+                            text = "Review and delete safely",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = TextMuted
                         )
                     }
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = accent
                         )
                     }
                 }
             }
 
             item {
-                Column(
-                    modifier = Modifier
+                Box(
+                    Modifier
                         .fillMaxWidth()
-                        .neonGlass()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .background(CyberDarkSurface, RoundedCornerShape(24.dp))
+                        .border(
+                            1.dp,
+                            accent.copy(alpha = 0.4f),
+                            RoundedCornerShape(24.dp)
+                        )
+                        .padding(20.dp)
                 ) {
-                    Text(
-                        text = "Storage usage",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "${formatSize(storageInfo.used)} used · ${formatSize(storageInfo.free)} free",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    LinearProgressIndicator(
-                        progress = usedFraction,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        color = NeonCyan,
-                        trackColor = DarkSurfaceAlt
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("JUNK FOUND", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = if (totalJunk > 0) formatSize(totalJunk) else "--",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${formatSize(storageInfo.used)} used · ${formatSize(storageInfo.free)} free",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
+                        )
+                        LinearProgressIndicator(
+                            progress = usedFraction,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            color = accent,
+                            trackColor = CyberElevated
+                        )
+                    }
                 }
             }
 
@@ -161,189 +237,56 @@ fun CleanerScreen(
                 Text(
                     text = "Categories",
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = TextMuted
                 )
             }
 
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+            items(categories.chunked(2)) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    item {
-                        AssistChip(
-                            onClick = { selectedCategory = CleanerCategory.IMAGES },
-                            label = { Text("Images • ${formatSize(data.images)}") },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = DarkSurfaceAlt
-                            )
+                    rowItems.forEach { spec ->
+                        val size = categorySizes[spec.category]
+                        val isSelected = selectedCategory == spec.category
+                        val isScanning = scanning[spec.category] == true
+                        CleanerCategoryCard(
+                            spec = spec,
+                            accent = accent,
+                            sizeLabel = when {
+                                isScanning -> "Scanning"
+                                size == null -> "Tap to scan"
+                                size == 0L -> "No files"
+                                else -> formatSize(size)
+                            },
+                            selected = isSelected,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                selectedCategory = spec.category
+                                if (size == null || isScanning) {
+                                    startScan(spec.category)
+                                }
+                                onOpenCategory(spec.category)
+                            },
+                            onLongPress = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                selectedCategory = spec.category
+                                val files = categoryFiles[spec.category].orEmpty()
+                                if (files.isNotEmpty()) {
+                                    files.forEach { file ->
+                                        selectedFiles[file.absolutePath] = true
+                                    }
+                                } else {
+                                    startScan(spec.category)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                    item {
-                        AssistChip(
-                            onClick = { selectedCategory = CleanerCategory.VIDEOS },
-                            label = { Text("Videos • ${formatSize(data.videos)}") },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = DarkSurfaceAlt
-                            )
-                        )
-                    }
-                    item {
-                        AssistChip(
-                            onClick = { selectedCategory = CleanerCategory.UNUSED_APKS },
-                            label = { Text("APKs • ${formatSize(data.apks)}") },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = DarkSurfaceAlt
-                            )
-                        )
+                    if (rowItems.size == 1) {
+                        Spacer(Modifier.weight(1f))
                     }
                 }
-            }
-
-            item {
-                Text(
-                    text = "Smart suggestions",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            item {
-                SuggestionRow(
-                    title = "Empty folders",
-                    subtitle = "Remove unused directories",
-                    icon = Icons.Outlined.FolderDelete,
-                    enabled = !isProcessing,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        isProcessing = true
-                        scope.launch {
-                            val count = withContext(Dispatchers.IO) {
-                                FileManager.deleteEmptyFolders("/storage/emulated/0")
-                            }
-                            Toast.makeText(context, "Deleted $count empty folders", Toast.LENGTH_SHORT).show()
-                            isProcessing = false
-                        }
-                    }
-                )
-            }
-
-            item {
-                SuggestionRow(
-                    title = "App cache",
-                    subtitle = "Clear cached temporary files",
-                    icon = Icons.Outlined.Delete,
-                    enabled = !isProcessing,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        isProcessing = true
-                        scope.launch {
-                            val cachePath = context.cacheDir.absolutePath
-                            val count = withContext(Dispatchers.IO) {
-                                FileManager.clearCache(cachePath)
-                            }
-                            Toast.makeText(context, "Cleared $count cache items", Toast.LENGTH_SHORT).show()
-                            isProcessing = false
-                        }
-                    }
-                )
-            }
-
-            item {
-                Text(
-                    text = "Cleaner categories",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Large files",
-                    subtitle = "Files over 100 MB",
-                    size = largeFiles.size,
-                    totalSize = largeFiles.sumOf { it.length() },
-                    icon = Icons.Outlined.VideoFile,
-                    accent = NeonPurple,
-                    onClick = {
-                        selectedCategory = CleanerCategory.LARGE_FILES
-                        onOpenCategory(CleanerCategory.LARGE_FILES)
-                    }
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Unused APKs",
-                    subtitle = "Installed packages you can reinstall",
-                    size = 0,
-                    totalSize = data.apks,
-                    icon = Icons.Outlined.Android,
-                    accent = NeonCyan,
-                    onClick = {
-                        selectedCategory = CleanerCategory.UNUSED_APKS
-                        onOpenCategory(CleanerCategory.UNUSED_APKS)
-                    }
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Archives",
-                    subtitle = "ZIP, RAR and compressed files",
-                    size = 0,
-                    totalSize = data.archives,
-                    icon = Icons.Outlined.Archive,
-                    accent = NeonPink,
-                    onClick = {
-                        selectedCategory = CleanerCategory.ARCHIVES
-                        onOpenCategory(CleanerCategory.ARCHIVES)
-                    }
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Videos",
-                    subtitle = "Media videos",
-                    size = 0,
-                    totalSize = data.videos,
-                    icon = Icons.Outlined.VideoFile,
-                    accent = NeonPurple,
-                    onClick = {
-                        selectedCategory = CleanerCategory.VIDEOS
-                        onOpenCategory(CleanerCategory.VIDEOS)
-                    }
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Images",
-                    subtitle = "Photos and screenshots",
-                    size = 0,
-                    totalSize = data.images,
-                    icon = Icons.Outlined.Image,
-                    accent = NeonCyan,
-                    onClick = {
-                        selectedCategory = CleanerCategory.IMAGES
-                        onOpenCategory(CleanerCategory.IMAGES)
-                    }
-                )
-            }
-
-            item {
-                CleanerCategoryCard(
-                    title = "Audio",
-                    subtitle = "Music and recordings",
-                    size = 0,
-                    totalSize = data.audio,
-                    icon = Icons.Outlined.LibraryMusic,
-                    accent = NeonPink,
-                    onClick = {
-                        selectedCategory = CleanerCategory.AUDIO
-                        onOpenCategory(CleanerCategory.AUDIO)
-                    }
-                )
             }
 
             item {
@@ -352,93 +295,29 @@ fun CleanerScreen(
                     enter = fadeIn(tween(140)) + slideInVertically(tween(140)) { it / 3 },
                     exit = fadeOut(tween(140)) + slideOutVertically(tween(140)) { it / 3 }
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
                             text = "Preview",
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = TextMuted
                         )
 
-                        if (selectedCategory == CleanerCategory.LARGE_FILES) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .neonGlass()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.CleaningServices,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("Scan large files", style = MaterialTheme.typography.titleMedium)
-                                        Text(
-                                            "Preview before deleting",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Button(
-                                        onClick = {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            isScanning = true
-                                            scope.launch {
-                                                val results = withContext(Dispatchers.IO) {
-                                                    FileManager.findLargeFiles("/storage/emulated/0")
-                                                }
-                                                largeFiles = results
-                                                selectedFiles.clear()
-                                                isScanning = false
-                                            }
-                                        },
-                                        enabled = !isScanning && !isProcessing,
-                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-                                    ) {
-                                        Text("Scan")
-                                    }
-                                }
-
-                                if (isScanning) {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-
-                            if (largeFiles.isNotEmpty()) {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    largeFiles.forEach { file ->
-                                        val isChecked = selectedFiles[file.absolutePath] == true
-                                        CleanerFileRow(
-                                            file = file,
-                                            checked = isChecked,
-                                            onCheckedChange = { checked ->
-                                                selectedFiles[file.absolutePath] = checked
-                                            }
-                                        )
-                                    }
-                                }
-                            } else if (!isScanning) {
-                                Text(
-                                    text = "No large files found yet.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        if (previewFiles.isEmpty()) {
+                            Text(
+                                text = "No files to preview yet.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted
+                            )
+                        } else {
+                            previewFiles.forEach { file ->
+                                val checked = selectedFiles[file.absolutePath] == true
+                                CleanerFileRow(
+                                    file = file,
+                                    checked = checked,
+                                    accent = accent,
+                                    onCheckedChange = { selectedFiles[file.absolutePath] = it }
                                 )
                             }
-                        } else {
-                            Text(
-                                text = "Preview for this category is coming soon.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }
@@ -446,7 +325,7 @@ fun CleanerScreen(
 
             item {
                 val selectedCount = selectedFiles.values.count { it }
-                val selectedSize = largeFiles.filter { selectedFiles[it.absolutePath] == true }
+                val selectedSize = previewFiles.filter { selectedFiles[it.absolutePath] == true }
                     .sumOf { it.length() }
 
                 AnimatedVisibility(
@@ -457,21 +336,36 @@ fun CleanerScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .neonGlass()
-                            .padding(12.dp)
+                            .background(CyberDarkSurface, RoundedCornerShape(20.dp))
+                            .border(
+                                1.dp,
+                                accent.copy(alpha = 0.35f),
+                                RoundedCornerShape(20.dp)
+                            )
+                            .padding(16.dp)
                     ) {
                         Text(
                             text = "Delete $selectedCount files (${formatSize(selectedSize)})",
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary
                         )
                         Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = { showConfirmDialog = true },
-                            enabled = !isProcessing,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
-                            modifier = Modifier.fillMaxWidth()
+                            enabled = selectedCount > 0 && !isProcessing,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = accent.copy(alpha = 0.15f),
+                                contentColor = accent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    accent.copy(alpha = 0.6f),
+                                    RoundedCornerShape(16.dp)
+                                )
                         ) {
-                            Text("Clean safely")
+                            Text("Clean selected")
                         }
                     }
                 }
@@ -485,37 +379,38 @@ fun CleanerScreen(
                     .background(Color.Black.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = accent)
             }
         }
     }
 
     if (showConfirmDialog) {
         val selectedCount = selectedFiles.values.count { it }
-        val selectedSize = largeFiles.filter { selectedFiles[it.absolutePath] == true }
+        val selectedSize = previewFiles.filter { selectedFiles[it.absolutePath] == true }
             .sumOf { it.length() }
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            modifier = Modifier.neonGlass(),
-            containerColor = Color.Transparent,
+            containerColor = CyberDarkSurface,
             title = { Text("Delete permanently?") },
-            text = {
-                Text("Delete $selectedCount files (${formatSize(selectedSize)}).")
-            },
+            text = { Text("Delete $selectedCount files (${formatSize(selectedSize)}).") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        isProcessing = true
                         showConfirmDialog = false
+                        isProcessing = true
                         scope.launch {
-                            val toDelete = largeFiles.filter {
+                            val toDelete = previewFiles.filter {
                                 selectedFiles[it.absolutePath] == true
                             }
                             val deletedCount = withContext(Dispatchers.IO) {
                                 toDelete.count { it.delete() }
                             }
-                            largeFiles = largeFiles - toDelete.toSet()
+                            selectedCategory?.let { category ->
+                                val updated = (categoryFiles[category].orEmpty() - toDelete.toSet())
+                                categoryFiles[category] = updated
+                                categorySizes[category] = updated.sumOf { it.length() }
+                            }
                             selectedFiles.clear()
                             Toast.makeText(
                                 context,
@@ -527,7 +422,7 @@ fun CleanerScreen(
                     },
                     enabled = selectedCount > 0
                 ) {
-                    Text("Delete")
+                    Text("Delete", color = accent)
                 }
             },
             dismissButton = {
@@ -539,103 +434,74 @@ fun CleanerScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SuggestionRow(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .neonGlass()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(NeonCyan.copy(alpha = 0.16f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        TextButton(onClick = onClick, enabled = enabled) {
-            Text("Review")
-        }
-    }
-}
-
-@Composable
-fun CleanerCategoryCard(
-    title: String,
-    subtitle: String,
-    size: Int,
-    totalSize: Long,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun CleanerCategoryCard(
+    spec: CleanerCategorySpec,
     accent: Color,
-    onClick: () -> Unit
+    sizeLabel: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        tonalElevation = 2.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+    Box(
+        modifier = modifier
+            .height(96.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        accent.copy(alpha = 0.18f),
+                        CyberDarkSurface
+                    )
+                ),
+                RoundedCornerShape(20.dp)
+            )
+            .then(
+                if (selected) {
+                    Modifier
+                        .border(
+                            1.dp,
+                            accent.copy(alpha = 0.5f),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .cyberGlow(accent, intensity = 0.3f)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(16.dp)
     ) {
         Row(
-            modifier = Modifier
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(accent.copy(alpha = 0.2f), Color.Transparent)
-                    )
-                )
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier
-                    .size(48.dp)
+                modifier = Modifier
+                    .size(42.dp)
                     .background(accent.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = accent)
+                Icon(spec.icon, null, tint = accent)
             }
-
-            Spacer(Modifier.width(16.dp))
-
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall)
-                if (size > 0) {
-                    Text(
-                        "$size items",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(spec.title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(spec.subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
-
-            Text(
-                formatSize(totalSize),
-                style = MaterialTheme.typography.labelMedium,
-                color = accent
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = null,
+                    tint = TextMuted
+                )
+                Text(
+                    sizeLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accent
+                )
+            }
         }
     }
 }
@@ -644,38 +510,94 @@ fun CleanerCategoryCard(
 private fun CleanerFileRow(
     file: File,
     checked: Boolean,
+    accent: Color,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                if (checked) accent.copy(alpha = 0.08f) else Color.Transparent,
+                RoundedCornerShape(12.dp)
+            )
+            .then(
+                if (checked) {
+                    Modifier
+                        .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .cyberGlow(accent, intensity = 0.25f)
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = accent,
+                uncheckedColor = TextMuted,
+                checkmarkColor = CyberDarkSurface
+            )
         )
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 text = file.name,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = TextPrimary
             )
             Text(
                 text = file.parent ?: "",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = TextMuted
             )
         }
         Text(
             formatSize(file.length()),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = accent
         )
     }
     Divider(color = DividerSoft)
+}
+
+private fun scanCategoryFiles(context: android.content.Context, category: CleanerCategory): List<File> {
+    val rootPath = "/storage/emulated/0"
+    val maxResults = 200
+    val extensions = when (category) {
+        CleanerCategory.UNUSED_APKS -> setOf("apk")
+        CleanerCategory.ARCHIVES -> setOf("zip", "rar", "7z", "tar", "gz")
+        CleanerCategory.VIDEOS -> setOf("mp4", "mkv", "avi", "mov", "webm", "3gp")
+        CleanerCategory.IMAGES -> setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "bmp")
+        CleanerCategory.AUDIO -> setOf("mp3", "wav", "ogg", "flac", "m4a", "aac")
+        else -> emptySet()
+    }
+
+    return when (category) {
+        CleanerCategory.LARGE_FILES -> FileManager.findLargeFiles(rootPath)
+        CleanerCategory.CACHE -> {
+            val cacheRoots = buildList<File> {
+                add(context.cacheDir)
+                context.externalCacheDir?.let { add(it) }
+                context.externalCacheDirs?.filterNotNull()?.let { addAll(it) }
+            }
+            cacheRoots
+                .flatMap { root -> root.walkTopDown().filter { it.isFile }.take(maxResults).toList() }
+                .distinctBy { it.absolutePath }
+        }
+        else -> {
+            File(rootPath)
+                .walkTopDown()
+                .filter { file ->
+                    file.isFile && extensions.contains(file.extension.lowercase())
+                }
+                .take(maxResults)
+                .toList()
+        }
+    }
 }
 
 private fun formatSize(bytes: Long): String {

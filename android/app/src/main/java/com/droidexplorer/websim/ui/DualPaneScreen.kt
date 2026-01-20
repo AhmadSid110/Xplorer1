@@ -9,14 +9,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.ViewList
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material.icons.outlined.ViewWeek
 import androidx.compose.material3.*
 import androidx.compose.material3.ModalNavigationDrawer
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.droidexplorer.websim.file.*
 import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
@@ -41,6 +43,10 @@ import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.viewer.*
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.theme.backgroundGradient
+import com.droidexplorer.websim.ui.theme.CyberBlack
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.TextMuted
+import com.droidexplorer.websim.ui.theme.TextPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +58,8 @@ fun DualPaneScreen(
     permissionRefresh: Int,
     onSearchQueryChange: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenCleaner: () -> Unit,
+    onRequestAllFilesAccess: () -> Unit,
     onRequestSafAccess: (FsNode) -> Unit,
     onViewModeChange: (com.droidexplorer.websim.settings.ViewMode) -> Unit,
     torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
@@ -85,6 +93,7 @@ fun DualPaneScreen(
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
     var viewMenuExpanded by remember { mutableStateOf(false) }
+    val accent = LocalCyberAccent.current
 
     /* ───────────────────── VIEWERS ───────────────────── */
 
@@ -118,9 +127,22 @@ fun DualPaneScreen(
                 drawerState = drawerState,
                 drawerContent = {
                     SideDrawerContent(
+                        activeDestination = DrawerDestination.FILES,
+                        onFiles = {
+                            drawerScope.launch { drawerState.close() }
+                            activePane.navigateToPath(defaultPath)
+                        },
+                        onCleaner = {
+                            drawerScope.launch { drawerState.close() }
+                            onOpenCleaner()
+                        },
                         onTorBox = {
                             drawerScope.launch { drawerState.close() }
                             activePane.navigateToPath("torbox:")
+                        },
+                        onPermissions = {
+                            drawerScope.launch { drawerState.close() }
+                            onRequestAllFilesAccess()
                         },
                         onSettings = {
                             drawerScope.launch { drawerState.close() }
@@ -132,18 +154,19 @@ fun DualPaneScreen(
             ) {
                 Scaffold(
                     topBar = {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .neonGlass(radius = 0.dp, alpha = 0.06f)
+                                .background(CyberBlack)
                         ) {
                             TopAppBar(
                                 colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = Color.Transparent
+                                    containerColor = CyberBlack,
+                                    titleContentColor = TextPrimary
                                 ),
                                 title = {
                                     Column {
-                                        Text("Xplorer")
+                                        Text("XPLORER", letterSpacing = 0.5.sp)
                                         BreadcrumbBar(
                                             currentPath = activePane.path,
                                             onNavigateToPath = { activePane.navigateToPath(it) }
@@ -153,12 +176,14 @@ fun DualPaneScreen(
                                 navigationIcon = {
                                     Row {
                                         IconButton(
-                                            onClick = { activePane.navigateToPath(defaultPath) }
+                                            onClick = {
+                                                drawerScope.launch { drawerState.open() }
+                                            }
                                         ) {
                                             Icon(
-                                                Icons.Filled.Home,
-                                                contentDescription = "Home",
-                                                tint = MaterialTheme.colorScheme.primary
+                                                imageVector = Icons.Filled.Menu,
+                                                contentDescription = "Open menu",
+                                                tint = accent
                                             )
                                         }
 
@@ -169,7 +194,7 @@ fun DualPaneScreen(
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.ArrowBack,
                                                 null,
-                                                tint = MaterialTheme.colorScheme.primary
+                                                tint = if (activePane.canGoBack()) TextPrimary else TextMuted
                                             )
                                         }
 
@@ -180,7 +205,7 @@ fun DualPaneScreen(
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.ArrowForward,
                                                 null,
-                                                tint = MaterialTheme.colorScheme.primary
+                                                tint = if (activePane.canGoForward()) TextPrimary else TextMuted
                                             )
                                         }
                                     }
@@ -189,9 +214,9 @@ fun DualPaneScreen(
                                     Box {
                                         IconButton(onClick = { viewMenuExpanded = true }) {
                                             Icon(
-                                                Icons.Outlined.ViewList,
-                                                contentDescription = "View options",
-                                                tint = MaterialTheme.colorScheme.primary
+                                                Icons.Filled.MoreVert,
+                                                contentDescription = "More",
+                                                tint = TextPrimary
                                             )
                                         }
                                         DropdownMenu(
@@ -199,12 +224,26 @@ fun DualPaneScreen(
                                             onDismissRequest = { viewMenuExpanded = false }
                                         ) {
                                             DropdownMenuItem(
-                                                text = { Text("List") },
+                                                text = { Text("Home") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.Home,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    activePane.navigateToPath(defaultPath)
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("List view") },
                                                 leadingIcon = {
                                                     Icon(
                                                         Icons.Outlined.List,
                                                         contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.primary
+                                                        tint = accent
                                                     )
                                                 },
                                                 onClick = {
@@ -213,12 +252,12 @@ fun DualPaneScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Grid") },
+                                                text = { Text("Grid view") },
                                                 leadingIcon = {
                                                     Icon(
                                                         Icons.Outlined.GridView,
                                                         contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.primary
+                                                        tint = accent
                                                     )
                                                 },
                                                 onClick = {
@@ -227,12 +266,12 @@ fun DualPaneScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
-                                                text = { Text("Details") },
+                                                text = { Text("Details view") },
                                                 leadingIcon = {
                                                     Icon(
                                                         Icons.Outlined.ViewList,
                                                         contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.primary
+                                                        tint = accent
                                                     )
                                                 },
                                                 onClick = {
@@ -240,48 +279,57 @@ fun DualPaneScreen(
                                                     viewMenuExpanded = false
                                                 }
                                             )
+                                            DropdownMenuItem(
+                                                text = { Text(if (paneMode == PaneMode.DUAL) "Single pane" else "Split pane") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        if (paneMode == PaneMode.DUAL) Icons.Outlined.ViewAgenda else Icons.Outlined.ViewWeek,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    paneMode =
+                                                        if (paneMode == PaneMode.DUAL) PaneMode.SINGLE else PaneMode.DUAL
+                                                    if (paneMode == PaneMode.SINGLE) activePane = leftPaneState
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Cleaner") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.CleaningServices,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onOpenCleaner()
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Settings") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.Settings,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onOpenSettings()
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
                                         }
-                                    }
-
-                                    IconToggleButton(
-                                        checked = paneMode == PaneMode.DUAL,
-                                        onCheckedChange = {
-                                            paneMode =
-                                                if (it) PaneMode.DUAL else PaneMode.SINGLE
-                                            if (!it) activePane = leftPaneState
-                                        }
-                                    ) {
-                                        Icon(
-                                            if (paneMode == PaneMode.DUAL)
-                                                Icons.Outlined.ViewWeek
-                                            else
-                                                Icons.Outlined.ViewAgenda,
-                                            contentDescription = "Toggle panes",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-
-                                    IconButton(onClick = onOpenSettings) {
-                                        Icon(
-                                            Icons.Filled.MoreVert,
-                                            "Settings",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            drawerScope.launch {
-                                                drawerState.open()
-                                            }
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Menu,
-                                            contentDescription = "Open menu",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
                                     }
                                 }
+                            )
+                            Divider(
+                                color = accent.copy(alpha = 0.3f),
+                                thickness = 0.5.dp
                             )
                         }
                     }

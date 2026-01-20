@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,7 +40,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.ui.icons.fileIconColor
 import com.droidexplorer.websim.ui.icons.fileIconFor
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.cyberGlow
 
 private val GridCellMinSize = 140.dp
 
@@ -72,6 +76,7 @@ fun FileGridView(
     contentPadding: PaddingValues = PaddingValues(vertical = 8.dp, horizontal = 4.dp)
 ) {
     val haptic = LocalHapticFeedback.current
+    val accent = LocalCyberAccent.current
     
     LazyVerticalGrid(
         columns = GridCells.Adaptive(GridCellMinSize),
@@ -86,7 +91,7 @@ fun FileGridView(
             // Animated selection background with spring animation
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    accent.copy(alpha = 0.08f)
                 } else {
                     Color.Transparent
                 },
@@ -122,6 +127,19 @@ fun FileGridView(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(surfaceColor)
+                        .then(
+                            if (selected) {
+                                Modifier
+                                    .border(
+                                        1.dp,
+                                        accent.copy(alpha = 0.5f),
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .cyberGlow(accent)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .padding(12.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,7 +150,7 @@ fun FileGridView(
                             modifier = Modifier
                                 .size(6.dp)
                                 .background(
-                                    MaterialTheme.colorScheme.primary,
+                                    accent,
                                     CircleShape
                                 )
                         )
@@ -177,11 +195,7 @@ fun FileGridView(
 @Composable
 fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
     val imageVector = resolveIconVector(file)
-    val iconTint = tint ?: if (file.isDirectory) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val iconTint = tint ?: fileIconColor(file)
     Icon(
         imageVector = imageVector,
         contentDescription = if (file.isDirectory) "Folder" else "File",

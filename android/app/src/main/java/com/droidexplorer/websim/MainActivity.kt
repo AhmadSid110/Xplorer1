@@ -20,6 +20,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -46,6 +47,9 @@ import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.CleanerScreen
 import com.droidexplorer.websim.ui.settings.StorageScreen
+import com.droidexplorer.websim.ui.theme.CyberBlack
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.TextPrimary
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -177,14 +181,16 @@ class MainActivity : ComponentActivity() {
 
                         Scaffold(
                             topBar = {
-                                Box(
+                                val accent = LocalCyberAccent.current
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .neonGlass(radius = 0.dp, alpha = 0.06f)
+                                        .background(CyberBlack)
                                 ) {
                                     TopAppBar(
                                         colors = TopAppBarDefaults.topAppBarColors(
-                                            containerColor = Color.Transparent
+                                            containerColor = CyberBlack,
+                                            titleContentColor = TextPrimary
                                         ),
                                         title = {
                                             Text(
@@ -206,10 +212,14 @@ class MainActivity : ComponentActivity() {
                                                 Icon(
                                                     Icons.AutoMirrored.Outlined.ArrowBack,
                                                     contentDescription = "Back",
-                                                    tint = MaterialTheme.colorScheme.primary
+                                                    tint = accent
                                                 )
                                             }
                                         }
+                                    )
+                                    Divider(
+                                        color = accent.copy(alpha = 0.3f),
+                                        thickness = 0.5.dp
                                     )
                                 }
                             }
@@ -265,6 +275,11 @@ class MainActivity : ComponentActivity() {
                             permissionRefresh = permissionRefresh,
                             onSearchQueryChange = viewModel::updateSearchQuery,
                             onOpenSettings = { showSettings = true },
+                            onOpenCleaner = {
+                                showSettings = true
+                                showCleaner = true
+                            },
+                            onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                             onRequestSafAccess = viewModel::requestSafAccessFor,
                             onViewModeChange = viewModel::setViewMode,
                             torBoxClient = torBoxClient

@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
+import com.droidexplorer.websim.ui.theme.TextMuted
+import com.droidexplorer.websim.ui.theme.cyberGlow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -67,6 +71,7 @@ fun FileDetailsView(
         SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     }
     val haptic = LocalHapticFeedback.current
+    val accent = LocalCyberAccent.current
 
     LazyColumn {
         // Render ALL files - no filtering allowed here
@@ -85,7 +90,7 @@ fun FileDetailsView(
             // Animated selection background
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    accent.copy(alpha = 0.08f)
                 } else {
                     Color.Transparent
                 },
@@ -119,6 +124,19 @@ fun FileDetailsView(
                                     )
                                 )
                             )
+                        .then(
+                            if (selected) {
+                                Modifier
+                                    .border(
+                                        1.dp,
+                                        accent.copy(alpha = 0.5f),
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .cyberGlow(accent)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -140,7 +158,7 @@ fun FileDetailsView(
                         Text(
                             "$sizeText$SEPARATOR$formattedDate",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = TextMuted,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -186,6 +204,7 @@ fun FileListView(
     requiresPermission: (FsNode) -> Boolean = { false }
 ) {
     val haptic = LocalHapticFeedback.current
+    val accent = LocalCyberAccent.current
     
     LazyColumn {
         // Render ALL files - no filtering allowed here
@@ -196,7 +215,7 @@ fun FileListView(
             // Animated selection background
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    accent.copy(alpha = 0.08f)
                 } else {
                     Color.Transparent
                 },
@@ -238,6 +257,19 @@ fun FileListView(
                                         Color.Transparent
                                     )
                                 )
+                            )
+                            .then(
+                                if (selected) {
+                                    Modifier
+                                        .border(
+                                            1.dp,
+                                            accent.copy(alpha = 0.5f),
+                                            RoundedCornerShape(14.dp)
+                                        )
+                                        .cyberGlow(accent)
+                                } else {
+                                    Modifier
+                                }
                             )
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 10.dp),
