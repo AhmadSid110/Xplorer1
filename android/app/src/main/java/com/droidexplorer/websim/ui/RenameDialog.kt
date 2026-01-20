@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import java.io.File
+import com.droidexplorer.websim.ui.glass.neonGlass
 
 @Composable
 fun RenameDialog(
@@ -17,6 +19,8 @@ fun RenameDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.neonGlass(),
+        containerColor = Color.Transparent,
         title = { Text("Rename") },
         text = {
             Column {

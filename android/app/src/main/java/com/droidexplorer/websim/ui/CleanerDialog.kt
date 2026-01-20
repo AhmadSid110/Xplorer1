@@ -5,18 +5,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FolderDelete
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FolderDelete
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FileManager
+import com.droidexplorer.websim.ui.glass.neonGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,9 +41,11 @@ fun CleanerDialog(
     
     AlertDialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
+        modifier = Modifier.neonGlass(),
+        containerColor = Color.Transparent,
         icon = {
             Icon(
-                imageVector = Icons.Filled.CleaningServices,
+                imageVector = Icons.Outlined.CleaningServices,
                 contentDescription = "Cleaner",
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -84,7 +88,7 @@ fun CleanerDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            Icons.Filled.FolderDelete,
+                            Icons.Outlined.FolderDelete,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -108,7 +112,7 @@ fun CleanerDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            Icons.Filled.Delete,
+                            Icons.Outlined.Delete,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -133,7 +137,7 @@ fun CleanerDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            Icons.Filled.Search,
+                            Icons.Outlined.Search,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -158,7 +162,7 @@ fun CleanerDialog(
                         ) {
                             items(largeFiles, key = { it.absolutePath }) { file ->
                                 val isChecked = selectedFiles[file.absolutePath] == true
-                                Surface(
+                                    Surface(
                                     shape = MaterialTheme.shapes.medium,
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.fillMaxWidth()

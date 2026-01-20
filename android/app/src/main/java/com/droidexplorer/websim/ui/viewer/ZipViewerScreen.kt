@@ -6,13 +6,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,9 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.ZipManager
+import com.droidexplorer.websim.ui.glass.neonGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -118,37 +121,43 @@ fun ZipViewerScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(file.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                        if (currentPath.isNotEmpty()) {
-                            Text(currentPath, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .neonGlass(radius = 0.dp, alpha = 0.06f)
+            ) {
+                TopAppBar(
+                    title = { 
+                        Column {
+                            Text(file.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                            if (currentPath.isNotEmpty()) {
+                                Text(currentPath, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navigateUp() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back"
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navigateUp() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    actions = {
+                        Text(
+                            text = "READ-ONLY",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 16.dp)
                         )
-                    }
-                },
-                 actions = {
-                    // Read-only indicator
-                    Text(
-                        text = "READ-ONLY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 16.dp)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
-            )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -174,7 +183,7 @@ fun ZipViewerScreen(
                             leadingContent = {
                                 Icon(
                                     imageVector = when(node) {
-                                        is ZipEntryNode.Directory -> Icons.Default.Folder
+                                        is ZipEntryNode.Directory -> Icons.Outlined.Folder
                                         is ZipEntryNode.File -> Icons.Outlined.Description
                                     },
                                     contentDescription = null,

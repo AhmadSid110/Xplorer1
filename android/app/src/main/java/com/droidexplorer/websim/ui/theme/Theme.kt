@@ -13,24 +13,13 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF6B8FFF),
-    onPrimary = androidx.compose.ui.graphics.Color(0xFF002984),
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFF003DA6),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFD8E2FF),
-    secondary = androidx.compose.ui.graphics.Color(0xFFBBC6E4),
-    onSecondary = androidx.compose.ui.graphics.Color(0xFF263044),
-    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF3C475C),
-    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFD8E2FF),
-    tertiary = androidx.compose.ui.graphics.Color(0xFFD8BDE4),
-    onTertiary = androidx.compose.ui.graphics.Color(0xFF3C2847),
-    surface = androidx.compose.ui.graphics.Color(0xFF121212),
-    onSurface = androidx.compose.ui.graphics.Color(0xFFE4E1E6),
-    surfaceVariant = androidx.compose.ui.graphics.Color(0xFF1E1E1E),
-    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFC5C6D0),
-    error = androidx.compose.ui.graphics.Color(0xFFFF6B6B),
-    onError = androidx.compose.ui.graphics.Color(0xFF690005),
-    background = androidx.compose.ui.graphics.Color(0xFF121212),
-    onBackground = androidx.compose.ui.graphics.Color(0xFFE4E1E6)
+    primary = NeonCyan,
+    secondary = NeonPurple,
+    tertiary = NeonPink,
+    background = DarkBase,
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceAlt,
+    outline = DividerSoft
 )
 
 private val LightColorScheme = lightColorScheme(

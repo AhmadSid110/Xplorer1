@@ -1,12 +1,17 @@
 package com.droidexplorer.websim.ui
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,7 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
+import com.droidexplorer.websim.ui.glass.neonGlass
+import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.util.ZipUtils
 import java.io.File
 
@@ -39,12 +45,14 @@ fun FileContextMenu(
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = Color.Transparent
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .padding(12.dp)
+                .neonGlass()
+                .padding(bottom = 24.dp)
         ) {
             Text(
                 text = file.name,
@@ -53,11 +61,11 @@ fun FileContextMenu(
                 maxLines = 1
             )
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
             
             if (!file.isDirectory && onOpen != null) {
                 ContextMenuItem(
-                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     text = "Open",
                     onClick = { 
                         onOpen()
@@ -68,7 +76,7 @@ fun FileContextMenu(
 
             if (!file.isDirectory && onEdit != null && file.isTextLike()) {
                 ContextMenuItem(
-                    icon = Icons.Filled.Edit,
+                    icon = Icons.Outlined.Edit,
                     text = "Edit",
                     onClick = {
                         onEdit()
@@ -78,7 +86,7 @@ fun FileContextMenu(
             }
             
             ContextMenuItem(
-                icon = Icons.Filled.ContentCopy,
+                icon = Icons.Outlined.ContentCopy,
                 text = "Copy",
                 onClick = {
                     onCopy()
@@ -87,7 +95,7 @@ fun FileContextMenu(
             )
             
             ContextMenuItem(
-                icon = Icons.Filled.ContentCut,
+                icon = Icons.Outlined.ContentCut,
                 text = "Move",
                 onClick = {
                     onMove()
@@ -96,7 +104,7 @@ fun FileContextMenu(
             )
             
             ContextMenuItem(
-                icon = Icons.Filled.DriveFileRenameOutline,
+                icon = Icons.Outlined.DriveFileRenameOutline,
                 text = "Rename",
                 onClick = {
                     onRename()
@@ -106,7 +114,7 @@ fun FileContextMenu(
             
             if (isZipFile) {
                 ContextMenuItem(
-                    icon = Icons.Filled.FolderZip,
+                    icon = Icons.Outlined.Archive,
                     text = "Unzip",
                     onClick = {
                         onUnzip()
@@ -115,7 +123,7 @@ fun FileContextMenu(
                 )
             } else {
                 ContextMenuItem(
-                    icon = Icons.Filled.FolderZip,
+                    icon = Icons.Outlined.Archive,
                     text = "Zip",
                     onClick = {
                         onZip()
@@ -126,7 +134,7 @@ fun FileContextMenu(
             
             if (!file.isDirectory) {
                 ContextMenuItem(
-                    icon = Icons.Filled.Share,
+                    icon = Icons.Outlined.Share,
                     text = "Share",
                     onClick = {
                         onShare(context)
@@ -135,16 +143,16 @@ fun FileContextMenu(
                 )
             }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
             
             ContextMenuItem(
-                icon = Icons.Filled.Delete,
+                icon = Icons.Outlined.Delete,
                 text = "Delete",
                 onClick = {
                     onDelete()
                     onDismiss()
                 },
-                tint = MaterialTheme.colorScheme.error
+                tint = MaterialTheme.colorScheme.tertiary
             )
         }
     }

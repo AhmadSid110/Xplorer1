@@ -7,9 +7,11 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.droidexplorer.websim.ui.glass.neonGlass
 
 /**
  * Dialog for TorBox API key setup.
@@ -28,6 +30,8 @@ fun TorBoxSetupDialog(
     
     AlertDialog(
         onDismissRequest = onCancel,
+        modifier = Modifier.neonGlass(),
+        containerColor = Color.Transparent,
         title = { Text("Connect TorBox") },
         text = {
             Column(

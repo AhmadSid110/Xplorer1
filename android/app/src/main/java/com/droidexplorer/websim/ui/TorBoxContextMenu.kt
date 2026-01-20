@@ -3,7 +3,7 @@ package com.droidexplorer.websim.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.ui.glass.neonGlass
+import com.droidexplorer.websim.ui.theme.DividerSoft
 import kotlinx.coroutines.launch
 
 /**
@@ -32,12 +34,14 @@ fun TorBoxContextMenu(
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = Color.Transparent
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .padding(12.dp)
+                .neonGlass()
+                .padding(bottom = 24.dp)
         ) {
             Text(
                 text = file.name,
@@ -53,7 +57,7 @@ fun TorBoxContextMenu(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Divider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
             
             if (isLoading) {
                 Box(
@@ -66,7 +70,7 @@ fun TorBoxContextMenu(
                 }
             } else {
                 TorBoxContextMenuItem(
-                    icon = Icons.Filled.ContentCopy,
+                    icon = Icons.Outlined.ContentCopy,
                     text = "Copy download link",
                     onClick = {
                         if (torBoxClient == null) {

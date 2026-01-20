@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -41,6 +42,7 @@ import com.droidexplorer.websim.storage.*
 import com.droidexplorer.websim.torbox.TorBoxClient
 import com.droidexplorer.websim.ui.*
 import com.droidexplorer.websim.ui.dialogs.TorBoxSetupDialog
+import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.CleanerScreen
 import com.droidexplorer.websim.ui.settings.StorageScreen
@@ -175,31 +177,41 @@ class MainActivity : ComponentActivity() {
 
                         Scaffold(
                             topBar = {
-                                TopAppBar(
-                                    title = {
-                                        Text(
-                                            when {
-                                                showCleaner -> "Cleaner"
-                                                showStorage -> "Storage"
-                                                else -> "Settings"
-                                            }
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        IconButton(onClick = {
-                                            when {
-                                                showCleaner -> showCleaner = false
-                                                showStorage -> showStorage = false
-                                                else -> showSettings = false
-                                            }
-                                        }) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                                contentDescription = "Back"
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .neonGlass(radius = 0.dp, alpha = 0.06f)
+                                ) {
+                                    TopAppBar(
+                                        colors = TopAppBarDefaults.topAppBarColors(
+                                            containerColor = Color.Transparent
+                                        ),
+                                        title = {
+                                            Text(
+                                                when {
+                                                    showCleaner -> "Cleaner"
+                                                    showStorage -> "Storage"
+                                                    else -> "Settings"
+                                                }
                                             )
+                                        },
+                                        navigationIcon = {
+                                            IconButton(onClick = {
+                                                when {
+                                                    showCleaner -> showCleaner = false
+                                                    showStorage -> showStorage = false
+                                                    else -> showSettings = false
+                                                }
+                                            }) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Outlined.ArrowBack,
+                                                    contentDescription = "Back",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
                         ) { padding ->
                             AnimatedContent(
@@ -223,11 +235,9 @@ class MainActivity : ComponentActivity() {
 
                                     "cleaner" ->
                                         CleanerScreen(
-                                            context = context,
-                                            rootPath = "/storage/emulated/0",
-                                            onResult = { message ->
-                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                            },
+                                            data = storageCategoryData ?: com.droidexplorer.websim.ui.settings.StorageCategoryData(),
+                                            onClose = { showCleaner = false },
+                                            onOpenCategory = { },
                                             modifier = Modifier.padding(padding)
                                         )
 

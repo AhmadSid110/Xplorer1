@@ -7,7 +7,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
@@ -16,9 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -27,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
+import com.droidexplorer.websim.ui.theme.DividerSoft
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,7 +59,7 @@ fun FileRow(
     // Animated background with spring animation for smoother transitions
     val highlightColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         } else {
             Color.Transparent
         },
@@ -72,56 +69,33 @@ fun FileRow(
         ),
         label = "fileRowSelection"
     )
-    val iconSize = 18.dp
+    val iconSize = 28.dp
 
-    Surface(
+    Column(
         modifier = modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent,
-        tonalElevation = 0.dp
+            .fillMaxWidth()
+            .background(highlightColor)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Row(
-            modifier = Modifier
-                .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            highlightColor,
-                            Color.Transparent
-                        )
-                    )
-                )
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongClick()
-                    }
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(28.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(
-                            alpha = if (isSelected) 0.9f else 0.25f
-                        ),
-                        RoundedCornerShape(12.dp)
-                    )
-            )
-            Spacer(modifier = Modifier.width(8.dp))
             FileIcon(
                 file = file,
-                size = iconSize
+                size = iconSize,
+                tint = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -145,9 +119,7 @@ fun FileRow(
                         )
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (file is FsNode.TorBox) {
                         Text(
                             text = "Remote (read-only)",
@@ -164,14 +136,14 @@ fun FileRow(
                         Text(
                             text = sizeText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                     if (file !is FsNode.TorBox) {
                         Text(
                             text = dateText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -183,10 +155,15 @@ fun FileRow(
                     imageVector = Icons.Outlined.Lock,
                     contentDescription = "Permission required",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(iconSize)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
+
+        Divider(
+            color = DividerSoft,
+            modifier = Modifier.padding(start = 40.dp)
+        )
     }
 }
 

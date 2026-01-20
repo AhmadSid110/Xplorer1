@@ -3,7 +3,9 @@ package com.droidexplorer.websim.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -16,9 +18,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.droidexplorer.websim.ui.glass.neonGlass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,34 +32,44 @@ fun RestrictedFolderMenu(
     onExplain: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+                .neonGlass()
+                .padding(bottom = 12.dp)
+        ) {
+            Text(
+                text = folderName,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(16.dp)
+            )
 
-        Text(
-            text = folderName,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
+            Spacer(modifier = Modifier.padding(top = 8.dp))
 
-        Spacer(modifier = Modifier.padding(top = 8.dp))
+            ListItem(
+                headlineContent = { Text("Grant access") },
+                supportingContent = { Text("Allow access to this folder") },
+                modifier = Modifier.clickable {
+                    onGrantAccess()
+                    onDismiss()
+                }
+            )
 
-        ListItem(
-            headlineContent = { Text("Grant access") },
-            supportingContent = { Text("Allow access to this folder") },
-            modifier = Modifier.clickable {
-                onGrantAccess()
-                onDismiss()
-            }
-        )
+            ListItem(
+                headlineContent = { Text("Why is this restricted?") },
+                supportingContent = {
+                    Text("Android restricts some folders for privacy")
+                },
+                modifier = Modifier.clickable(onClick = onExplain)
+            )
 
-        ListItem(
-            headlineContent = { Text("Why is this restricted?") },
-            supportingContent = {
-                Text("Android restricts some folders for privacy")
-            },
-            modifier = Modifier.clickable(onClick = onExplain)
-        )
-
-        Spacer(Modifier.padding(bottom = 24.dp))
+            Spacer(Modifier.padding(bottom = 24.dp))
+        }
     }
 }
 

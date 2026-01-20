@@ -21,8 +21,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -204,6 +204,6 @@ fun FileIcon(file: FsNode, size: Dp, tint: Color? = null) {
  */
 @Composable
 private fun resolveIconVector(file: FsNode) = when (file) {
-    is FsNode.TorBox -> Icons.Filled.Cloud
-    else -> if (file.isDirectory) Icons.Filled.Folder else fileIconFor(file)
+    is FsNode.TorBox -> Icons.Outlined.Cloud
+    else -> if (file.isDirectory) Icons.Outlined.Folder else fileIconFor(file)
 }

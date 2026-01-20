@@ -13,9 +13,9 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.ViewWeek
 import androidx.compose.material3.*
@@ -39,7 +39,7 @@ import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.viewer.*
-import com.droidexplorer.websim.ui.glass.GlassSurface
+import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.theme.backgroundGradient
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +84,7 @@ fun DualPaneScreen(
 
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
+    var viewMenuExpanded by remember { mutableStateOf(false) }
 
     /* ───────────────────── VIEWERS ───────────────────── */
 
@@ -131,10 +132,10 @@ fun DualPaneScreen(
             ) {
                 Scaffold(
                     topBar = {
-                        GlassSurface(
-                            modifier = Modifier.fillMaxWidth(),
-                            cornerRadius = 0.dp,
-                            enableBlur = false
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .neonGlass(radius = 0.dp, alpha = 0.06f)
                         ) {
                             TopAppBar(
                                 colors = TopAppBarDefaults.topAppBarColors(
@@ -154,41 +155,92 @@ fun DualPaneScreen(
                                         IconButton(
                                             onClick = { activePane.navigateToPath(defaultPath) }
                                         ) {
-                                            Icon(Icons.Filled.Home, contentDescription = "Home")
+                                            Icon(
+                                                Icons.Filled.Home,
+                                                contentDescription = "Home",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
 
                                         IconButton(
                                             onClick = { activePane.goBack() },
                                             enabled = activePane.canGoBack()
                                         ) {
-                                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
+                                            Icon(
+                                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
 
                                         IconButton(
                                             onClick = { activePane.goForward() },
                                             enabled = activePane.canGoForward()
                                         ) {
-                                            Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
+                                            Icon(
+                                                Icons.AutoMirrored.Outlined.ArrowForward,
+                                                null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
-
-                                        
                                     }
                                 },
                                 actions = {
-                                    IconButton(
-                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.LIST) }
-                                    ) {
-                                        Icon(Icons.Filled.List, contentDescription = "List view")
-                                    }
-                                    IconButton(
-                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.GRID) }
-                                    ) {
-                                        Icon(Icons.Filled.GridView, contentDescription = "Grid view")
-                                    }
-                                    IconButton(
-                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.DETAILS) }
-                                    ) {
-                                        Icon(Icons.Filled.ViewList, contentDescription = "Details view")
+                                    Box {
+                                        IconButton(onClick = { viewMenuExpanded = true }) {
+                                            Icon(
+                                                Icons.Outlined.ViewList,
+                                                contentDescription = "View options",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = viewMenuExpanded,
+                                            onDismissRequest = { viewMenuExpanded = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("List") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.List,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onViewModeChange(com.droidexplorer.websim.settings.ViewMode.LIST)
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Grid") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.GridView,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onViewModeChange(com.droidexplorer.websim.settings.ViewMode.GRID)
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Details") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.ViewList,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onViewModeChange(com.droidexplorer.websim.settings.ViewMode.DETAILS)
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                        }
                                     }
 
                                     IconToggleButton(
@@ -204,12 +256,17 @@ fun DualPaneScreen(
                                                 Icons.Outlined.ViewWeek
                                             else
                                                 Icons.Outlined.ViewAgenda,
-                                            contentDescription = "Toggle panes"
+                                            contentDescription = "Toggle panes",
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
 
                                     IconButton(onClick = onOpenSettings) {
-                                        Icon(Icons.Filled.MoreVert, "Settings")
+                                        Icon(
+                                            Icons.Filled.MoreVert,
+                                            "Settings",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
                                     }
                                     IconButton(
                                         onClick = {
@@ -220,7 +277,8 @@ fun DualPaneScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Filled.Menu,
-                                            contentDescription = "Open menu"
+                                            contentDescription = "Open menu",
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }

@@ -30,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -60,6 +61,7 @@ import com.droidexplorer.websim.settings.ViewMode
 import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
+import com.droidexplorer.websim.ui.glass.neonGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -679,6 +681,8 @@ fun FileListPane(
 fun PermissionExplanationDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.neonGlass(),
+        containerColor = Color.Transparent,
         title = { Text("Why is this restricted?") },
         text = {
             Text("Android restricts some folders for privacy. Grant access to manage their contents.")

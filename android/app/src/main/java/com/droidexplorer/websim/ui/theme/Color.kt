@@ -5,6 +5,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
+val NeonCyan = Color(0xFF00E5FF)
+val NeonPurple = Color(0xFFB388FF)
+val NeonPink = Color(0xFFFF4D9D)
+
+val DarkBase = Color(0xFF0B0F14)
+val DarkSurface = Color(0xFF121823)
+val DarkSurfaceAlt = Color(0xFF1A2233)
+
+val DividerSoft = Color.White.copy(alpha = 0.08f)
+
 /**
  * Glass theme colors for translucent surfaces
  * 

@@ -4,7 +4,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import java.io.File
+import com.droidexplorer.websim.ui.glass.neonGlass
 
 @Composable
 fun DeleteConfirmDialog(
@@ -14,11 +17,13 @@ fun DeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.neonGlass(),
+        containerColor = Color.Transparent,
         icon = {
             Icon(
                 imageVector = Icons.Filled.Warning,
                 contentDescription = "Warning",
-                tint = MaterialTheme.colorScheme.error
+                tint = MaterialTheme.colorScheme.tertiary
             )
         },
         title = { Text("Delete ${if (file.isDirectory) "folder" else "file"}?") },
@@ -34,7 +39,7 @@ fun DeleteConfirmDialog(
                     onDismiss()
                 },
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
+                    contentColor = MaterialTheme.colorScheme.tertiary
                 )
             ) {
                 Text("Delete")

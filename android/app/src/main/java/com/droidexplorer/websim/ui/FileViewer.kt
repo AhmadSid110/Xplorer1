@@ -13,16 +13,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.droidexplorer.websim.file.FileOperator
 import com.droidexplorer.websim.file.SafRequired
+import com.droidexplorer.websim.ui.glass.neonGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -59,10 +61,15 @@ fun TextViewerSheet(
         isLoading = false
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(12.dp)
+                .neonGlass()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
@@ -75,10 +82,18 @@ fun TextViewerSheet(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = "Edit",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close")
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -139,10 +154,15 @@ fun TextEditorSheet(
         isLoading = false
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(12.dp)
+                .neonGlass()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Text(
@@ -254,10 +274,15 @@ fun PdfViewerSheet(
         isLoading = false
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(12.dp)
+                .neonGlass()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
@@ -276,7 +301,11 @@ fun PdfViewerSheet(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close")
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -312,7 +341,11 @@ fun PdfViewerSheet(
                         onClick = { if (pageIndex > 0) pageIndex-- },
                         enabled = pageIndex > 0
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Previous",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                     Text(
                         text = "Page ${pageIndex + 1} / ${pageCount.coerceAtLeast(1)}",
@@ -322,7 +355,11 @@ fun PdfViewerSheet(
                         onClick = { if (pageIndex < pageCount - 1) pageIndex++ },
                         enabled = pageIndex < pageCount - 1
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = "Next",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -347,11 +384,16 @@ fun ImageViewerSheet(
         isLoading = false
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.Transparent
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 200.dp)
+                .padding(12.dp)
+                .neonGlass()
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
