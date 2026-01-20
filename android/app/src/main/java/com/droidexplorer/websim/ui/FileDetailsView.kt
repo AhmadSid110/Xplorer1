@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -83,7 +85,7 @@ fun FileDetailsView(
             // Animated selection background
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 } else {
                     Color.Transparent
                 },
@@ -105,11 +107,18 @@ fun FileDetailsView(
                     ),
                 tonalElevation = 0.dp,
                 shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                    color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier
-                        .background(surfaceColor)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        surfaceColor,
+                                        Color.Transparent
+                                    )
+                                )
+                            )
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -145,6 +154,11 @@ fun FileDetailsView(
                     }
                 }
             }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+            )
         }
     }
 }
@@ -213,11 +227,18 @@ fun FileListView(
                         ),
                     tonalElevation = 0.dp,
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    color = Color.Transparent
                 ) {
                     Row(
                         modifier = Modifier
-                            .background(surfaceColor)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        surfaceColor,
+                                        Color.Transparent
+                                    )
+                                )
+                            )
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -238,6 +259,11 @@ fun FileListView(
                         }
                     }
                 }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+                )
             }
         }
     }

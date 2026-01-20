@@ -7,8 +7,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
@@ -28,7 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -83,9 +86,9 @@ fun FileGridView(
             // Animated selection background with spring animation
             val surfaceColor by animateColorAsState(
                 targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.25f)
+                    Color.Transparent
                 },
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -117,13 +120,25 @@ fun FileGridView(
             ) {
                 Column(
                     modifier = Modifier
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(surfaceColor)
                         .padding(12.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (selected) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    CircleShape
+                                )
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.size(6.dp))
+                    }
                     FileIcon(
                         file = file,
                         size = 48.dp,

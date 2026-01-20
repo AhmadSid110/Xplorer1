@@ -42,6 +42,7 @@ import com.droidexplorer.websim.torbox.TorBoxClient
 import com.droidexplorer.websim.ui.*
 import com.droidexplorer.websim.ui.dialogs.TorBoxSetupDialog
 import com.droidexplorer.websim.ui.events.UiEvent
+import com.droidexplorer.websim.ui.settings.CleanerScreen
 import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -165,18 +166,32 @@ class MainActivity : ComponentActivity() {
                     if (showSettings) {
 
                         BackHandler {
-                            if (showStorage) showStorage = false
-                            else showSettings = false
+                            when {
+                                showCleaner -> showCleaner = false
+                                showStorage -> showStorage = false
+                                else -> showSettings = false
+                            }
                         }
 
                         Scaffold(
                             topBar = {
                                 TopAppBar(
-                                    title = { Text(if (showStorage) "Storage" else "Settings") },
+                                    title = {
+                                        Text(
+                                            when {
+                                                showCleaner -> "Cleaner"
+                                                showStorage -> "Storage"
+                                                else -> "Settings"
+                                            }
+                                        )
+                                    },
                                     navigationIcon = {
                                         IconButton(onClick = {
-                                            if (showStorage) showStorage = false
-                                            else showSettings = false
+                                            when {
+                                                showCleaner -> showCleaner = false
+                                                showStorage -> showStorage = false
+                                                else -> showSettings = false
+                                            }
                                         }) {
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.ArrowBack,
@@ -188,30 +203,46 @@ class MainActivity : ComponentActivity() {
                             }
                         ) { padding ->
                             AnimatedContent(
-                                targetState = showStorage,
+                                targetState = when {
+                                    showCleaner -> "cleaner"
+                                    showStorage -> "storage"
+                                    else -> "settings"
+                                },
                                 transitionSpec = {
                                     fadeIn(tween(120)) togetherWith fadeOut(tween(120))
                                 },
-                                label = "settings-storage"
-                            ) { isStorage ->
-                                if (isStorage) {
-                                    StorageScreen(
-                                        info = storageInfo,
-                                        categoryData = storageCategoryData,
-                                        modifier = Modifier.padding(padding)
-                                    )
-                                } else {
-                                    SettingsScreen(
-                                        state = settingsState,
-                                        onViewModeChange = viewModel::setViewMode,
-                                        onToggleHidden = viewModel::setShowHidden,
-                                        onToggleSafSearch = viewModel::onToggleSafSearch,
-                                        onToggleTorBox = viewModel::setTorBoxEnabled,
-                                        onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
-                                        onOpenStorage = { showStorage = true },
-                                        onOpenCleaner = { showCleaner = true },
-                                        modifier = Modifier.padding(padding)
-                                    )
+                                label = "settings-pages"
+                            ) { destination ->
+                                when (destination) {
+                                    "storage" ->
+                                        StorageScreen(
+                                            info = storageInfo,
+                                            categoryData = storageCategoryData,
+                                            modifier = Modifier.padding(padding)
+                                        )
+
+                                    "cleaner" ->
+                                        CleanerScreen(
+                                            context = context,
+                                            rootPath = "/storage/emulated/0",
+                                            onResult = { message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.padding(padding)
+                                        )
+
+                                    else ->
+                                        SettingsScreen(
+                                            state = settingsState,
+                                            onViewModeChange = viewModel::setViewMode,
+                                            onToggleHidden = viewModel::setShowHidden,
+                                            onToggleSafSearch = viewModel::onToggleSafSearch,
+                                            onToggleTorBox = viewModel::setTorBoxEnabled,
+                                            onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
+                                            onOpenStorage = { showStorage = true },
+                                            onOpenCleaner = { showCleaner = true },
+                                            modifier = Modifier.padding(padding)
+                                        )
                                 }
                             }
                         }
@@ -225,6 +256,7 @@ class MainActivity : ComponentActivity() {
                             onSearchQueryChange = viewModel::updateSearchQuery,
                             onOpenSettings = { showSettings = true },
                             onRequestSafAccess = viewModel::requestSafAccessFor,
+                            onViewModeChange = viewModel::setViewMode,
                             torBoxClient = torBoxClient
                         )
                     }
@@ -248,16 +280,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (showCleaner) {
-                    CleanerDialog(
-                        context = context,
-                        rootPath = "/storage/emulated/0",
-                        onDismiss = { showCleaner = false },
-                        onResult = { message ->
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                }
             }
         }
     }

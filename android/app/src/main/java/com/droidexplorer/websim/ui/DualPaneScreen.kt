@@ -10,8 +10,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.ViewWeek
 import androidx.compose.material3.*
@@ -49,6 +53,7 @@ fun DualPaneScreen(
     onSearchQueryChange: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onRequestSafAccess: (FsNode) -> Unit,
+    onViewModeChange: (com.droidexplorer.websim.settings.ViewMode) -> Unit,
     torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
 ) {
     val context = LocalContext.current
@@ -147,6 +152,12 @@ fun DualPaneScreen(
                                 navigationIcon = {
                                     Row {
                                         IconButton(
+                                            onClick = { activePane.navigateToPath(defaultPath) }
+                                        ) {
+                                            Icon(Icons.Filled.Home, contentDescription = "Home")
+                                        }
+
+                                        IconButton(
                                             onClick = { activePane.goBack() },
                                             enabled = activePane.canGoBack()
                                         ) {
@@ -164,6 +175,22 @@ fun DualPaneScreen(
                                     }
                                 },
                                 actions = {
+                                    IconButton(
+                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.LIST) }
+                                    ) {
+                                        Icon(Icons.Filled.List, contentDescription = "List view")
+                                    }
+                                    IconButton(
+                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.GRID) }
+                                    ) {
+                                        Icon(Icons.Filled.GridView, contentDescription = "Grid view")
+                                    }
+                                    IconButton(
+                                        onClick = { onViewModeChange(com.droidexplorer.websim.settings.ViewMode.DETAILS) }
+                                    ) {
+                                        Icon(Icons.Filled.ViewList, contentDescription = "Details view")
+                                    }
+
                                     IconToggleButton(
                                         checked = paneMode == PaneMode.DUAL,
                                         onCheckedChange = {

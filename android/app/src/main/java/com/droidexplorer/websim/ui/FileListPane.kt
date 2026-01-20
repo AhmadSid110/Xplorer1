@@ -318,8 +318,8 @@ fun FileListPane(
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    tonalElevation = 2.dp
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f),
+                    tonalElevation = 0.dp
                 ) {
                     Column {
                         Row(
@@ -391,11 +391,15 @@ fun FileListPane(
                                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                                     unfocusedContainerColor = MaterialTheme.colorScheme.surface
                                 ),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp)
                             )
                         }
                     }
                 }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                )
 
                 if (searchQuery.isNotBlank()) {
                     SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())

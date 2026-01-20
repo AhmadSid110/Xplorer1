@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -59,11 +60,11 @@ fun FileRow(
     val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
     
     // Animated background with spring animation for smoother transitions
-    val backgroundColor by animateColorAsState(
+    val highlightColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
         } else {
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.25f)
+            Color.Transparent
         },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -83,9 +84,15 @@ fun FileRow(
         Row(
             modifier = Modifier
                 .heightIn(min = 56.dp)
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
-                .background(backgroundColor)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            highlightColor,
+                            Color.Transparent
+                        )
+                    )
+                )
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = {
@@ -96,6 +103,18 @@ fun FileRow(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(28.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(
+                            alpha = if (isSelected) 0.9f else 0.25f
+                        ),
+                        RoundedCornerShape(12.dp)
+                    )
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             FileIcon(
                 file = file,
                 size = iconSize
