@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
+import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.TextMuted
@@ -61,6 +62,7 @@ fun FileRow(
     val sizeText = remember(file.uniqueKey) { formatFileSize(file.safeSize()) }
     val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
     val accent = LocalCyberAccent.current
+    val pulse = rememberPulseAlpha(isSelected)
     
     // Animated background with spring animation for smoother transitions
     val highlightColor by animateColorAsState(
@@ -86,10 +88,10 @@ fun FileRow(
                     Modifier
                         .border(
                             1.dp,
-                            accent.copy(alpha = 0.5f),
+                            accent.copy(alpha = 0.5f + (0.2f * pulse)),
                             RoundedCornerShape(12.dp)
                         )
-                        .cyberGlow(accent)
+                        .cyberGlow(accent, intensity = 0.35f + (0.25f * pulse))
                 } else {
                     Modifier
                 }

@@ -5,13 +5,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.List
@@ -47,6 +52,16 @@ import com.droidexplorer.websim.ui.theme.CyberBlack
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.TextMuted
 import com.droidexplorer.websim.ui.theme.TextPrimary
+import com.droidexplorer.websim.ui.effects.ScanlineOverlay
+import com.droidexplorer.websim.ui.theme.cyberGlow
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.Alignment
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,6 +109,23 @@ fun DualPaneScreen(
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
     var viewMenuExpanded by remember { mutableStateOf(false) }
     val accent = LocalCyberAccent.current
+    val haptics = LocalHapticFeedback.current
+    var selectedNode by remember { mutableStateOf<FsNode?>(null) }
+    var clearSelectionSignal by remember { mutableStateOf(0) }
+    var renameSelectionSignal by remember { mutableStateOf(0) }
+    var deleteSelectionSignal by remember { mutableStateOf(0) }
+
+    val drawerBlur by animateDpAsState(
+        targetValue = if (drawerState.isOpen) 6.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "drawerBlur"
+    )
+
+    LaunchedEffect(drawerState.isOpen) {
+        if (drawerState.isOpen) {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
 
     /* ───────────────────── VIEWERS ───────────────────── */
 
@@ -171,6 +203,36 @@ fun DualPaneScreen(
                                             currentPath = activePane.path,
                                             onNavigateToPath = { activePane.navigateToPath(it) }
                                         )
+                                        if (selectedNode != null) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .padding(top = 6.dp)
+                                                    .border(
+                                                        1.dp,
+                                                        accent.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(12.dp)
+                                                    )
+                                                    .cyberGlow(accent, intensity = 0.25f)
+                                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Selected: ${selectedNode?.name}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = TextPrimary,
+                                                    maxLines = 1
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(
+                                                    text = "Clear",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = accent,
+                                                    modifier = Modifier.clickable {
+                                                        clearSelectionSignal++
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 },
                                 navigationIcon = {
@@ -184,28 +246,6 @@ fun DualPaneScreen(
                                                 imageVector = Icons.Filled.Menu,
                                                 contentDescription = "Open menu",
                                                 tint = accent
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = { activePane.goBack() },
-                                            enabled = activePane.canGoBack()
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                                null,
-                                                tint = if (activePane.canGoBack()) TextPrimary else TextMuted
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = { activePane.goForward() },
-                                            enabled = activePane.canGoForward()
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.ArrowForward,
-                                                null,
-                                                tint = if (activePane.canGoForward()) TextPrimary else TextMuted
                                             )
                                         }
                                     }
@@ -234,6 +274,36 @@ fun DualPaneScreen(
                                                 },
                                                 onClick = {
                                                     activePane.navigateToPath(defaultPath)
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Back") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Outlined.ArrowBack,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                enabled = activePane.canGoBack(),
+                                                onClick = {
+                                                    activePane.goBack()
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Forward") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Outlined.ArrowForward,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                enabled = activePane.canGoForward(),
+                                                onClick = {
+                                                    activePane.goForward()
                                                     viewMenuExpanded = false
                                                 }
                                             )
@@ -309,6 +379,50 @@ fun DualPaneScreen(
                                                     viewMenuExpanded = false
                                                 }
                                             )
+                                            if (selectedNode != null) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Rename selected") },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Outlined.Edit,
+                                                            contentDescription = null,
+                                                            tint = accent
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        renameSelectionSignal++
+                                                        viewMenuExpanded = false
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Delete selected") },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Outlined.Delete,
+                                                            contentDescription = null,
+                                                            tint = accent
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        deleteSelectionSignal++
+                                                        viewMenuExpanded = false
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Clear selection") },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Outlined.Close,
+                                                            contentDescription = null,
+                                                            tint = accent
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        clearSelectionSignal++
+                                                        viewMenuExpanded = false
+                                                    }
+                                                )
+                                            }
                                             DropdownMenuItem(
                                                 text = { Text("Settings") },
                                                 leadingIcon = {
@@ -334,41 +448,20 @@ fun DualPaneScreen(
                         }
                     }
                 ) { padding ->
-
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
                             .background(backgroundGradient())
+                            .blur(drawerBlur)
                     ) {
-
-                        FileListPane(
-                            modifier = Modifier.weight(1f),
-                            paneState = leftPaneState,
-                            currentPath = leftPaneState.path,
-                            fileOperator = fileOperator,
-                            safPermissionManager = safManager,
-                            settings = settings,
-                            searchQuery = searchQuery,
-                            searchResult = searchResult,
-                            permissionRefresh = permissionRefresh,
-                            onSearchQueryChange = onSearchQueryChange,
-                            onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
-                            onRequestSafAccess = onRequestSafAccess,
-                            onRequestFocus = { activePane = leftPaneState },
-                            isActive = activePane == leftPaneState,
-                            sortType = sortType,
-                            sortOrder = sortOrder,
-                            showDivider = paneMode == PaneMode.DUAL,
-                            onOpenViewer = { viewer = it },
-                            torBoxClient = torBoxClient
-                        )
-
-                        if (paneMode == PaneMode.DUAL) {
+                        Row(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             FileListPane(
                                 modifier = Modifier.weight(1f),
-                                paneState = rightPaneState,
-                                currentPath = rightPaneState.path,
+                                paneState = leftPaneState,
+                                currentPath = leftPaneState.path,
                                 fileOperator = fileOperator,
                                 safPermissionManager = safManager,
                                 settings = settings,
@@ -378,15 +471,48 @@ fun DualPaneScreen(
                                 onSearchQueryChange = onSearchQueryChange,
                                 onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
                                 onRequestSafAccess = onRequestSafAccess,
-                                onRequestFocus = { activePane = rightPaneState },
-                                isActive = activePane == rightPaneState,
+                                onSelectionChange = { selectedNode = it },
+                                clearSelectionSignal = clearSelectionSignal,
+                                renameSelectionSignal = renameSelectionSignal,
+                                deleteSelectionSignal = deleteSelectionSignal,
+                                onRequestFocus = { activePane = leftPaneState },
+                                isActive = activePane == leftPaneState,
                                 sortType = sortType,
                                 sortOrder = sortOrder,
-                                showDivider = false,
-                                onOpenViewer = { viewer = it },
+                                showDivider = paneMode == PaneMode.DUAL,
+                                onOpenViewer = { if (viewer == null) viewer = it },
                                 torBoxClient = torBoxClient
                             )
+
+                            if (paneMode == PaneMode.DUAL) {
+                                FileListPane(
+                                    modifier = Modifier.weight(1f),
+                                    paneState = rightPaneState,
+                                    currentPath = rightPaneState.path,
+                                    fileOperator = fileOperator,
+                                    safPermissionManager = safManager,
+                                    settings = settings,
+                                    searchQuery = searchQuery,
+                                    searchResult = searchResult,
+                                    permissionRefresh = permissionRefresh,
+                                    onSearchQueryChange = onSearchQueryChange,
+                                    onSafRequired = { onRequestSafAccess(FsNode.Local(it)) },
+                                    onRequestSafAccess = onRequestSafAccess,
+                                    onSelectionChange = { selectedNode = it },
+                                    clearSelectionSignal = clearSelectionSignal,
+                                    renameSelectionSignal = renameSelectionSignal,
+                                    deleteSelectionSignal = deleteSelectionSignal,
+                                    onRequestFocus = { activePane = rightPaneState },
+                                    isActive = activePane == rightPaneState,
+                                    sortType = sortType,
+                                    sortOrder = sortOrder,
+                                    showDivider = false,
+                                    onOpenViewer = { if (viewer == null) viewer = it },
+                                    torBoxClient = torBoxClient
+                                )
+                            }
                         }
+                        ScanlineOverlay()
                     }
                 }
             }

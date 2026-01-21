@@ -62,6 +62,7 @@ import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.glass.neonGlass
+import com.droidexplorer.websim.ui.selection.SelectionController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,6 +86,10 @@ fun FileListPane(
     onSearchQueryChange: (String) -> Unit,
     onSafRequired: (File) -> Unit,
     onRequestSafAccess: (FsNode) -> Unit,
+    onSelectionChange: (FsNode?) -> Unit,
+    clearSelectionSignal: Int,
+    renameSelectionSignal: Int,
+    deleteSelectionSignal: Int,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
     sortType: SortType,
@@ -118,12 +123,36 @@ fun FileListPane(
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val selectionController = remember { SelectionController<FsNode> { it.uniqueKey } }
     val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
     LaunchedEffect(permissionRefresh) {
         writeProbeCache.clear()
         if (permissionRefresh > 0) {
             refreshTrigger++
         }
+    }
+
+    LaunchedEffect(clearSelectionSignal) {
+        selectedFile = null
+        showContextMenu = false
+        selectionController.clear()
+        onSelectionChange(null)
+    }
+
+    LaunchedEffect(renameSelectionSignal) {
+        if (selectedFile != null) {
+            showRenameDialog = true
+        }
+    }
+
+    LaunchedEffect(deleteSelectionSignal) {
+        if (selectedFile != null) {
+            showDeleteDialog = true
+        }
+    }
+
+    LaunchedEffect(selectedFile, showContextMenu) {
+        onSelectionChange(selectedFile?.takeIf { showContextMenu })
     }
 
     // Snackbar state
@@ -437,6 +466,8 @@ fun FileListPane(
                         when (node) {
                             is FsNode.TorBox -> {
                                 selectedFile = node
+                                selectionController.clear()
+                                selectionController.select(node)
                                 showContextMenu = true
                             }
                             else -> {
@@ -459,10 +490,14 @@ fun FileListPane(
                         when (node) {
                             is FsNode.TorBox -> {
                                 selectedFile = node
+                                selectionController.clear()
+                                selectionController.select(node)
                                 showContextMenu = true
                             }
                             else -> {
                                 selectedFile = node
+                                selectionController.clear()
+                                selectionController.select(node)
                                 showContextMenu = true
                             }
                         }
@@ -487,7 +522,7 @@ fun FileListPane(
                                     files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
-                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
                                     requiresPermission = { requiresPermission(it) }
                                 )
                             }
@@ -502,7 +537,7 @@ fun FileListPane(
                                     files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
-                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
                                     requiresPermission = { requiresPermission(it) }
                                 )
                             }
@@ -517,7 +552,7 @@ fun FileListPane(
                                     files = activeFiles,
                                     onClick = handleItemClick,
                                     onLongClick = handleItemLongClick,
-                                    isSelected = { selectedFile?.uniqueKey == it.uniqueKey && showContextMenu },
+                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
                                     requiresPermission = { requiresPermission(it) }
                                 )
                             }

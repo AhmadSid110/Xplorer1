@@ -9,7 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.unit.dp
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 
 @Composable
 fun BreadcrumbBar(
@@ -19,6 +21,7 @@ fun BreadcrumbBar(
 ) {
     val scrollState = rememberScrollState()
     val segments = currentPath.split("/").filter { it.isNotEmpty() }
+    val accent = LocalCyberAccent.current
     
     Row(
         modifier = modifier
@@ -61,6 +64,22 @@ fun BreadcrumbBar(
             Surface(
                 modifier = Modifier
                     .padding(end = 4.dp)
+                    .then(
+                        if (isLast) {
+                            Modifier.drawBehind {
+                                val strokeWidth = 1.dp.toPx()
+                                val y = size.height - strokeWidth / 2
+                                drawLine(
+                                    color = accent.copy(alpha = 0.6f),
+                                    start = androidx.compose.ui.geometry.Offset(0f, y),
+                                    end = androidx.compose.ui.geometry.Offset(size.width, y),
+                                    strokeWidth = strokeWidth
+                                )
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
                     .clickable { onNavigateToPath(fullPath) },
                 shape = RoundedCornerShape(8.dp),
                 color = if (isLast) 

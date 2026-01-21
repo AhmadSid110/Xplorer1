@@ -1,5 +1,6 @@
 package com.droidexplorer.websim.ui.settings
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
+import com.droidexplorer.websim.ui.effects.IndeterminateArc
 import com.droidexplorer.websim.ui.theme.CyberDarkSurface
 import com.droidexplorer.websim.ui.theme.CyberElevated
 import com.droidexplorer.websim.ui.theme.DividerSoft
@@ -79,6 +81,7 @@ fun CleanerScreen(
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val accent = LocalCyberAccent.current
+    val prefs = remember { context.getSharedPreferences("cleaner_prefs", Context.MODE_PRIVATE) }
 
     val storageInfo = remember { StorageInfoProvider().internalStorage() }
     val usedFraction = if (storageInfo.total > 0) {
@@ -88,6 +91,9 @@ fun CleanerScreen(
     var isProcessing by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf<CleanerCategory?>(null) }
+    var lastCleaned by remember { mutableStateOf(prefs.getLong("last_cleaned", 0L)) }
+    var protectAndroid by remember { mutableStateOf(prefs.getBoolean("protect_android", true)) }
+    var protectDcim by remember { mutableStateOf(prefs.getBoolean("protect_dcim", false)) }
     val categoryFiles = remember { mutableStateMapOf<CleanerCategory, List<File>>() }
     val categorySizes = remember { mutableStateMapOf<CleanerCategory, Long>() }
     val scanning = remember { mutableStateMapOf<CleanerCategory, Boolean>() }
@@ -145,7 +151,7 @@ fun CleanerScreen(
         scanning[category] = true
         scope.launch {
             val results = withContext(Dispatchers.IO) {
-                scanCategoryFiles(context, category)
+                scanCategoryFiles(context, category, protectAndroid, protectDcim)
             }
             categoryFiles[category] = results
             categorySizes[category] = results.sumOf { it.length() }
@@ -156,6 +162,23 @@ fun CleanerScreen(
 
     val totalJunk = categorySizes.values.sum()
     val previewFiles = selectedCategory?.let { categoryFiles[it].orEmpty() }.orEmpty()
+    val estimatedTotal = if (totalJunk > 0) {
+        totalJunk
+    } else {
+        data.images + data.videos + data.audio + data.apks + data.archives
+    }
+    val smartCategory = remember(data, categorySizes) {
+        val fallback = listOf(
+            CleanerCategory.ARCHIVES to data.archives,
+            CleanerCategory.UNUSED_APKS to data.apks,
+            CleanerCategory.VIDEOS to data.videos,
+            CleanerCategory.IMAGES to data.images,
+            CleanerCategory.AUDIO to data.audio
+        ).maxByOrNull { it.second }?.first
+        if (categorySizes.isNotEmpty()) {
+            categorySizes.maxByOrNull { it.value }?.key ?: fallback
+        } else fallback
+    }
 
     Box(
         modifier = modifier
@@ -220,6 +243,13 @@ fun CleanerScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = TextMuted
                         )
+                        if (lastCleaned > 0) {
+                            Text(
+                                text = "Last cleaned ${formatTimestamp(lastCleaned)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextMuted
+                            )
+                        }
                         LinearProgressIndicator(
                             progress = usedFraction,
                             modifier = Modifier
@@ -228,6 +258,83 @@ fun CleanerScreen(
                                 .clip(RoundedCornerShape(8.dp)),
                             color = accent,
                             trackColor = CyberElevated
+                        )
+                    }
+                }
+            }
+
+            item {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(CyberDarkSurface, RoundedCornerShape(20.dp))
+                        .border(
+                            1.dp,
+                            accent.copy(alpha = 0.3f),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("SMART SUGGESTION", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = if (estimatedTotal > 0) "Clear ${formatSize(estimatedTotal)} safely" else "Run a smart scan",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary
+                        )
+                        Button(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                smartCategory?.let {
+                                    selectedCategory = it
+                                    startScan(it)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = accent.copy(alpha = 0.15f),
+                                contentColor = accent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    accent.copy(alpha = 0.6f),
+                                    RoundedCornerShape(16.dp)
+                                )
+                        ) {
+                            Text("Scan smart")
+                        }
+                    }
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Protected folders",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextMuted
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Protect Android/", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                        Spacer(Modifier.weight(1f))
+                        Switch(
+                            checked = protectAndroid,
+                            onCheckedChange = {
+                                protectAndroid = it
+                                prefs.edit().putBoolean("protect_android", it).apply()
+                            }
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Protect DCIM/", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                        Spacer(Modifier.weight(1f))
+                        Switch(
+                            checked = protectDcim,
+                            onCheckedChange = {
+                                protectDcim = it
+                                prefs.edit().putBoolean("protect_dcim", it).apply()
+                            }
                         )
                     }
                 }
@@ -351,7 +458,10 @@ fun CleanerScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Button(
-                            onClick = { showConfirmDialog = true },
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showConfirmDialog = true
+                            },
                             enabled = selectedCount > 0 && !isProcessing,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = accent.copy(alpha = 0.15f),
@@ -379,7 +489,10 @@ fun CleanerScreen(
                     .background(Color.Black.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = accent)
+                IndeterminateArc(
+                    modifier = Modifier.size(64.dp),
+                    color = accent
+                )
             }
         }
     }
@@ -417,6 +530,8 @@ fun CleanerScreen(
                                 "Deleted $deletedCount files",
                                 Toast.LENGTH_SHORT
                             ).show()
+                            lastCleaned = System.currentTimeMillis()
+                            prefs.edit().putLong("last_cleaned", lastCleaned).apply()
                             isProcessing = false
                         }
                     },
@@ -564,7 +679,12 @@ private fun CleanerFileRow(
     Divider(color = DividerSoft)
 }
 
-private fun scanCategoryFiles(context: android.content.Context, category: CleanerCategory): List<File> {
+private fun scanCategoryFiles(
+    context: android.content.Context,
+    category: CleanerCategory,
+    protectAndroid: Boolean,
+    protectDcim: Boolean
+): List<File> {
     val rootPath = "/storage/emulated/0"
     val maxResults = 200
     val extensions = when (category) {
@@ -576,6 +696,12 @@ private fun scanCategoryFiles(context: android.content.Context, category: Cleane
         else -> emptySet()
     }
 
+    fun isProtected(path: String): Boolean {
+        if (protectAndroid && path.contains("/Android/")) return true
+        if (protectDcim && path.contains("/DCIM/")) return true
+        return false
+    }
+
     return when (category) {
         CleanerCategory.LARGE_FILES -> FileManager.findLargeFiles(rootPath)
         CleanerCategory.CACHE -> {
@@ -585,19 +711,25 @@ private fun scanCategoryFiles(context: android.content.Context, category: Cleane
                 context.externalCacheDirs?.filterNotNull()?.let { addAll(it) }
             }
             cacheRoots
-                .flatMap { root -> root.walkTopDown().filter { it.isFile }.take(maxResults).toList() }
+                .flatMap { root -> root.walkTopDown().filter { it.isFile && !isProtected(it.absolutePath) }.take(maxResults).toList() }
                 .distinctBy { it.absolutePath }
         }
         else -> {
             File(rootPath)
                 .walkTopDown()
                 .filter { file ->
-                    file.isFile && extensions.contains(file.extension.lowercase())
+                    file.isFile && extensions.contains(file.extension.lowercase()) && !isProtected(file.absolutePath)
                 }
                 .take(maxResults)
                 .toList()
         }
     }
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val date = java.util.Date(timestamp)
+    val formatter = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+    return formatter.format(date)
 }
 
 private fun formatSize(bytes: Long): String {

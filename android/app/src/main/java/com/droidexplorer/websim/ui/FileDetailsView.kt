@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
+import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.TextMuted
 import com.droidexplorer.websim.ui.theme.cyberGlow
@@ -78,6 +79,7 @@ fun FileDetailsView(
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
+            val pulse = rememberPulseAlpha(selected)
             val lastModified = file.lastModified()
             val formattedDate = remember(lastModified) {
                 formatter.format(Date(lastModified))
@@ -129,10 +131,10 @@ fun FileDetailsView(
                                 Modifier
                                     .border(
                                         1.dp,
-                                        accent.copy(alpha = 0.5f),
+                                        accent.copy(alpha = 0.5f + (0.2f * pulse)),
                                         RoundedCornerShape(14.dp)
                                     )
-                                    .cyberGlow(accent)
+                                    .cyberGlow(accent, intensity = 0.35f + (0.25f * pulse))
                             } else {
                                 Modifier
                             }
@@ -211,6 +213,7 @@ fun FileListView(
         items(files, key = { it.path }) { file ->
             val selected = isSelected(file)
             val permissionNeeded = requiresPermission(file)
+            val pulse = rememberPulseAlpha(selected)
             
             // Animated selection background
             val surfaceColor by animateColorAsState(
@@ -263,10 +266,10 @@ fun FileListView(
                                     Modifier
                                         .border(
                                             1.dp,
-                                            accent.copy(alpha = 0.5f),
+                                            accent.copy(alpha = 0.5f + (0.2f * pulse)),
                                             RoundedCornerShape(14.dp)
                                         )
-                                        .cyberGlow(accent)
+                                        .cyberGlow(accent, intensity = 0.35f + (0.25f * pulse))
                                 } else {
                                     Modifier
                                 }
