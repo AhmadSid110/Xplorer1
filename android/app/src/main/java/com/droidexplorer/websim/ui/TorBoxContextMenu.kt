@@ -98,7 +98,7 @@ fun TorBoxContextMenu(
                             scope.launch {
                                 try {
                                     val link = torBoxClient.getShareLink(file.id)
-                                    if (link.isNullOrBlank()) {
+                                    if (link.isNullOrBlank() || !link.startsWith("http")) {
                                         onMessage("Failed to get stream link")
                                         return@launch
                                     }
@@ -106,13 +106,14 @@ fun TorBoxContextMenu(
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
                                         setDataAndType(Uri.parse(link), mime)
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     try {
-                                        context.startActivity(intent)
+                                        context.startActivity(Intent.createChooser(intent, "Play with"))
+                                        onDismiss()
                                     } catch (_: ActivityNotFoundException) {
                                         onMessage("No compatible player found")
                                     }
-                                    onDismiss()
                                 } catch (e: Exception) {
                                     onMessage("Error: ${e.message ?: "Unknown error"}")
                                 } finally {
@@ -136,7 +137,7 @@ fun TorBoxContextMenu(
                             scope.launch {
                                 try {
                                     val link = torBoxClient.getShareLink(file.id)
-                                    if (link.isNullOrBlank()) {
+                                    if (link.isNullOrBlank() || !link.startsWith("http")) {
                                         onMessage("Failed to get download link")
                                         return@launch
                                     }
@@ -210,7 +211,7 @@ fun TorBoxContextMenu(
                         scope.launch {
                             try {
                                 val link = torBoxClient.getShareLink(file.id)
-                                if (!link.isNullOrBlank()) {
+                                if (!link.isNullOrBlank() && link.startsWith("http")) {
                                     val copied = ClipboardUtil.copyText(context, "TorBox link", link)
                                     onMessage(if (copied) "Link copied to clipboard" else "Failed to access clipboard")
                                 } else {

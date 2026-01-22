@@ -3,8 +3,10 @@ package com.droidexplorer.websim.torbox
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
@@ -134,29 +136,66 @@ class TorBoxClient(private val apiKey: String) {
 
                 if (!response.isSuccessful) {
                     Log.e(TAG, "Failed to get share link: HTTP ${response.code}")
-                    return@withContext null
+                    return@withContext requestTorrentDownloadLink(fileId)
                 }
 
                 val body = response.body?.string() ?: return@withContext null
                 val json = JSONObject(body)
                 json.optString("data").takeIf { it.isNotBlank() }
+                    ?: requestTorrentDownloadLink(fileId)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting share link", e)
-                null
+                requestTorrentDownloadLink(fileId)
             }
         }
 
+    private fun requestTorrentDownloadLink(torrentId: String): String? {
+        return try {
+            val parsedId = torrentId.toIntOrNull() ?: return null
+            val url = "https://api.torbox.app/v1/api/torrents/requestdl" +
+                "?token=$apiKey&torrent_id=$parsedId&redirect=true"
+
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                Log.d(TAG, "requestdl HTTP ${response.code}")
+                if (!response.isSuccessful) {
+                    return null
+                }
+
+                val finalUrl = response.request.url.toString()
+                if (finalUrl.isNotBlank()) {
+                    return finalUrl
+                }
+
+                val body = response.body?.string() ?: return null
+                JSONObject(body).optString("data").takeIf { it.isNotBlank() }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error requesting download link", e)
+            null
+        }
+    }
+
     /**
-     * Deletes a TorBox file by id.
+     * Deletes a TorBox item by id via controltorrent.
      */
     suspend fun deleteFile(fileId: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
+                val json = JSONObject()
+                    .put("operation", "delete")
+                    .put("torrent_id", fileId.toIntOrNull() ?: fileId)
+                val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
                 val request = Request.Builder()
-                    .url("https://api.torbox.app/v1/api/files/$fileId")
+                    .url("https://api.torbox.app/v1/api/torrents/controltorrent")
                     .addHeader("Authorization", "Bearer $apiKey")
-                    .delete()
+                    .post(body)
                     .build()
 
                 val response = client.newCall(request).execute()
