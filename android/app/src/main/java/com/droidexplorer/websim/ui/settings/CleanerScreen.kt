@@ -2,12 +2,6 @@ package com.droidexplorer.websim.ui.settings
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -28,6 +23,7 @@ import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +59,12 @@ enum class CleanerCategory {
     CACHE
 }
 
+private enum class CleanerDestination {
+    HOME,
+    SMART_RESULTS,
+    CATEGORY
+}
+
 private data class CleanerCategorySpec(
     val category: CleanerCategory,
     val title: String,
@@ -90,7 +92,9 @@ fun CleanerScreen(
 
     var isProcessing by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf<CleanerCategory?>(null) }
+    var destination by rememberSaveable { mutableStateOf(CleanerDestination.HOME) }
+    var activeCategory by rememberSaveable { mutableStateOf<CleanerCategory?>(null) }
+    var smartScanTrigger by remember { mutableStateOf(0) }
     var lastCleaned by remember { mutableStateOf(prefs.getLong("last_cleaned", 0L)) }
     var protectAndroid by remember { mutableStateOf(prefs.getBoolean("protect_android", true)) }
     var protectDcim by remember { mutableStateOf(prefs.getBoolean("protect_dcim", false)) }
@@ -146,7 +150,7 @@ fun CleanerScreen(
         )
     }
 
-    fun startScan(category: CleanerCategory) {
+    fun startScan(category: CleanerCategory, clearSelection: Boolean = true) {
         if (scanning[category] == true) return
         scanning[category] = true
         scope.launch {
@@ -155,29 +159,49 @@ fun CleanerScreen(
             }
             categoryFiles[category] = results
             categorySizes[category] = results.sumOf { it.length() }
-            selectedFiles.clear()
+            if (clearSelection) {
+                selectedFiles.clear()
+            }
             scanning[category] = false
         }
     }
 
+    fun startSmartScan() {
+        smartScanTrigger++
+        val categoriesToScan = categories.map { it.category }
+        categoriesToScan.forEach { scanning[it] = true }
+        scope.launch {
+            val results = withContext(Dispatchers.IO) {
+                categoriesToScan.associateWith { category ->
+                    scanCategoryFiles(context, category, protectAndroid, protectDcim)
+                }
+            }
+            results.forEach { (category, files) ->
+                categoryFiles[category] = files
+                categorySizes[category] = files.sumOf { it.length() }
+                scanning[category] = false
+            }
+        }
+    }
+
+    fun removeFilesFromAllCategories(files: List<File>) {
+        val toRemove = files.map { it.absolutePath }.toSet()
+        categories.forEach { spec ->
+            val current = categoryFiles[spec.category].orEmpty()
+            val updated = current.filterNot { toRemove.contains(it.absolutePath) }
+            categoryFiles[spec.category] = updated
+            categorySizes[spec.category] = updated.sumOf { it.length() }
+        }
+    }
+
     val totalJunk = categorySizes.values.sum()
-    val previewFiles = selectedCategory?.let { categoryFiles[it].orEmpty() }.orEmpty()
     val estimatedTotal = if (totalJunk > 0) {
         totalJunk
     } else {
         data.images + data.videos + data.audio + data.apks + data.archives
     }
-    val smartCategory = remember(data, categorySizes) {
-        val fallback = listOf(
-            CleanerCategory.ARCHIVES to data.archives,
-            CleanerCategory.UNUSED_APKS to data.apks,
-            CleanerCategory.VIDEOS to data.videos,
-            CleanerCategory.IMAGES to data.images,
-            CleanerCategory.AUDIO to data.audio
-        ).maxByOrNull { it.second }?.first
-        if (categorySizes.isNotEmpty()) {
-            categorySizes.maxByOrNull { it.value }?.key ?: fallback
-        } else fallback
+    LaunchedEffect(destination, activeCategory) {
+        selectedFiles.clear()
     }
 
     Box(
@@ -185,12 +209,13 @@ fun CleanerScreen(
             .fillMaxSize()
             .background(CyberDarkSurface)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        when (destination) {
+            CleanerDestination.HOME -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -285,10 +310,8 @@ fun CleanerScreen(
                         Button(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                smartCategory?.let {
-                                    selectedCategory = it
-                                    startScan(it)
-                                }
+                                destination = CleanerDestination.SMART_RESULTS
+                                startSmartScan()
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = accent.copy(alpha = 0.15f),
@@ -355,7 +378,7 @@ fun CleanerScreen(
                 ) {
                     rowItems.forEach { spec ->
                         val size = categorySizes[spec.category]
-                        val isSelected = selectedCategory == spec.category
+                        val isSelected = activeCategory == spec.category && destination == CleanerDestination.HOME
                         val isScanning = scanning[spec.category] == true
                         CleanerCategoryCard(
                             spec = spec,
@@ -369,23 +392,15 @@ fun CleanerScreen(
                             selected = isSelected,
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedCategory = spec.category
-                                if (size == null || isScanning) {
-                                    startScan(spec.category)
-                                }
+                                activeCategory = spec.category
+                                destination = CleanerDestination.CATEGORY
                                 onOpenCategory(spec.category)
                             },
                             onLongPress = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                selectedCategory = spec.category
-                                val files = categoryFiles[spec.category].orEmpty()
-                                if (files.isNotEmpty()) {
-                                    files.forEach { file ->
-                                        selectedFiles[file.absolutePath] = true
-                                    }
-                                } else {
-                                    startScan(spec.category)
-                                }
+                                activeCategory = spec.category
+                                destination = CleanerDestination.CATEGORY
+                                onOpenCategory(spec.category)
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -395,89 +410,67 @@ fun CleanerScreen(
                     }
                 }
             }
-
-            item {
-                AnimatedVisibility(
-                    visible = selectedCategory != null,
-                    enter = fadeIn(tween(140)) + slideInVertically(tween(140)) { it / 3 },
-                    exit = fadeOut(tween(140)) + slideOutVertically(tween(140)) { it / 3 }
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "Preview",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TextMuted
-                        )
-
-                        if (previewFiles.isEmpty()) {
-                            Text(
-                                text = "No files to preview yet.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextMuted
-                            )
-                        } else {
-                            previewFiles.forEach { file ->
-                                val checked = selectedFiles[file.absolutePath] == true
-                                CleanerFileRow(
-                                    file = file,
-                                    checked = checked,
-                                    accent = accent,
-                                    onCheckedChange = { selectedFiles[file.absolutePath] = it }
-                                )
-                            }
-                        }
-                    }
-                }
             }
 
-            item {
-                val selectedCount = selectedFiles.values.count { it }
-                val selectedSize = previewFiles.filter { selectedFiles[it.absolutePath] == true }
-                    .sumOf { it.length() }
+            CleanerDestination.SMART_RESULTS -> {
+                val allFiles = categories
+                    .flatMap { categoryFiles[it.category].orEmpty() }
+                    .distinctBy { it.absolutePath }
+                CleanerResultsScreen(
+                    title = "Smart scan",
+                    subtitle = "${allFiles.size} files · ${formatSize(allFiles.sumOf { it.length() })}",
+                    files = allFiles,
+                    isScanning = scanning.values.any { it },
+                    accent = accent,
+                    onBack = { destination = CleanerDestination.HOME },
+                    isSelected = { file -> selectedFiles[file.absolutePath] == true },
+                    onSelectAll = {
+                        val selectAll = allFiles.any { selectedFiles[it.absolutePath] != true }
+                        allFiles.forEach { selectedFiles[it.absolutePath] = selectAll }
+                    },
+                    onClearSelection = { selectedFiles.clear() },
+                    onExcludeSelected = {
+                        val toExclude = allFiles.filter { selectedFiles[it.absolutePath] == true }
+                        removeFilesFromAllCategories(toExclude)
+                        selectedFiles.clear()
+                    },
+                    onDeleteSelected = { showConfirmDialog = true },
+                    onToggleFile = { file, checked -> selectedFiles[file.absolutePath] = checked }
+                )
+            }
 
-                AnimatedVisibility(
-                    visible = selectedCount > 0,
-                    enter = fadeIn(tween(140)) + slideInVertically(tween(140)) { it / 3 },
-                    exit = fadeOut(tween(140)) + slideOutVertically(tween(140)) { it / 3 }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(CyberDarkSurface, RoundedCornerShape(20.dp))
-                            .border(
-                                1.dp,
-                                accent.copy(alpha = 0.35f),
-                                RoundedCornerShape(20.dp)
-                            )
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Delete $selectedCount files (${formatSize(selectedSize)})",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextPrimary
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                showConfirmDialog = true
-                            },
-                            enabled = selectedCount > 0 && !isProcessing,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = accent.copy(alpha = 0.15f),
-                                contentColor = accent
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(
-                                    1.dp,
-                                    accent.copy(alpha = 0.6f),
-                                    RoundedCornerShape(16.dp)
-                                )
-                        ) {
-                            Text("Clean selected")
+            CleanerDestination.CATEGORY -> {
+                val category = activeCategory
+                if (category != null) {
+                    val files = categoryFiles[category].orEmpty()
+                    LaunchedEffect(category, smartScanTrigger) {
+                        if (files.isEmpty() && scanning[category] != true) {
+                            startScan(category, clearSelection = false)
                         }
                     }
+                    CleanerResultsScreen(
+                        title = category.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() },
+                        subtitle = "${files.size} files · ${formatSize(files.sumOf { it.length() })}",
+                        files = files,
+                        isScanning = scanning[category] == true,
+                        accent = accent,
+                        onBack = { destination = CleanerDestination.HOME },
+                        isSelected = { file -> selectedFiles[file.absolutePath] == true },
+                        onSelectAll = {
+                            val selectAll = files.any { selectedFiles[it.absolutePath] != true }
+                            files.forEach { selectedFiles[it.absolutePath] = selectAll }
+                        },
+                        onClearSelection = { selectedFiles.clear() },
+                        onExcludeSelected = {
+                            val toExclude = files.filter { selectedFiles[it.absolutePath] == true }
+                            val updated = files - toExclude.toSet()
+                            categoryFiles[category] = updated
+                            categorySizes[category] = updated.sumOf { it.length() }
+                            selectedFiles.clear()
+                        },
+                        onDeleteSelected = { showConfirmDialog = true },
+                        onToggleFile = { file, checked -> selectedFiles[file.absolutePath] = checked }
+                    )
                 }
             }
         }
@@ -497,9 +490,17 @@ fun CleanerScreen(
         }
     }
 
+    val currentFilesForDeletion = when (destination) {
+        CleanerDestination.SMART_RESULTS -> categories
+            .flatMap { categoryFiles[it.category].orEmpty() }
+            .distinctBy { it.absolutePath }
+        CleanerDestination.CATEGORY -> activeCategory?.let { categoryFiles[it].orEmpty() }.orEmpty()
+        CleanerDestination.HOME -> emptyList()
+    }
+
     if (showConfirmDialog) {
         val selectedCount = selectedFiles.values.count { it }
-        val selectedSize = previewFiles.filter { selectedFiles[it.absolutePath] == true }
+        val selectedSize = currentFilesForDeletion.filter { selectedFiles[it.absolutePath] == true }
             .sumOf { it.length() }
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -513,16 +514,20 @@ fun CleanerScreen(
                         showConfirmDialog = false
                         isProcessing = true
                         scope.launch {
-                            val toDelete = previewFiles.filter {
+                            val toDelete = currentFilesForDeletion.filter {
                                 selectedFiles[it.absolutePath] == true
                             }
                             val deletedCount = withContext(Dispatchers.IO) {
                                 toDelete.count { it.delete() }
                             }
-                            selectedCategory?.let { category ->
-                                val updated = (categoryFiles[category].orEmpty() - toDelete.toSet())
-                                categoryFiles[category] = updated
-                                categorySizes[category] = updated.sumOf { it.length() }
+                            if (destination == CleanerDestination.SMART_RESULTS) {
+                                removeFilesFromAllCategories(toDelete)
+                            } else if (destination == CleanerDestination.CATEGORY) {
+                                activeCategory?.let { category ->
+                                    val updated = (categoryFiles[category].orEmpty() - toDelete.toSet())
+                                    categoryFiles[category] = updated
+                                    categorySizes[category] = updated.sumOf { it.length() }
+                                }
                             }
                             selectedFiles.clear()
                             Toast.makeText(
@@ -546,6 +551,115 @@ fun CleanerScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun CleanerResultsScreen(
+    title: String,
+    subtitle: String,
+    files: List<File>,
+    isScanning: Boolean,
+    accent: Color,
+    onBack: () -> Unit,
+    isSelected: (File) -> Boolean,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
+    onExcludeSelected: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onToggleFile: (File, Boolean) -> Unit
+) {
+    val selectedCount = files.count { isSelected(it) }
+    val selectedSize = files.filter { isSelected(it) }.sumOf { it.length() }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = accent)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                if (isScanning) {
+                    IndeterminateArc(
+                        modifier = Modifier.size(28.dp),
+                        color = accent,
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(CyberDarkSurface, RoundedCornerShape(16.dp))
+                    .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Selected $selectedCount (${formatSize(selectedSize)})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onSelectAll) { Text("Select all", color = accent) }
+                TextButton(onClick = onClearSelection) { Text("Clear", color = TextMuted) }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onExcludeSelected,
+                    enabled = selectedCount > 0,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Exclude")
+                }
+                Button(
+                    onClick = onDeleteSelected,
+                    enabled = selectedCount > 0,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent.copy(alpha = 0.15f),
+                        contentColor = accent
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Delete")
+                }
+            }
+        }
+
+        if (files.isEmpty() && !isScanning) {
+            item {
+                Text(
+                    text = "No files found.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted
+                )
+            }
+        } else {
+            items(files) { file ->
+                CleanerFileRow(
+                    file = file,
+                    checked = isSelected(file),
+                    accent = accent,
+                    onCheckedChange = { onToggleFile(file, it) }
+                )
+            }
+        }
     }
 }
 
@@ -602,8 +716,20 @@ private fun CleanerCategoryCard(
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(spec.title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                Text(spec.subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text(
+                    text = spec.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = spec.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Icon(
@@ -614,7 +740,9 @@ private fun CleanerCategoryCard(
                 Text(
                     sizeLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = accent
+                    color = accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

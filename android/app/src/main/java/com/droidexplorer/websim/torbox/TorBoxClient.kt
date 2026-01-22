@@ -146,4 +146,25 @@ class TorBoxClient(private val apiKey: String) {
                 null
             }
         }
+
+    /**
+     * Deletes a TorBox file by id.
+     */
+    suspend fun deleteFile(fileId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("https://api.torbox.app/v1/api/files/$fileId")
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .delete()
+                    .build()
+
+                val response = client.newCall(request).execute()
+                Log.d(TAG, "deleteFile HTTP ${response.code}")
+                response.isSuccessful
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting file", e)
+                false
+            }
+        }
 }

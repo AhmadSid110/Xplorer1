@@ -72,6 +72,9 @@ dependencies {
     // HTTP Client for TorBox API
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // WorkManager for background downloads
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // ─────────────────────────────────────────────
     // ✅ REQUIRED EXPLICIT DEPENDENCIES (DO NOT REMOVE)
     // Fixes GitHub Actions Maven 403 failures

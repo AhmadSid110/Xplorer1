@@ -3,8 +3,6 @@
 package com.droidexplorer.websim.ui
 
 import android.content.ActivityNotFoundException
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -101,9 +99,6 @@ fun FileListPane(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val clipboardManager = remember { 
-        context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager 
-    }
     var isSearching by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var editorFile by remember { mutableStateOf<File?>(null) }
@@ -166,7 +161,8 @@ fun FileListPane(
     val files by produceState<List<FsNode>>(
         initialValue = emptyList(),
         currentPath,
-        permissionRefresh
+        permissionRefresh,
+        refreshTrigger
     ) {
         value = if (currentPath == "torbox:") {
             torBoxClient?.listFiles()?.map {
@@ -598,18 +594,12 @@ fun FileListPane(
                     file = file,
                     torBoxClient = torBoxClient,
                     onDismiss = { showContextMenu = false },
-                    onCopyLink = { link ->
-                        if (clipboardManager != null) {
-                            clipboardManager.setPrimaryClip(ClipData.newPlainText("TorBox link", link))
-                            snackbarMessage = "Link copied to clipboard"
-                        } else {
-                            snackbarMessage = "Failed to access clipboard"
-                        }
-                        showContextMenu = false
-                    },
-                    onError = { message ->
+                    onOpenViewer = onOpenViewer,
+                    onMessage = { message ->
                         snackbarMessage = message
-                        showContextMenu = false
+                    },
+                    onDeleted = {
+                        refreshTrigger++
                     }
                 )
             }
