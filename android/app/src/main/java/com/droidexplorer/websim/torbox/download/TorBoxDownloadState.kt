@@ -15,5 +15,6 @@ data class TorBoxDownloadState(
     val bytesDownloaded: Long,
     val totalBytes: Long,
     val status: DownloadStatus,
-    val filePath: String?
+    val filePath: String?,
+    val speedBytesPerSec: Long
 )

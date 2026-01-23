@@ -11,22 +11,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.torbox.download.DownloadStatus
 import com.droidexplorer.websim.torbox.download.TorBoxDownloadEntity
+import com.droidexplorer.websim.torbox.TorBoxDownloadManager
 
 @Composable
 fun TorBoxDownloadsPanel(downloads: List<TorBoxDownloadEntity>) {
     if (downloads.isEmpty()) return
+
+    val context = LocalContext.current
 
     val activeCount = downloads.count {
         it.status == DownloadStatus.QUEUED ||
@@ -83,18 +90,65 @@ fun TorBoxDownloadsPanel(downloads: List<TorBoxDownloadEntity>) {
                         } else {
                             "${item.downloaded}"
                         }
+                        val speedText = if (item.speedBytesPerSec > 0L) {
+                            " • ${formatSpeed(item.speedBytesPerSec)}"
+                        } else {
+                            ""
+                        }
                         Text(
-                            text = "${item.status} • $progressText",
+                            text = "${item.status} • $progressText$speedText",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    when (item.status) {
+                        DownloadStatus.DOWNLOADING -> {
+                            IconButton(onClick = { TorBoxDownloadManager.pause(context, item.id) }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Pause,
+                                    contentDescription = "Pause",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        DownloadStatus.PAUSED, DownloadStatus.FAILED, DownloadStatus.QUEUED -> {
+                            val sourceUrl = item.sourceUrl
+                            if (!sourceUrl.isNullOrBlank()) {
+                                IconButton(
+                                    onClick = {
+                                        TorBoxDownloadManager.resume(context, item.id, item.name, sourceUrl)
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.PlayArrow,
+                                        contentDescription = "Resume",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                        else -> Unit
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+private fun formatSpeed(bytesPerSec: Long): String {
+    if (bytesPerSec <= 0L) return "0 B/s"
+    val kb = 1024.0
+    val mb = kb * 1024.0
+    val gb = mb * 1024.0
+    val value = bytesPerSec.toDouble()
+    return when {
+        value >= gb -> String.format("%.2f GB/s", value / gb)
+        value >= mb -> String.format("%.2f MB/s", value / mb)
+        value >= kb -> String.format("%.1f KB/s", value / kb)
+        else -> "${bytesPerSec} B/s"
     }
 }

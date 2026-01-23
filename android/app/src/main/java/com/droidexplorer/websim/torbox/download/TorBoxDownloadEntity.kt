@@ -10,5 +10,7 @@ data class TorBoxDownloadEntity(
     val downloaded: Long,
     val total: Long,
     val status: DownloadStatus,
-    val path: String?
+    val path: String?,
+    val speedBytesPerSec: Long,
+    val sourceUrl: String?
 )
