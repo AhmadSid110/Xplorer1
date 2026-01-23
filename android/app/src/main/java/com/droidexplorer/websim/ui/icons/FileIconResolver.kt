@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -17,7 +18,6 @@ import com.droidexplorer.websim.ui.theme.NeonGreen
 import com.droidexplorer.websim.ui.theme.NeonMagenta
 import com.droidexplorer.websim.ui.theme.NeonPink
 import com.droidexplorer.websim.ui.theme.NeonPurple
-import com.droidexplorer.websim.ui.theme.TextMuted
 
 @Composable
 fun fileIconFor(node: FsNode): ImageVector {
@@ -48,6 +48,6 @@ fun fileIconColor(node: FsNode): Color {
         "mp3", "wav", "ogg", "flac", "m4a", "aac" -> NeonBlue
         "apk" -> NeonAmber
         "zip", "rar", "7z", "tar", "gz" -> NeonPink
-        else -> TextMuted
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 }

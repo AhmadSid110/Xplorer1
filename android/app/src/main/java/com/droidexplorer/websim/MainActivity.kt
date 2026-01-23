@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -47,9 +48,7 @@ import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.events.UiEvent
 import com.droidexplorer.websim.ui.settings.CleanerScreen
 import com.droidexplorer.websim.ui.settings.StorageScreen
-import com.droidexplorer.websim.ui.theme.CyberBlack
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextPrimary
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -167,7 +166,13 @@ class MainActivity : ComponentActivity() {
                     } else null
                 }
 
-            XplorerTheme {
+            val useDarkTheme = when (settingsState.themeMode) {
+                com.droidexplorer.websim.settings.ThemeMode.DARK -> true
+                com.droidexplorer.websim.settings.ThemeMode.LIGHT -> false
+                com.droidexplorer.websim.settings.ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            XplorerTheme(darkTheme = useDarkTheme) {
                 if (hasStoragePermission) {
                     if (showSettings) {
 
@@ -185,12 +190,12 @@ class MainActivity : ComponentActivity() {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(CyberBlack)
+                                        .background(MaterialTheme.colorScheme.surface)
                                 ) {
                                     TopAppBar(
                                         colors = TopAppBarDefaults.topAppBarColors(
-                                            containerColor = CyberBlack,
-                                            titleContentColor = TextPrimary
+                                            containerColor = MaterialTheme.colorScheme.surface,
+                                            titleContentColor = MaterialTheme.colorScheme.onSurface
                                         ),
                                         title = {
                                             Text(
@@ -255,6 +260,7 @@ class MainActivity : ComponentActivity() {
                                         SettingsScreen(
                                             state = settingsState,
                                             onViewModeChange = viewModel::setViewMode,
+                                            onThemeModeChange = viewModel::setThemeMode,
                                             onToggleHidden = viewModel::setShowHidden,
                                             onToggleSafSearch = viewModel::onToggleSafSearch,
                                             onToggleTorBox = viewModel::setTorBoxEnabled,

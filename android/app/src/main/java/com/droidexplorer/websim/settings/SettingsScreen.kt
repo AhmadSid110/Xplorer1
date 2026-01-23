@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     state: SettingsState,
     onViewModeChange: (ViewMode) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onToggleHidden: (Boolean) -> Unit,
     onToggleSafSearch: (Boolean) -> Unit,
     onToggleTorBox: (Boolean) -> Unit,
@@ -73,6 +74,30 @@ fun SettingsScreen(
                     }
                 )
                 if (index < ViewMode.values().lastIndex) {
+                    HorizontalDivider()
+                }
+            }
+        }
+
+        SectionHeader("Appearance")
+        SectionCard {
+            ThemeMode.values().forEachIndexed { index, mode ->
+                ListItem(
+                    leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                    headlineContent = { Text(themeModeLabel(mode)) },
+                    supportingContent = { Text("Choose the app theme") },
+                    trailingContent = {
+                        RadioButton(
+                            selected = state.themeMode == mode,
+                            onClick = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onThemeModeChange(mode)
+                    }
+                )
+                if (index < ThemeMode.values().lastIndex) {
                     HorizontalDivider()
                 }
             }
@@ -165,6 +190,12 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+private fun themeModeLabel(mode: ThemeMode) = when (mode) {
+    ThemeMode.LIGHT -> "Light (recommended)"
+    ThemeMode.DARK -> "Dark"
+    ThemeMode.SYSTEM -> "System default"
 }
 
 @Composable

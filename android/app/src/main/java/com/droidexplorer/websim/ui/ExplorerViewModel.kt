@@ -178,6 +178,10 @@ class ExplorerViewModel(
         viewModelScope.launch { settingsRepository.setShowHidden(enabled) }
     }
 
+    fun setThemeMode(mode: com.droidexplorer.websim.settings.ThemeMode) {
+        viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
     // ─────────────────────────────────────────────
     // TorBox
     // ─────────────────────────────────────────────

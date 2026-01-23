@@ -7,16 +7,26 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.torbox.download.DownloadStatus
+import com.droidexplorer.websim.torbox.download.TorBoxDatabaseProvider
+import com.droidexplorer.websim.torbox.download.TorBoxDownloadEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 object TorBoxDownloadManager {
     const val KEY_FILE_ID = "torbox_file_id"
     const val KEY_FILE_NAME = "torbox_file_name"
+    const val KEY_FILE_URL = "torbox_file_url"
 
-    fun enqueue(context: Context, file: FsNode.TorBox) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun enqueue(context: Context, fileId: String, name: String, url: String) {
         val data = workDataOf(
-            KEY_FILE_ID to file.id,
-            KEY_FILE_NAME to file.name
+            KEY_FILE_ID to fileId,
+            KEY_FILE_NAME to name,
+            KEY_FILE_URL to url
         )
 
         val constraints = Constraints.Builder()
@@ -26,10 +36,24 @@ object TorBoxDownloadManager {
         val request = OneTimeWorkRequestBuilder<TorBoxDownloadWorker>()
             .setInputData(data)
             .setConstraints(constraints)
-            .addTag("torbox_download:${file.id}")
+            .addTag("torbox_download:$fileId")
             .build()
 
+        scope.launch {
+            val dao = TorBoxDatabaseProvider.get(context).dao()
+            dao.upsert(
+                TorBoxDownloadEntity(
+                    id = fileId,
+                    name = name,
+                    downloaded = 0L,
+                    total = 0L,
+                    status = DownloadStatus.QUEUED,
+                    path = null
+                )
+            )
+        }
+
         WorkManager.getInstance(context)
-            .enqueueUniqueWork("torbox_download_${file.id}", ExistingWorkPolicy.KEEP, request)
+            .enqueueUniqueWork("torbox_download_$fileId", ExistingWorkPolicy.REPLACE, request)
     }
 }

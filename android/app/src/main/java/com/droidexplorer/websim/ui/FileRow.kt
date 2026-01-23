@@ -28,7 +28,6 @@ import com.droidexplorer.websim.file.safeSize
 import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextMuted
 import com.droidexplorer.websim.ui.theme.cyberGlow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -150,21 +149,21 @@ fun FileRow(
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (!file.isDirectory) {
                         Text(
                             text = sizeText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (file !is FsNode.TorBox) {
                         Text(
                             text = dateText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

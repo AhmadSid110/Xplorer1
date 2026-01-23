@@ -10,7 +10,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.droidexplorer.websim.R
-import com.droidexplorer.websim.storage.TorBoxStore
+import com.droidexplorer.websim.torbox.download.DownloadStatus
+import com.droidexplorer.websim.torbox.download.TorBoxDatabaseProvider
+import com.droidexplorer.websim.torbox.download.TorBoxDownloadEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -31,10 +33,13 @@ class TorBoxDownloadWorker(
     override suspend fun doWork(): Result {
         val fileId = inputData.getString(TorBoxDownloadManager.KEY_FILE_ID) ?: return Result.failure()
         val fileName = inputData.getString(TorBoxDownloadManager.KEY_FILE_NAME) ?: "torbox_$fileId"
+        val url = inputData.getString(TorBoxDownloadManager.KEY_FILE_URL) ?: return Result.failure()
 
-        val apiKey = TorBoxStore(applicationContext).getApiKey() ?: return Result.failure()
-        val torBoxClient = TorBoxClient(apiKey)
-        val link = torBoxClient.getShareLink(fileId) ?: return Result.retry()
+        val dao = TorBoxDatabaseProvider.get(applicationContext).dao()
+        val existing = dao.get(fileId)
+        val downloadedBytes = existing?.downloaded ?: 0L
+
+        setForeground(createForegroundInfo(fileId, fileName, downloadedBytes, existing?.total ?: 0L))
 
         val downloadsDir = applicationContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
             ?: applicationContext.filesDir
@@ -43,10 +48,11 @@ class TorBoxDownloadWorker(
         val partFile = File(downloadsDir, "$safeName.part")
 
         return withContext(Dispatchers.IO) {
+            var existingBytes = 0L
             try {
-                val existingBytes = if (partFile.exists()) partFile.length() else 0L
+                existingBytes = if (partFile.exists()) partFile.length() else 0L
                 val requestBuilder = Request.Builder()
-                    .url(link)
+                    .url(url)
                     .get()
 
                 if (existingBytes > 0) {
@@ -81,6 +87,16 @@ class TorBoxDownloadWorker(
                     }
 
                     var downloaded = if (append && target.exists()) target.length() else 0L
+                    dao.upsert(
+                        TorBoxDownloadEntity(
+                            id = fileId,
+                            name = fileName,
+                            downloaded = downloaded,
+                            total = totalBytes,
+                            status = DownloadStatus.DOWNLOADING,
+                            path = target.absolutePath
+                        )
+                    )
                     setForeground(createForegroundInfo(fileId, fileName, downloaded, totalBytes))
 
                     body.byteStream().use { input ->
@@ -94,6 +110,16 @@ class TorBoxDownloadWorker(
                                 downloaded += read
                                 val now = System.currentTimeMillis()
                                 if (now - lastUpdate > 750L) {
+                                    dao.upsert(
+                                        TorBoxDownloadEntity(
+                                            id = fileId,
+                                            name = fileName,
+                                            downloaded = downloaded,
+                                            total = totalBytes,
+                                            status = DownloadStatus.DOWNLOADING,
+                                            path = target.absolutePath
+                                        )
+                                    )
                                     setForeground(createForegroundInfo(fileId, fileName, downloaded, totalBytes))
                                     lastUpdate = now
                                 }
@@ -103,11 +129,31 @@ class TorBoxDownloadWorker(
 
                     if (finalFile.exists()) finalFile.delete()
                     partFile.renameTo(finalFile)
+                    dao.upsert(
+                        TorBoxDownloadEntity(
+                            id = fileId,
+                            name = fileName,
+                            downloaded = downloaded,
+                            total = totalBytes,
+                            status = DownloadStatus.COMPLETED,
+                            path = finalFile.absolutePath
+                        )
+                    )
                     showCompletedNotification(fileId, fileName)
                 }
 
                 Result.success()
             } catch (e: Exception) {
+                dao.upsert(
+                    TorBoxDownloadEntity(
+                        id = fileId,
+                        name = fileName,
+                        downloaded = existingBytes,
+                        total = existing?.total ?: 0L,
+                        status = DownloadStatus.FAILED,
+                        path = finalFile.absolutePath
+                    )
+                )
                 Result.retry()
             }
         }
@@ -127,7 +173,8 @@ class TorBoxDownloadWorker(
         val progressValue = if (safeTotal > 0) downloaded.coerceAtMost(safeTotal).toInt() else 0
 
         val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Downloading $fileName")
+            .setContentTitle(fileName)
+            .setContentText("Downloading…")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOnlyAlertOnce(true)
             .setOngoing(true)

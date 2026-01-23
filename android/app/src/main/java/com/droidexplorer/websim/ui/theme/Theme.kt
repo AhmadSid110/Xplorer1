@@ -14,27 +14,27 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = NeonCyan,
-    secondary = NeonCyanSoft,
-    tertiary = NeonCyanSoft,
+    primary = Accent,
+    secondary = Accent,
+    tertiary = Accent,
     background = CyberBlack,
     surface = CyberDarkSurface,
     surfaceVariant = CyberElevated,
     outline = DividerSoft,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-    onSurfaceVariant = TextSecondary,
+    onBackground = DarkTextPrimary,
+    onSurface = DarkTextPrimary,
+    onSurfaceVariant = DarkTextSecondary,
     error = ErrorRed,
-    onError = TextPrimary
+    onError = DarkTextPrimary
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = NeonCyan,
-    secondary = NeonCyanSoft,
-    tertiary = NeonCyanSoft,
-    background = CyberBlack,
-    surface = CyberDarkSurface,
-    surfaceVariant = CyberElevated,
+    primary = Accent,
+    secondary = Accent,
+    tertiary = Accent,
+    background = Background,
+    surface = Surface,
+    surfaceVariant = SurfaceAlt,
     outline = DividerSoft,
     onBackground = TextPrimary,
     onSurface = TextPrimary,
@@ -59,7 +59,7 @@ fun XplorerTheme(
         }
     }
     
-    CompositionLocalProvider(LocalCyberAccent provides NeonCyan) {
+    CompositionLocalProvider(LocalCyberAccent provides Accent) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,
@@ -74,20 +74,11 @@ val Typography = Typography()
  * Dynamic gradient background brush that adapts to dark/light theme
  */
 @Composable
-fun backgroundGradient(darkTheme: Boolean = isSystemInDarkTheme()): Brush {
-    return if (darkTheme) {
-        Brush.linearGradient(
-            listOf(
-                CyberBlack,
-                CyberDarkSurface
-            )
+fun backgroundGradient(): Brush {
+    return Brush.linearGradient(
+        listOf(
+            MaterialTheme.colorScheme.background,
+            MaterialTheme.colorScheme.surfaceVariant
         )
-    } else {
-        Brush.linearGradient(
-            listOf(
-                CyberBlack,
-                CyberDarkSurface
-            )
-        )
-    }
+    )
 }

@@ -61,6 +61,7 @@ import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.selection.SelectionController
+import com.droidexplorer.websim.torbox.download.TorBoxDatabaseProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -165,7 +166,7 @@ fun FileListPane(
         refreshTrigger
     ) {
         value = if (currentPath == "torbox:") {
-            torBoxClient?.listFiles()?.map {
+            val torBoxFiles = torBoxClient?.listFiles()?.map {
                 FsNode.TorBox(
                     id = it.id,
                     name = it.name,
@@ -173,6 +174,7 @@ fun FileListPane(
                     absolutePath = it.absolutePath
                 )
             } ?: emptyList()
+            FileManager.sortFiles(torBoxFiles, sortType, sortOrder)
         } else {
             FileManager.list(
                 currentPath,
@@ -430,6 +432,12 @@ fun FileListPane(
 
                 if (searchQuery.isNotBlank()) {
                     SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
+                }
+
+                if (currentPath == "torbox:") {
+                    val torBoxDao = remember { TorBoxDatabaseProvider.get(context).dao() }
+                    val downloads by torBoxDao.observeAll().collectAsState(initial = emptyList())
+                    TorBoxDownloadsPanel(downloads)
                 }
 
                 fun requiresPermission(node: FsNode): Boolean {

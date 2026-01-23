@@ -19,11 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.droidexplorer.websim.ui.theme.CyberBlack
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextMuted
-import com.droidexplorer.websim.ui.theme.TextPrimary
 import com.droidexplorer.websim.ui.theme.cyberGlow
 
 enum class DrawerDestination {
@@ -50,7 +47,7 @@ fun SideDrawerContent(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(280.dp)
-                .background(CyberBlack)
+                .background(MaterialTheme.colorScheme.surface)
                 .border(
                     1.dp,
                     accent.copy(alpha = 0.35f),
@@ -61,12 +58,12 @@ fun SideDrawerContent(
             Text(
                 text = "XPLORER",
                 letterSpacing = 2.sp,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "Secure File System",
-                color = TextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
 
@@ -150,12 +147,12 @@ private fun DrawerItemRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (active) accent else TextMuted
+            tint = if (active) accent else MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = label,
-            color = if (active) TextPrimary else TextMuted,
+            color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium
         )
     }

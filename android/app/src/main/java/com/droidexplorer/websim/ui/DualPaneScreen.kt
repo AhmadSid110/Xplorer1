@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material.icons.outlined.ViewWeek
@@ -48,10 +49,7 @@ import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.ui.viewer.*
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.theme.backgroundGradient
-import com.droidexplorer.websim.ui.theme.CyberBlack
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextMuted
-import com.droidexplorer.websim.ui.theme.TextPrimary
 import com.droidexplorer.websim.ui.effects.ScanlineOverlay
 import com.droidexplorer.websim.ui.theme.cyberGlow
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -108,6 +106,7 @@ fun DualPaneScreen(
     var sortType by rememberSaveable { mutableStateOf(SortType.NAME) }
     var sortOrder by rememberSaveable { mutableStateOf(SortOrder.ASC) }
     var viewMenuExpanded by remember { mutableStateOf(false) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     val accent = LocalCyberAccent.current
     val haptics = LocalHapticFeedback.current
     var selectedNode by remember { mutableStateOf<FsNode?>(null) }
@@ -189,12 +188,12 @@ fun DualPaneScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(CyberBlack)
+                                .background(MaterialTheme.colorScheme.surface)
                         ) {
                             TopAppBar(
                                 colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = CyberBlack,
-                                    titleContentColor = TextPrimary
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    titleContentColor = MaterialTheme.colorScheme.onSurface
                                 ),
                                 title = {
                                     Column {
@@ -219,7 +218,7 @@ fun DualPaneScreen(
                                                 Text(
                                                     text = "Selected: ${selectedNode?.name}",
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = TextPrimary,
+                                                    color = MaterialTheme.colorScheme.onSurface,
                                                     maxLines = 1
                                                 )
                                                 Spacer(Modifier.width(8.dp))
@@ -238,9 +237,7 @@ fun DualPaneScreen(
                                 navigationIcon = {
                                     Row {
                                         IconButton(
-                                            onClick = {
-                                                drawerScope.launch { drawerState.open() }
-                                            }
+                                            onClick = { drawerScope.launch { drawerState.open() } }
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Filled.Menu,
@@ -256,13 +253,27 @@ fun DualPaneScreen(
                                             Icon(
                                                 Icons.Filled.MoreVert,
                                                 contentDescription = "More",
-                                                tint = TextPrimary
+                                                tint = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                         DropdownMenu(
                                             expanded = viewMenuExpanded,
                                             onDismissRequest = { viewMenuExpanded = false }
                                         ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Sort") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.Sort,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    sortMenuExpanded = true
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
                                             DropdownMenuItem(
                                                 text = { Text("Home") },
                                                 leadingIcon = {
@@ -439,10 +450,20 @@ fun DualPaneScreen(
                                             )
                                         }
                                     }
+                                    SortMenu(
+                                        currentSortType = sortType,
+                                        currentSortOrder = sortOrder,
+                                        onSortChange = { newType, newOrder ->
+                                            sortType = newType
+                                            sortOrder = newOrder
+                                        },
+                                        expanded = sortMenuExpanded,
+                                        onDismiss = { sortMenuExpanded = false }
+                                    )
                                 }
                             )
                             Divider(
-                                color = accent.copy(alpha = 0.3f),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                                 thickness = 0.5.dp
                             )
                         }

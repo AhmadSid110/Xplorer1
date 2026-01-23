@@ -164,9 +164,31 @@ fun TorBoxContextMenu(
                     icon = Icons.Outlined.Download,
                     text = "Download",
                     onClick = {
-                        TorBoxDownloadManager.enqueue(context, file)
-                        onMessage("Download queued")
-                        onDismiss()
+                        if (torBoxClient == null) {
+                            onMessage("TorBox client not available")
+                            return@TorBoxContextMenuItem
+                        }
+                        isLoading = true
+                        scope.launch {
+                            try {
+                                val link = torBoxClient.getShareLink(file.id)
+                                if (link.isNullOrBlank() || !link.startsWith("http")) {
+                                    onMessage("Failed to get download link")
+                                    return@launch
+                                }
+                                TorBoxDownloadManager.enqueue(
+                                    context = context,
+                                    fileId = file.id,
+                                    name = file.name,
+                                    url = link
+                                )
+                                onDismiss()
+                            } catch (e: Exception) {
+                                onMessage("Error: ${e.message ?: "Unknown error"}")
+                            } finally {
+                                isLoading = false
+                            }
+                        }
                     }
                 )
 

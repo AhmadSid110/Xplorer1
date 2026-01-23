@@ -35,7 +35,6 @@ import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
 import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextMuted
 import com.droidexplorer.websim.ui.theme.cyberGlow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -160,7 +159,7 @@ fun FileDetailsView(
                         Text(
                             "$sizeText$SEPARATOR$formattedDate",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

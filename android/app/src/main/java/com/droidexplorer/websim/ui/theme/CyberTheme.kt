@@ -7,7 +7,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-val LocalCyberAccent = compositionLocalOf { NeonCyan }
+val LocalCyberAccent = compositionLocalOf { Accent }
 
 fun Modifier.cyberGlow(
     color: Color,

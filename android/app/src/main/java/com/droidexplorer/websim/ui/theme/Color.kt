@@ -9,8 +9,14 @@ val CyberBlack = Color(0xFF0B0F14)
 val CyberDarkSurface = Color(0xFF111722)
 val CyberElevated = Color(0xFF161D2A)
 
-val NeonCyan = Color(0xFF00E5FF)
-val NeonCyanSoft = Color(0xFF00B8D4)
+// Light Cyber (Design system)
+val Background = Color(0xFFF6F7F9)
+val Surface = Color(0xFFFFFFFF)
+val SurfaceAlt = Color(0xFFF0F2F5)
+
+val Accent = Color(0xFF00B3FF)
+val NeonCyan = Accent
+val NeonCyanSoft = Accent
 val NeonMagenta = Color(0xFFFF2D95)
 val NeonMagentaSoft = Color(0xFFB0005A)
 
@@ -20,9 +26,13 @@ val NeonBlue = Color(0xFF4FC3F7)
 val NeonAmber = Color(0xFFFFC400)
 val NeonPink = Color(0xFFFF5CA7)
 
-val TextPrimary = Color(0xFFE6EBF2)
-val TextSecondary = Color(0xFF9AA4B2)
-val TextMuted = Color(0xFF6B7280)
+val TextPrimary = Color(0xFF0F172A)
+val TextSecondary = Color(0xFF475569)
+val TextMuted = Color(0xFF94A3B8)
+
+val DarkTextPrimary = Color(0xFFF1F5F9)
+val DarkTextSecondary = Color(0xFFCBD5E1)
+val DarkTextMuted = Color(0xFF94A3B8)
 
 val SuccessGreen = Color(0xFF00E676)
 val WarningAmber = Color(0xFFFFC400)

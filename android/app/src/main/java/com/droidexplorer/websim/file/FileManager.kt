@@ -152,14 +152,21 @@ object FileManager {
         sortType: SortType,
         sortOrder: SortOrder
     ): List<FsNode> {
-
-        val sorted = when (sortType) {
-            SortType.NAME -> files.sortedBy { it.name.lowercase() }
-            SortType.SIZE -> files.sortedBy { it.safeSize() }
-            SortType.DATE -> files.sortedBy { it.lastModified() }
+        val secondaryComparator = when (sortType) {
+            SortType.NAME -> compareBy<FsNode> { it.name.lowercase() }
+            SortType.SIZE -> compareBy<FsNode> { it.safeSize() }
+            SortType.DATE -> compareBy<FsNode> { it.lastModified() }
         }
 
-        return if (sortOrder == SortOrder.DESC) sorted.reversed() else sorted
+        val asc = sortOrder == SortOrder.ASC
+
+        val dirs = files.filter { it.isDirectory }
+            .sortedWith(if (asc) secondaryComparator else secondaryComparator.reversed())
+
+        val others = files.filter { !it.isDirectory }
+            .sortedWith(if (asc) secondaryComparator else secondaryComparator.reversed())
+
+        return dirs + others
     }
 
     /**

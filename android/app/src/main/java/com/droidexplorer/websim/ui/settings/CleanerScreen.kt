@@ -37,12 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
 import com.droidexplorer.websim.ui.effects.IndeterminateArc
-import com.droidexplorer.websim.ui.theme.CyberDarkSurface
-import com.droidexplorer.websim.ui.theme.CyberElevated
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
-import com.droidexplorer.websim.ui.theme.TextMuted
-import com.droidexplorer.websim.ui.theme.TextPrimary
 import com.droidexplorer.websim.ui.theme.cyberGlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -207,7 +203,7 @@ fun CleanerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(CyberDarkSurface)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         when (destination) {
             CleanerDestination.HOME -> LazyColumn(
@@ -225,13 +221,13 @@ fun CleanerScreen(
                         Text(
                             text = "Cleaner",
                             style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = "Review and delete safely",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextMuted
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = onClose) {
@@ -248,7 +244,7 @@ fun CleanerScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .background(CyberDarkSurface, RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
                         .border(
                             1.dp,
                             accent.copy(alpha = 0.4f),
@@ -257,22 +253,22 @@ fun CleanerScreen(
                         .padding(20.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("JUNK FOUND", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                        Text("JUNK FOUND", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         Text(
                             text = if (totalJunk > 0) formatSize(totalJunk) else "--",
                             style = MaterialTheme.typography.headlineMedium,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${formatSize(storageInfo.used)} used · ${formatSize(storageInfo.free)} free",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (lastCleaned > 0) {
                             Text(
                                 text = "Last cleaned ${formatTimestamp(lastCleaned)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TextMuted
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         LinearProgressIndicator(
@@ -282,7 +278,7 @@ fun CleanerScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(8.dp)),
                             color = accent,
-                            trackColor = CyberElevated
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
                 }
@@ -292,7 +288,7 @@ fun CleanerScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .background(CyberDarkSurface, RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
                         .border(
                             1.dp,
                             accent.copy(alpha = 0.3f),
@@ -301,11 +297,11 @@ fun CleanerScreen(
                         .padding(16.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("SMART SUGGESTION", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                        Text("SMART SUGGESTION", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         Text(
                             text = if (estimatedTotal > 0) "Clear ${formatSize(estimatedTotal)} safely" else "Run a smart scan",
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Button(
                             onClick = {
@@ -336,10 +332,10 @@ fun CleanerScreen(
                     Text(
                         text = "Protected folders",
                         style = MaterialTheme.typography.titleSmall,
-                        color = TextMuted
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Protect Android/", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                        Text("Protect Android/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.weight(1f))
                         Switch(
                             checked = protectAndroid,
@@ -350,7 +346,7 @@ fun CleanerScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Protect DCIM/", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                        Text("Protect DCIM/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.weight(1f))
                         Switch(
                             checked = protectDcim,
@@ -367,7 +363,7 @@ fun CleanerScreen(
                 Text(
                     text = "Categories",
                     style = MaterialTheme.typography.titleSmall,
-                    color = TextMuted
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -504,7 +500,7 @@ fun CleanerScreen(
             .sumOf { it.length() }
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            containerColor = CyberDarkSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Delete permanently?") },
             text = { Text("Delete $selectedCount files (${formatSize(selectedSize)}).") },
             confirmButton = {
@@ -583,8 +579,8 @@ private fun CleanerResultsScreen(
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = accent)
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleLarge, color = TextPrimary)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (isScanning) {
                     IndeterminateArc(
@@ -600,7 +596,7 @@ private fun CleanerResultsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(CyberDarkSurface, RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
                     .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -608,11 +604,11 @@ private fun CleanerResultsScreen(
                 Text(
                     text = "Selected $selectedCount (${formatSize(selectedSize)})",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onSelectAll) { Text("Select all", color = accent) }
-                TextButton(onClick = onClearSelection) { Text("Clear", color = TextMuted) }
+                TextButton(onClick = onClearSelection) { Text("Clear", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
 
@@ -647,7 +643,7 @@ private fun CleanerResultsScreen(
                 Text(
                     text = "No files found.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -682,7 +678,7 @@ private fun CleanerCategoryCard(
                 Brush.linearGradient(
                     listOf(
                         accent.copy(alpha = 0.18f),
-                        CyberDarkSurface
+                        MaterialTheme.colorScheme.surface
                     )
                 ),
                 RoundedCornerShape(20.dp)
@@ -719,14 +715,14 @@ private fun CleanerCategoryCard(
                 Text(
                     text = spec.title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = spec.subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -735,7 +731,7 @@ private fun CleanerCategoryCard(
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = null,
-                    tint = TextMuted
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     sizeLabel,
@@ -780,8 +776,8 @@ private fun CleanerFileRow(
             onCheckedChange = onCheckedChange,
             colors = CheckboxDefaults.colors(
                 checkedColor = accent,
-                uncheckedColor = TextMuted,
-                checkmarkColor = CyberDarkSurface
+                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                checkmarkColor = MaterialTheme.colorScheme.surface
             )
         )
         Spacer(Modifier.width(8.dp))
@@ -790,12 +786,12 @@ private fun CleanerFileRow(
                 text = file.name,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = file.parent ?: "",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextMuted
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
