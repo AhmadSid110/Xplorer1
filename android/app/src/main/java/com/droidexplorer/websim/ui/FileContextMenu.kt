@@ -37,7 +37,8 @@ fun FileContextMenu(
     onCopy: () -> Unit,
     onMove: () -> Unit,
     onZip: () -> Unit,
-    onUnzip: () -> Unit,
+    onExtractHere: () -> Unit,
+    onExtractToFolder: () -> Unit,
     onShare: (Context) -> Unit
 ) {
     val context = LocalContext.current
@@ -115,9 +116,17 @@ fun FileContextMenu(
             if (isZipFile) {
                 ContextMenuItem(
                     icon = Icons.Outlined.Archive,
-                    text = "Unzip",
+                    text = "Extract here",
                     onClick = {
-                        onUnzip()
+                        onExtractHere()
+                        onDismiss()
+                    }
+                )
+                ContextMenuItem(
+                    icon = Icons.Outlined.Archive,
+                    text = "Extract to ${file.nameWithoutExtension}",
+                    onClick = {
+                        onExtractToFolder()
                         onDismiss()
                     }
                 )

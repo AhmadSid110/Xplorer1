@@ -689,13 +689,22 @@ fun FileListPane(
                             onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
                         )
                     },
-                    onUnzip = {
-                        ZipUtils.unzip(file.asFile()).fold(
-                            onSuccess = { 
-                                snackbarMessage = "Unzipped successfully"
+                    onExtractHere = {
+                        ZipUtils.extractHere(file.asFile()).fold(
+                            onSuccess = {
+                                snackbarMessage = "Extracted here"
                                 refreshTrigger++
                             },
-                            onFailure = { snackbarMessage = "Failed to unzip: ${it.message}" }
+                            onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
+                        )
+                    },
+                    onExtractToFolder = {
+                        ZipUtils.extractToFolder(file.asFile()).fold(
+                            onSuccess = {
+                                snackbarMessage = "Extracted to folder"
+                                refreshTrigger++
+                            },
+                            onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
                         )
                     },
                     onShare = { ctx ->

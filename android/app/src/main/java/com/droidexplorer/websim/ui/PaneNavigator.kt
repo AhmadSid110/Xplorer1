@@ -28,8 +28,11 @@ class PaneNavigator(
     fun canGoForward(): Boolean = forwardStackDeque.isNotEmpty()
 
     fun navigateTo(newPath: String) {
-        val normalized =
-            if (newPath.startsWith("torbox:")) "torbox:" else newPath
+        val normalized = when {
+            newPath == "torbox:" -> "torbox:"
+            newPath.startsWith("torbox:") -> newPath
+            else -> newPath
+        }
 
         if (normalized == currentPath) return
 

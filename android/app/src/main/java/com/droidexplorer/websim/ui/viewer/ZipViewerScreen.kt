@@ -23,6 +23,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.ZipManager
 import com.droidexplorer.websim.ui.glass.neonGlass
+import com.droidexplorer.websim.util.ZipUtils
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -48,6 +53,8 @@ fun ZipViewerScreen(
     onClose: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var extractMenuExpanded by remember { mutableStateOf(false) }
     
     // State
     var allEntries by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -145,12 +152,53 @@ fun ZipViewerScreen(
                         }
                     },
                     actions = {
-                        Text(
-                            text = "READ-ONLY",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(end = 16.dp)
-                        )
+                        Box {
+                            Text(
+                                text = "Extract",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .clickable { extractMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = extractMenuExpanded,
+                                onDismissRequest = { extractMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Extract here") },
+                                    onClick = {
+                                        extractMenuExpanded = false
+                                        scope.launch {
+                                            ZipUtils.extractHere(file).fold(
+                                                onSuccess = {
+                                                    snackbarHostState.showSnackbar("Extracted here")
+                                                },
+                                                onFailure = {
+                                                    snackbarHostState.showSnackbar("Extract failed: ${it.message}")
+                                                }
+                                            )
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Extract to ${file.nameWithoutExtension}") },
+                                    onClick = {
+                                        extractMenuExpanded = false
+                                        scope.launch {
+                                            ZipUtils.extractToFolder(file).fold(
+                                                onSuccess = {
+                                                    snackbarHostState.showSnackbar("Extracted to folder")
+                                                },
+                                                onFailure = {
+                                                    snackbarHostState.showSnackbar("Extract failed: ${it.message}")
+                                                }
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,

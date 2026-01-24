@@ -92,6 +92,32 @@ object ZipUtils {
         }
     }
 
+    fun extractHere(zipFile: File): Result<File> {
+        return try {
+            if (!isZipFile(zipFile)) return Result.failure(IllegalArgumentException("Not a zip"))
+            val destFolder = zipFile.parentFile ?: return Result.failure(IllegalStateException("No parent"))
+            com.droidexplorer.websim.file.ZipManager.extract(zipFile, destFolder)
+            Result.success(destFolder)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun extractToFolder(zipFile: File): Result<File> {
+        return try {
+            if (!isZipFile(zipFile)) return Result.failure(IllegalArgumentException("Not a zip"))
+            val parent = zipFile.parentFile ?: return Result.failure(IllegalStateException("No parent"))
+            val destFolder = File(parent, zipFile.nameWithoutExtension)
+            if (!destFolder.exists()) {
+                destFolder.mkdirs()
+            }
+            com.droidexplorer.websim.file.ZipManager.extract(zipFile, destFolder)
+            Result.success(destFolder)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun isZipFile(file: File): Boolean {
         return file.extension.equals("zip", ignoreCase = true)
     }

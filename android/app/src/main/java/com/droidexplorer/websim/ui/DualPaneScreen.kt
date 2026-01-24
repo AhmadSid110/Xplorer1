@@ -216,18 +216,22 @@ fun DualPaneScreen(
                                             Row(
                                                 modifier = Modifier
                                                     .padding(top = 6.dp)
-                                                    .border(
-                                                        1.dp,
-                                                        accent.copy(alpha = 0.4f),
+                                                    .background(
+                                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
                                                         RoundedCornerShape(12.dp)
                                                     )
-                                                    .cyberGlow(accent, intensity = 0.25f)
-                                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                                    .border(
+                                                        1.dp,
+                                                        accent.copy(alpha = 0.55f),
+                                                        RoundedCornerShape(12.dp)
+                                                    )
+                                                    .cyberGlow(accent, intensity = 0.3f)
+                                                    .padding(horizontal = 12.dp, vertical = 6.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(
                                                     text = "Selected: ${selectedNode?.name}",
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurface,
                                                     maxLines = 1
                                                 )
