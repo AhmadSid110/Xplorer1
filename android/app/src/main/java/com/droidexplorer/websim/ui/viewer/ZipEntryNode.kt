@@ -6,7 +6,8 @@ sealed class ZipEntryNode {
     
     data class File(
         override val name: String,
-        override val path: String
+        override val path: String,
+        val size: Long
     ) : ZipEntryNode()
     
     data class Directory(

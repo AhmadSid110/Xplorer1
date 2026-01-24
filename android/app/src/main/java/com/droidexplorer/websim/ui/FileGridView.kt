@@ -40,9 +40,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.file.asFile
+import com.droidexplorer.websim.file.isImage
+import com.droidexplorer.websim.file.isVideo
 import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
 import com.droidexplorer.websim.ui.icons.fileIconColor
 import com.droidexplorer.websim.ui.icons.fileIconFor
+import com.droidexplorer.websim.ui.thumbnail.FileThumbnail
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.cyberGlow
 
@@ -159,11 +163,24 @@ fun FileGridView(
                     } else {
                         Spacer(modifier = Modifier.size(6.dp))
                     }
-                    FileIcon(
-                        file = file,
-                        size = 48.dp,
-                        tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
-                    )
+                    if (file is FsNode.Local && !file.isDirectory) {
+                        val local = file.asFile()
+                        if (local.isImage() || local.isVideo()) {
+                            FileThumbnail(file = local, size = 56.dp)
+                        } else {
+                            FileIcon(
+                                file = file,
+                                size = 48.dp,
+                                tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
+                            )
+                        }
+                    } else {
+                        FileIcon(
+                            file = file,
+                            size = 48.dp,
+                            tint = if (permissionNeeded) MaterialTheme.colorScheme.error else null
+                        )
+                    }
                     Text(
                         text = file.name,
                         maxLines = 2,

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.droidexplorer.websim.file.ZipEntryItem
 import com.droidexplorer.websim.file.ZipManager
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.util.ZipUtils
@@ -57,7 +58,7 @@ fun ZipViewerScreen(
     var extractMenuExpanded by remember { mutableStateOf(false) }
     
     // State
-    var allEntries by remember { mutableStateOf<List<String>>(emptyList()) }
+    var allEntries by remember { mutableStateOf<List<ZipEntryItem>>(emptyList()) }
     var currentPath by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -90,13 +91,13 @@ fun ZipViewerScreen(
         val prefixLen = prefix.length
 
         allEntries.forEach { entry ->
-            if (entry.startsWith(prefix)) {
-                val sub = entry.substring(prefixLen)
+            if (entry.name.startsWith(prefix)) {
+                val sub = entry.name.substring(prefixLen)
                 if (sub.isNotEmpty()) {
                     val slashIndex = sub.indexOf('/')
                     if (slashIndex == -1) {
                         // It's a file in this folder
-                        nodes.add(ZipEntryNode.File(sub, entry))
+                        nodes.add(ZipEntryNode.File(sub, entry.name, entry.size))
                     } else {
                         // It's a subfolder
                         val folderName = sub.substring(0, slashIndex)
@@ -228,6 +229,11 @@ fun ZipViewerScreen(
                     items(currentNodes) { node ->
                         ListItem(
                             headlineContent = { Text(node.name) },
+                            supportingContent = {
+                                if (node is ZipEntryNode.File) {
+                                    Text(formatSize(node.size))
+                                }
+                            },
                             leadingContent = {
                                 Icon(
                                     imageVector = when(node) {
@@ -251,6 +257,20 @@ fun ZipViewerScreen(
                 }
             }
         }
+    }
+}
+
+private fun formatSize(size: Long): String {
+    if (size <= 0L) return "0 B"
+    val kb = 1024.0
+    val mb = kb * 1024.0
+    val gb = mb * 1024.0
+    val value = size.toDouble()
+    return when {
+        value >= gb -> String.format("%.2f GB", value / gb)
+        value >= mb -> String.format("%.2f MB", value / mb)
+        value >= kb -> String.format("%.1f KB", value / kb)
+        else -> "$size B"
     }
 }
 

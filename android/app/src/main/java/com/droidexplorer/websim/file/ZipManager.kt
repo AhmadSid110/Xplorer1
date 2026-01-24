@@ -1,15 +1,21 @@
 package com.droidexplorer.websim.file
 
 import java.io.File
-import java.util.zip.ZipFile
+import org.apache.commons.compress.archivers.zip.ZipFile
 
 object ZipManager {
 
-    fun list(zip: File): List<String> {
+    fun list(zip: File): List<ZipEntryItem> {
         if (!zip.extension.equals("zip", ignoreCase = true)) return emptyList()
         ZipFile(zip).use { z ->
-            return z.entries().asSequence()
-                .map { it.name }
+            return z.entries.asSequence()
+                .map { entry ->
+                    ZipEntryItem(
+                        name = entry.name,
+                        size = entry.size.coerceAtLeast(0L),
+                        isDirectory = entry.isDirectory
+                    )
+                }
                 .toList()
         }
     }
@@ -24,7 +30,7 @@ object ZipManager {
             if (it.endsWith(File.separator)) it else it + File.separator
         }
         ZipFile(zip).use { z ->
-            z.entries().asSequence().forEach { entry ->
+            z.entries.asSequence().forEach { entry ->
                 val entryName = entry.name
                 val normalized = entryName.replace("\\", "/")
                 val out = resolveEntryFile(targetDir, normalized, targetCanonical) ?: return@forEach

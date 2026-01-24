@@ -20,9 +20,15 @@ private val textExtensions = setOf(
  */
 private val imageExtensions = setOf("png", "jpg", "jpeg", "webp", "gif")
 
+private val videoExtensions = setOf(
+    "mp4", "mkv", "avi", "mov", "webm", "3gp", "m4v"
+)
+
 fun File.isTextFile(): Boolean = extension.lowercase() in textExtensions
 
 fun File.isImage(): Boolean = extension.lowercase() in imageExtensions
+
+fun File.isVideo(): Boolean = extension.lowercase() in videoExtensions
 
 /**
  * Opens a file using the appropriate handler based on its extension.

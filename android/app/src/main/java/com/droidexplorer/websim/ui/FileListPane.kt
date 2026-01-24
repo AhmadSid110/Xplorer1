@@ -123,6 +123,9 @@ fun FileListPane(
     var showContextMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPropertiesSheet by remember { mutableStateOf(false) }
+    var showProperties by remember { mutableStateOf(false) }
+    var propertiesTarget by remember { mutableStateOf<File?>(null) }
     val selectionController = remember { SelectionController<FsNode> { it.uniqueKey } }
     val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
     LaunchedEffect(permissionRefresh) {
@@ -453,7 +456,7 @@ fun FileListPane(
                 if (currentPath == "torbox:") {
                     TorBoxDownloadsPanel(
                         downloads = downloads,
-                        onOpenDownloads = { paneState.navigateTo("torbox:downloads") }
+                        onOpenDownloads = { paneState.navigateToPath("torbox:downloads") }
                     )
                 }
 
@@ -484,19 +487,23 @@ fun FileListPane(
                     if (requiresPermission(node)) {
                         handleRestricted(node)
                     } else {
-                        when (node) {
-                            is FsNode.TorBox -> {
-                                selectedFile = node
-                                selectionController.clear()
-                                selectionController.select(node)
-                                showContextMenu = true
-                            }
-                            else -> {
-                                if (node.isDirectory) {
-                                    paneState.navigateTo(node.path)
-                                    onSearchQueryChange("")
-                                } else {
-                                    handleOpen(node.asFile())
+                        if (showContextMenu && node !is FsNode.TorBox) {
+                            selectionController.toggle(node)
+                        } else {
+                            when (node) {
+                                is FsNode.TorBox -> {
+                                    selectedFile = node
+                                    selectionController.clear()
+                                    selectionController.select(node)
+                                    showContextMenu = true
+                                }
+                                else -> {
+                                    if (node.isDirectory) {
+                                        paneState.navigateTo(node.path)
+                                        onSearchQueryChange("")
+                                    } else {
+                                        handleOpen(node.asFile())
+                                    }
                                 }
                             }
                         }
@@ -661,70 +668,100 @@ fun FileListPane(
                 )
             }
             else -> {
-                FileContextMenu(
-                    file = file.asFile(),
-                    onDismiss = { 
-                        showContextMenu = false
-                    },
-                    onOpen = { handleOpen(file.asFile()) },
-                    onEdit = {
-                        editorFile = file.asFile()
-                    },
-                    onRename = { showRenameDialog = true },
-                    onDelete = { showDeleteDialog = true },
-                    onCopy = { 
-                        FileClipboard.copy(file.path)
-                        snackbarMessage = "Copied to clipboard"
-                    },
-                    onMove = { 
-                        FileClipboard.cut(file.path)
-                        snackbarMessage = "Cut to clipboard"
-                    },
-                    onZip = {
-                        ZipUtils.zipFile(file.asFile()).fold(
-                            onSuccess = { 
-                                snackbarMessage = "Zipped successfully"
-                                refreshTrigger++
-                            },
-                            onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
-                        )
-                    },
-                    onExtractHere = {
-                        ZipUtils.extractHere(file.asFile()).fold(
-                            onSuccess = {
-                                snackbarMessage = "Extracted here"
-                                refreshTrigger++
-                            },
-                            onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
-                        )
-                    },
-                    onExtractToFolder = {
-                        ZipUtils.extractToFolder(file.asFile()).fold(
-                            onSuccess = {
-                                snackbarMessage = "Extracted to folder"
-                                refreshTrigger++
-                            },
-                            onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
-                        )
-                    },
-                    onShare = { ctx ->
-                        try {
-                            val uri = FileProvider.getUriForFile(
-                                ctx,
-                                "${ctx.packageName}.provider",
-                                file.asFile()
+                val selectedLocal = selectionController.currentSelection(activeFiles)
+                    .filter { it !is FsNode.TorBox }
+
+                if (selectedLocal.size > 1) {
+                    MultiSelectionMenu(
+                        items = selectedLocal,
+                        onZipSelection = {
+                            val filesToZip = selectedLocal.map { it.asFile() }
+                            ZipUtils.zipFiles(filesToZip, "selection").fold(
+                                onSuccess = {
+                                    snackbarMessage = "Zipped selection"
+                                    refreshTrigger++
+                                },
+                                onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
                             )
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "*/*"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            showContextMenu = false
+                            selectionController.clear()
+                        },
+                        onClear = {
+                            selectionController.clear()
+                            showContextMenu = false
+                        },
+                        onDismiss = { showContextMenu = false }
+                    )
+                } else {
+                    FileContextMenu(
+                        file = file.asFile(),
+                        onDismiss = { 
+                            showContextMenu = false
+                        },
+                        onOpen = { handleOpen(file.asFile()) },
+                        onEdit = {
+                            editorFile = file.asFile()
+                        },
+                        onRename = { showRenameDialog = true },
+                        onDelete = { showDeleteDialog = true },
+                        onCopy = { 
+                            FileClipboard.copy(file.path)
+                            snackbarMessage = "Copied to clipboard"
+                        },
+                        onMove = { 
+                            FileClipboard.cut(file.path)
+                            snackbarMessage = "Cut to clipboard"
+                        },
+                        onZip = {
+                            ZipUtils.zipFile(file.asFile()).fold(
+                                onSuccess = { 
+                                    snackbarMessage = "Zipped successfully"
+                                    refreshTrigger++
+                                },
+                                onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
+                            )
+                        },
+                        onExtractHere = {
+                            ZipUtils.extractHere(file.asFile()).fold(
+                                onSuccess = {
+                                    snackbarMessage = "Extracted here"
+                                    refreshTrigger++
+                                },
+                                onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
+                            )
+                        },
+                        onExtractToFolder = {
+                            ZipUtils.extractToFolder(file.asFile()).fold(
+                                onSuccess = {
+                                    snackbarMessage = "Extracted to folder"
+                                    refreshTrigger++
+                                },
+                                onFailure = { snackbarMessage = "Failed to extract: ${it.message}" }
+                            )
+                        },
+                        onProperties = {
+                            propertiesTarget = file.asFile()
+                            showProperties = true
+                        },
+                        onShare = { ctx ->
+                            try {
+                                val uri = FileProvider.getUriForFile(
+                                    ctx,
+                                    "${ctx.packageName}.provider",
+                                    file.asFile()
+                                )
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "*/*"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                ctx.startActivity(Intent.createChooser(intent, "Share"))
+                            } catch (e: Exception) {
+                                snackbarMessage = "Failed to share: ${e.message}"
                             }
-                            ctx.startActivity(Intent.createChooser(intent, "Share"))
-                        } catch (e: Exception) {
-                            snackbarMessage = "Failed to share: ${e.message}"
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }
@@ -753,6 +790,13 @@ fun FileListPane(
         )
     }
 
+    if (showPropertiesSheet && selectedFile != null && selectedFile !is FsNode.TorBox) {
+        PropertiesSheet(
+            file = selectedFile!!.asFile(),
+            onDismiss = { showPropertiesSheet = false }
+        )
+    }
+
     if (showDeleteDialog && selectedFile != null && selectedFile !is FsNode.TorBox) {
         DeleteConfirmDialog(
             file = selectedFile!!.asFile(),
@@ -763,6 +807,16 @@ fun FileListPane(
                     FileOperation.Delete(NodeRef.from(selectedFile!!.asFile()))
                 )
                 snackbarMessage = "Deleting..."
+            }
+        )
+    }
+
+    if (showProperties && propertiesTarget != null) {
+        PropertiesSheet(
+            file = propertiesTarget!!,
+            onDismiss = {
+                showProperties = false
+                propertiesTarget = null
             }
         )
     }

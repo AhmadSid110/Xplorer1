@@ -1,14 +1,18 @@
 package com.droidexplorer.websim.ui
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Share
@@ -20,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.util.ZipUtils
 import java.io.File
@@ -39,11 +42,16 @@ fun FileContextMenu(
     onZip: () -> Unit,
     onExtractHere: () -> Unit,
     onExtractToFolder: () -> Unit,
+    onProperties: () -> Unit,
     onShare: (Context) -> Unit
 ) {
     val context = LocalContext.current
     val isZipFile = ZipUtils.isZipFile(file)
     
+    val menuBackground = Color(0xFF0E1420)
+    val menuText = Color.White
+    val accent = Color(0xFF00E5FF)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.Transparent
@@ -52,12 +60,15 @@ fun FileContextMenu(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
-                .neonGlass()
+                .background(menuBackground, RoundedCornerShape(18.dp))
+                .border(1.dp, accent, RoundedCornerShape(18.dp))
+                .padding(horizontal = 8.dp, vertical = 12.dp)
                 .padding(bottom = 24.dp)
         ) {
             Text(
                 text = file.name,
                 style = MaterialTheme.typography.titleMedium,
+                color = menuText,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 maxLines = 1
             )
@@ -68,6 +79,7 @@ fun FileContextMenu(
                 ContextMenuItem(
                     icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     text = "Open",
+                    textColor = menuText,
                     onClick = { 
                         onOpen()
                         onDismiss() 
@@ -79,6 +91,7 @@ fun FileContextMenu(
                 ContextMenuItem(
                     icon = Icons.Outlined.Edit,
                     text = "Edit",
+                    textColor = menuText,
                     onClick = {
                         onEdit()
                         onDismiss()
@@ -89,6 +102,7 @@ fun FileContextMenu(
             ContextMenuItem(
                 icon = Icons.Outlined.ContentCopy,
                 text = "Copy",
+                textColor = menuText,
                 onClick = {
                     onCopy()
                     onDismiss()
@@ -98,6 +112,7 @@ fun FileContextMenu(
             ContextMenuItem(
                 icon = Icons.Outlined.ContentCut,
                 text = "Move",
+                textColor = menuText,
                 onClick = {
                     onMove()
                     onDismiss()
@@ -107,6 +122,7 @@ fun FileContextMenu(
             ContextMenuItem(
                 icon = Icons.Outlined.DriveFileRenameOutline,
                 text = "Rename",
+                textColor = menuText,
                 onClick = {
                     onRename()
                     onDismiss()
@@ -117,6 +133,7 @@ fun FileContextMenu(
                 ContextMenuItem(
                     icon = Icons.Outlined.Archive,
                     text = "Extract here",
+                    textColor = menuText,
                     onClick = {
                         onExtractHere()
                         onDismiss()
@@ -125,6 +142,7 @@ fun FileContextMenu(
                 ContextMenuItem(
                     icon = Icons.Outlined.Archive,
                     text = "Extract to ${file.nameWithoutExtension}",
+                    textColor = menuText,
                     onClick = {
                         onExtractToFolder()
                         onDismiss()
@@ -134,17 +152,29 @@ fun FileContextMenu(
                 ContextMenuItem(
                     icon = Icons.Outlined.Archive,
                     text = "Zip",
+                    textColor = menuText,
                     onClick = {
                         onZip()
                         onDismiss()
                     }
                 )
             }
+
+            ContextMenuItem(
+                icon = Icons.Outlined.Description,
+                text = "Properties",
+                textColor = menuText,
+                onClick = {
+                    onProperties()
+                    onDismiss()
+                }
+            )
             
             if (!file.isDirectory) {
                 ContextMenuItem(
                     icon = Icons.Outlined.Share,
                     text = "Share",
+                    textColor = menuText,
                     onClick = {
                         onShare(context)
                         onDismiss()
@@ -161,7 +191,8 @@ fun FileContextMenu(
                     onDelete()
                     onDismiss()
                 },
-                tint = MaterialTheme.colorScheme.tertiary
+                tint = Color(0xFFFF5252),
+                textColor = Color(0xFFFF5252)
             )
         }
     }
@@ -177,12 +208,14 @@ private fun ContextMenuItem(
     icon: ImageVector,
     text: String,
     onClick: () -> Unit,
-    tint: Color = MaterialTheme.colorScheme.onSurface
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+    textColor: Color = tint
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .height(52.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -196,7 +229,7 @@ private fun ContextMenuItem(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = tint
+            color = textColor
         )
     }
 }

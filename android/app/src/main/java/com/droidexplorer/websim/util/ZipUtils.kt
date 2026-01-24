@@ -3,16 +3,16 @@ package com.droidexplorer.websim.util
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 
 object ZipUtils {
 
     fun zipFile(sourceFile: File): Result<File> {
         return try {
             val zipFile = File(sourceFile.parent, "${sourceFile.nameWithoutExtension}.zip")
-            ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
+            ZipArchiveOutputStream(FileOutputStream(zipFile)).use { zos ->
+                zos.setMethod(ZipArchiveOutputStream.DEFLATED)
                 if (sourceFile.isDirectory) {
                     zipDirectory(sourceFile, sourceFile.name, zos)
                 } else {
@@ -25,7 +25,27 @@ object ZipUtils {
         }
     }
 
-    private fun zipDirectory(folder: File, parentPath: String, zos: ZipOutputStream) {
+    fun zipFiles(files: List<File>, zipName: String): Result<File> {
+        return try {
+            val targetDir = files.firstOrNull()?.parentFile ?: return Result.failure(IllegalStateException("No files"))
+            val zipFile = File(targetDir, if (zipName.endsWith(".zip")) zipName else "$zipName.zip")
+            ZipArchiveOutputStream(FileOutputStream(zipFile)).use { zos ->
+                zos.setMethod(ZipArchiveOutputStream.DEFLATED)
+                files.forEach { file ->
+                    if (file.isDirectory) {
+                        zipDirectory(file, file.name, zos)
+                    } else {
+                        zipSingleFile(file, file.name, zos)
+                    }
+                }
+            }
+            Result.success(zipFile)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun zipDirectory(folder: File, parentPath: String, zos: ZipArchiveOutputStream) {
         folder.listFiles()?.forEach { file ->
             val path = "$parentPath/${file.name}"
             if (file.isDirectory) {
@@ -36,61 +56,16 @@ object ZipUtils {
         }
     }
 
-    private fun zipSingleFile(file: File, entryName: String, zos: ZipOutputStream) {
+    private fun zipSingleFile(file: File, entryName: String, zos: ZipArchiveOutputStream) {
         FileInputStream(file).use { fis ->
-            val entry = ZipEntry(entryName)
-            zos.putNextEntry(entry)
+            val entry = ZipArchiveEntry(entryName)
+            zos.putArchiveEntry(entry)
             fis.copyTo(zos)
-            zos.closeEntry()
+            zos.closeArchiveEntry()
         }
     }
 
-    fun unzip(zipFile: File): Result<File> {
-        return try {
-            val destFolder = File(zipFile.parent, zipFile.nameWithoutExtension)
-            if (!destFolder.exists()) {
-                destFolder.mkdirs()
-            }
-            val destFolderCanonicalPath = destFolder.canonicalPath
-            
-            ZipInputStream(FileInputStream(zipFile)).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    // Security: Validate entry name to prevent Zip Slip attacks
-                    val entryName = entry.name
-                    if (entryName.contains("..") || entryName.startsWith("/") || entryName.startsWith("\\")) {
-                        zis.closeEntry()
-                        entry = zis.nextEntry
-                        continue // Skip malicious entries
-                    }
-                    
-                    val file = File(destFolder, entryName)
-                    val fileCanonicalPath = file.canonicalPath
-                    
-                    // Verify the file is within the destination folder (Zip Slip protection)
-                    if (!fileCanonicalPath.startsWith(destFolderCanonicalPath)) {
-                        zis.closeEntry()
-                        entry = zis.nextEntry
-                        continue // Skip entries that would escape destination
-                    }
-                    
-                    if (entry.isDirectory) {
-                        file.mkdirs()
-                    } else {
-                        file.parentFile?.mkdirs()
-                        FileOutputStream(file).use { fos ->
-                            zis.copyTo(fos)
-                        }
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
-            }
-            Result.success(destFolder)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    fun unzip(zipFile: File): Result<File> = extractToFolder(zipFile)
 
     fun extractHere(zipFile: File): Result<File> {
         return try {

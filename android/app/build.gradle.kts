@@ -73,6 +73,9 @@ dependencies {
     // HTTP Client for TorBox API
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // ZIP (desktop-grade)
+    implementation("org.apache.commons:commons-compress:1.24.0")
+
     // WorkManager for background downloads
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
