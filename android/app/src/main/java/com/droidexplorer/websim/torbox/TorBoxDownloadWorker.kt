@@ -2,9 +2,13 @@ package com.droidexplorer.websim.torbox
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Environment
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
@@ -161,7 +165,7 @@ class TorBoxDownloadWorker(
                         sourceUrl = existing?.sourceUrl ?: url
                     )
                 )
-                showCompletedNotification(fileId, fileName)
+                showCompletedNotification(fileId, fileName, finalFile)
                 Result.success()
             } catch (e: PausedException) {
                 val latest = dao.get(fileId)
@@ -233,16 +237,47 @@ class TorBoxDownloadWorker(
         return ForegroundInfo(notificationId(fileId), builder.build())
     }
 
-    private fun showCompletedNotification(fileId: String, fileName: String) {
+    private fun showCompletedNotification(fileId: String, fileName: String, file: File) {
         val manager = notificationManager()
         ensureChannel(manager)
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+        val intent = buildOpenFileIntent(file)
+        val pendingIntent = intent?.let {
+            PendingIntent.getActivity(
+                applicationContext,
+                notificationId(fileId) + 1000,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setContentTitle("Download complete")
             .setContentText(fileName)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setAutoCancel(true)
-            .build()
-        manager.notify(notificationId(fileId) + 1, notification)
+
+        if (pendingIntent != null) {
+            builder.setContentIntent(pendingIntent)
+        }
+
+        manager.notify(notificationId(fileId) + 1, builder.build())
+    }
+
+    private fun buildOpenFileIntent(file: File): Intent? {
+        if (!file.exists()) return null
+        val uri = FileProvider.getUriForFile(
+            applicationContext,
+            "${applicationContext.packageName}.provider",
+            file
+        )
+        val mime = file.extension.takeIf { it.isNotBlank() }
+            ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it.lowercase()) }
+            ?: "*/*"
+        return Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mime)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
     }
 
     private fun notificationManager(): NotificationManager {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
@@ -48,7 +49,8 @@ fun TorBoxDownloadsScreen(
     downloads: List<TorBoxDownloadEntity>,
     onPause: (TorBoxDownloadEntity) -> Unit,
     onResume: (TorBoxDownloadEntity) -> Unit,
-    onRemove: (TorBoxDownloadEntity) -> Unit
+    onRemove: (TorBoxDownloadEntity) -> Unit,
+    onOpen: (TorBoxDownloadEntity) -> Unit
 ) {
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     val filter = DownloadFilter.values()[selectedFilterIndex]
@@ -105,7 +107,8 @@ fun TorBoxDownloadsScreen(
                         item = item,
                         onPause = { onPause(item) },
                         onResume = { onResume(item) },
-                        onRemove = { onRemove(item) }
+                        onRemove = { onRemove(item) },
+                        onOpen = { onOpen(item) }
                     )
                 }
             }
@@ -119,7 +122,8 @@ private fun DownloadRow(
     item: TorBoxDownloadEntity,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onOpen: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -179,6 +183,12 @@ private fun DownloadRow(
                         }
                     }
                     DownloadStatus.COMPLETED -> {
+                        IconButton(onClick = onOpen) {
+                            Icon(
+                                imageVector = Icons.Outlined.FolderOpen,
+                                contentDescription = "Open"
+                            )
+                        }
                         IconButton(onClick = onRemove) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,

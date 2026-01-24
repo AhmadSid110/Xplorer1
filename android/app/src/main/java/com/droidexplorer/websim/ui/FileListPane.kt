@@ -62,6 +62,8 @@ import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.selection.SelectionController
 import com.droidexplorer.websim.torbox.TorBoxDownloadManager
+import com.droidexplorer.websim.torbox.mapTorBoxFile
+import com.droidexplorer.websim.torbox.TorBoxItem
 import com.droidexplorer.websim.torbox.download.TorBoxDatabaseProvider
 import com.droidexplorer.websim.torbox.download.DownloadStatus
 import kotlinx.coroutines.Dispatchers
@@ -158,8 +160,11 @@ fun FileListPane(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
     // ─────────────────────────────────────────────
-    // Load files (FINAL – TorBox + Local SAFE)
+    // Load files (Local SAFE)
     // ─────────────────────────────────────────────
+
+    val isTorBoxPath = currentPath.startsWith("torbox:")
+    val isTorBoxBrowser = isTorBoxPath && currentPath != "torbox:downloads"
 
     val files by produceState<List<FsNode>>(
         initialValue = emptyList(),
@@ -169,17 +174,7 @@ fun FileListPane(
         sortType,
         sortOrder
     ) {
-        value = if (currentPath == "torbox:") {
-            val torBoxFiles = torBoxClient?.listFiles()?.map {
-                FsNode.TorBox(
-                    id = it.id,
-                    name = it.name,
-                    size = it.size,
-                    absolutePath = it.absolutePath
-                )
-            } ?: emptyList()
-            FileManager.sortFiles(torBoxFiles, sortType, sortOrder)
-        } else {
+        value = if (!isTorBoxPath) {
             FileManager.list(
                 currentPath,
                 sortType,
@@ -188,6 +183,20 @@ fun FileListPane(
                 safPermissionManager,
                 context
             )
+        } else {
+            emptyList()
+        }
+    }
+
+    val torBoxItems by produceState<List<TorBoxItem>>(
+        initialValue = emptyList(),
+        currentPath,
+        refreshTrigger
+    ) {
+        value = if (isTorBoxBrowser) {
+            torBoxClient?.listFiles()?.map { mapTorBoxFile(it) } ?: emptyList()
+        } else {
+            emptyList()
         }
     }
 
@@ -434,7 +443,7 @@ fun FileListPane(
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                 )
 
-                if (searchQuery.isNotBlank()) {
+                if (searchQuery.isNotBlank() && !isTorBoxBrowser) {
                     SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
                 }
 
@@ -533,7 +542,25 @@ fun FileListPane(
                                     TorBoxDownloadManager.resume(context, it.id, it.name, source)
                                 }
                             },
-                            onRemove = { TorBoxDownloadManager.remove(context, it) }
+                            onRemove = { TorBoxDownloadManager.remove(context, it) },
+                            onOpen = { download ->
+                                val path = download.path ?: return@TorBoxDownloadsScreen
+                                val file = File(path)
+                                if (file.exists()) {
+                                    handleOpen(file)
+                                }
+                            }
+                        )
+                    } else if (isTorBoxBrowser) {
+                        TorBoxBrowserScreen(
+                            currentPath = currentPath,
+                            files = torBoxItems,
+                            searchQuery = searchQuery,
+                            torBoxClient = torBoxClient,
+                            onNavigate = { paneState.navigateTo(it) },
+                            onOpenViewer = onOpenViewer,
+                            onMessage = { message -> snackbarMessage = message },
+                            onRefresh = { refreshTrigger++ }
                         )
                     } else {
                         when (settings.defaultViewMode) {
