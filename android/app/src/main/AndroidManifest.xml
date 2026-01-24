@@ -20,8 +20,8 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 
     <application
-        android:icon="@mipmap/ic_launcher_legacy"
-        android:roundIcon="@mipmap/ic_launcher_legacy"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Xplorer"
         android:exported="true"
         android:theme="@style/Theme.Xplorer"
