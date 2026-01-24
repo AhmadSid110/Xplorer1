@@ -1,5 +1,6 @@
 package com.droidexplorer.websim.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Card
@@ -26,11 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.torbox.download.DownloadStatus
-import com.droidexplorer.websim.torbox.download.TorBoxDownloadEntity
 import com.droidexplorer.websim.torbox.TorBoxDownloadManager
+import com.droidexplorer.websim.torbox.download.TorBoxDownloadEntity
 
 @Composable
-fun TorBoxDownloadsPanel(downloads: List<TorBoxDownloadEntity>) {
+fun TorBoxDownloadsPanel(
+    downloads: List<TorBoxDownloadEntity>,
+    onOpenDownloads: () -> Unit
+) {
     if (downloads.isEmpty()) return
 
     val context = LocalContext.current
@@ -51,6 +56,14 @@ fun TorBoxDownloadsPanel(downloads: List<TorBoxDownloadEntity>) {
             text = "TorBox Cloud",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Open downloads",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .clickable(onClick = onOpenDownloads)
         )
         Text(
             text = "Active downloads: $activeCount",
@@ -130,6 +143,13 @@ fun TorBoxDownloadsPanel(downloads: List<TorBoxDownloadEntity>) {
                             }
                         }
                         else -> Unit
+                    }
+                    IconButton(onClick = { TorBoxDownloadManager.remove(context, item) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

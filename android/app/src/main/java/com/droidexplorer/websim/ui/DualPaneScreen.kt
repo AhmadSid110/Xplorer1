@@ -154,11 +154,17 @@ fun DualPaneScreen(
 
             /* ───────────────────── MAIN UI ───────────────────── */
 
+            val drawerDestination = when (activePane.path) {
+                "torbox:" -> DrawerDestination.TORBOX
+                "torbox:downloads" -> DrawerDestination.DOWNLOADS
+                else -> DrawerDestination.FILES
+            }
+
             ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
                     SideDrawerContent(
-                        activeDestination = DrawerDestination.FILES,
+                        activeDestination = drawerDestination,
                         onFiles = {
                             drawerScope.launch { drawerState.close() }
                             activePane.navigateToPath(defaultPath)
@@ -170,6 +176,10 @@ fun DualPaneScreen(
                         onTorBox = {
                             drawerScope.launch { drawerState.close() }
                             activePane.navigateToPath("torbox:")
+                        },
+                        onDownloads = {
+                            drawerScope.launch { drawerState.close() }
+                            activePane.navigateToPath("torbox:downloads")
                         },
                         onPermissions = {
                             drawerScope.launch { drawerState.close() }

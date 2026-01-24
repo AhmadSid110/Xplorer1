@@ -61,7 +61,9 @@ import com.droidexplorer.websim.util.ZipUtils
 import com.droidexplorer.websim.ui.viewer.Viewer
 import com.droidexplorer.websim.ui.glass.neonGlass
 import com.droidexplorer.websim.ui.selection.SelectionController
+import com.droidexplorer.websim.torbox.TorBoxDownloadManager
 import com.droidexplorer.websim.torbox.download.TorBoxDatabaseProvider
+import com.droidexplorer.websim.torbox.download.DownloadStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -163,7 +165,9 @@ fun FileListPane(
         initialValue = emptyList(),
         currentPath,
         permissionRefresh,
-        refreshTrigger
+        refreshTrigger,
+        sortType,
+        sortOrder
     ) {
         value = if (currentPath == "torbox:") {
             val torBoxFiles = torBoxClient?.listFiles()?.map {
@@ -434,10 +438,14 @@ fun FileListPane(
                     SearchStatusBanner(searchResult?.skippedRoots ?: emptyList())
                 }
 
+                val torBoxDao = remember { TorBoxDatabaseProvider.get(context).dao() }
+                val downloads by torBoxDao.observeAll().collectAsState(initial = emptyList())
+
                 if (currentPath == "torbox:") {
-                    val torBoxDao = remember { TorBoxDatabaseProvider.get(context).dao() }
-                    val downloads by torBoxDao.observeAll().collectAsState(initial = emptyList())
-                    TorBoxDownloadsPanel(downloads)
+                    TorBoxDownloadsPanel(
+                        downloads = downloads,
+                        onOpenDownloads = { paneState.navigateTo("torbox:downloads") }
+                    )
                 }
 
                 fun requiresPermission(node: FsNode): Boolean {
@@ -515,50 +523,64 @@ fun FileListPane(
                     },
                     label = "directoryTransition"
                 ) { _ ->
-                    when (settings.defaultViewMode) {
-                        ViewMode.LIST -> {
-                            if (searchLoading) {
-                                SearchLoadingState()
-                            } else if (activeFiles.isEmpty()) {
-                                EmptyState(searchQuery.isNotEmpty())
-                            } else {
-                                FileListView(
-                                    files = activeFiles,
-                                    onClick = handleItemClick,
-                                    onLongClick = handleItemLongClick,
-                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
-                                    requiresPermission = { requiresPermission(it) }
-                                )
+                    if (currentPath == "torbox:downloads") {
+                        TorBoxDownloadsScreen(
+                            downloads = downloads,
+                            onPause = { TorBoxDownloadManager.pause(context, it.id) },
+                            onResume = {
+                                val source = it.sourceUrl
+                                if (!source.isNullOrBlank()) {
+                                    TorBoxDownloadManager.resume(context, it.id, it.name, source)
+                                }
+                            },
+                            onRemove = { TorBoxDownloadManager.remove(context, it) }
+                        )
+                    } else {
+                        when (settings.defaultViewMode) {
+                            ViewMode.LIST -> {
+                                if (searchLoading) {
+                                    SearchLoadingState()
+                                } else if (activeFiles.isEmpty()) {
+                                    EmptyState(searchQuery.isNotEmpty())
+                                } else {
+                                    FileListView(
+                                        files = activeFiles,
+                                        onClick = handleItemClick,
+                                        onLongClick = handleItemLongClick,
+                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        requiresPermission = { requiresPermission(it) }
+                                    )
+                                }
                             }
-                        }
-                        ViewMode.GRID -> {
-                            if (searchLoading) {
-                                SearchLoadingState()
-                            } else if (activeFiles.isEmpty()) {
-                                EmptyState(searchQuery.isNotEmpty())
-                            } else {
-                                FileGridView(
-                                    files = activeFiles,
-                                    onClick = handleItemClick,
-                                    onLongClick = handleItemLongClick,
-                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
-                                    requiresPermission = { requiresPermission(it) }
-                                )
+                            ViewMode.GRID -> {
+                                if (searchLoading) {
+                                    SearchLoadingState()
+                                } else if (activeFiles.isEmpty()) {
+                                    EmptyState(searchQuery.isNotEmpty())
+                                } else {
+                                    FileGridView(
+                                        files = activeFiles,
+                                        onClick = handleItemClick,
+                                        onLongClick = handleItemLongClick,
+                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        requiresPermission = { requiresPermission(it) }
+                                    )
+                                }
                             }
-                        }
-                        ViewMode.DETAILS -> {
-                            if (searchLoading) {
-                                SearchLoadingState()
-                            } else if (activeFiles.isEmpty()) {
-                                EmptyState(searchQuery.isNotEmpty())
-                            } else {
-                                FileDetailsView(
-                                    files = activeFiles,
-                                    onClick = handleItemClick,
-                                    onLongClick = handleItemLongClick,
-                                    isSelected = { selectionController.isSelected(it) && showContextMenu },
-                                    requiresPermission = { requiresPermission(it) }
-                                )
+                            ViewMode.DETAILS -> {
+                                if (searchLoading) {
+                                    SearchLoadingState()
+                                } else if (activeFiles.isEmpty()) {
+                                    EmptyState(searchQuery.isNotEmpty())
+                                } else {
+                                    FileDetailsView(
+                                        files = activeFiles,
+                                        onClick = handleItemClick,
+                                        onLongClick = handleItemLongClick,
+                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        requiresPermission = { requiresPermission(it) }
+                                    )
+                                }
                             }
                         }
                     }

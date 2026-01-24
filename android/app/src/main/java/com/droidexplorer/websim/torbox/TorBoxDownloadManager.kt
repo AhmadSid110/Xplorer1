@@ -76,6 +76,39 @@ object TorBoxDownloadManager {
         enqueueWork(context, fileId, name, url)
     }
 
+    fun remove(context: Context, download: TorBoxDownloadEntity) {
+        scope.launch {
+            val dao = TorBoxDatabaseProvider.get(context).dao()
+            dao.deleteById(download.id)
+            cleanupFiles(context, download)
+        }
+        WorkManager.getInstance(context).cancelUniqueWork("torbox_download_${download.id}")
+    }
+
+    private fun cleanupFiles(context: Context, download: TorBoxDownloadEntity) {
+        try {
+            download.path?.let { path ->
+                kotlin.runCatching { java.io.File(path).delete() }
+            }
+
+            val downloadsDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                ?: context.filesDir
+            val safeName = sanitizeFileName(download.name)
+            val prefix = "$safeName.part"
+            downloadsDir.listFiles()?.forEach { file ->
+                if (file.name.startsWith(prefix)) {
+                    kotlin.runCatching { file.delete() }
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun sanitizeFileName(name: String): String {
+        val cleaned = name.replace(Regex("[\\/:*?\"<>|]"), "_")
+        return if (cleaned.isBlank()) "torbox_download" else cleaned
+    }
+
     private fun enqueueWork(context: Context, fileId: String, name: String, url: String) {
         val data = workDataOf(
             KEY_FILE_ID to fileId,

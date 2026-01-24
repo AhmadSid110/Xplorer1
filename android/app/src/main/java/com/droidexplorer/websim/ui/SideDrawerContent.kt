@@ -27,6 +27,7 @@ enum class DrawerDestination {
     FILES,
     CLEANER,
     TORBOX,
+    DOWNLOADS,
     PERMISSIONS,
     SETTINGS
 }
@@ -37,6 +38,7 @@ fun SideDrawerContent(
     onFiles: () -> Unit,
     onCleaner: () -> Unit,
     onTorBox: () -> Unit,
+    onDownloads: () -> Unit,
     onPermissions: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -88,6 +90,12 @@ fun SideDrawerContent(
                 icon = Icons.Outlined.Cloud,
                 label = "TorBox",
                 onClick = onTorBox
+            )
+            DrawerItemRow(
+                active = activeDestination == DrawerDestination.DOWNLOADS,
+                icon = Icons.Outlined.Cloud,
+                label = "Downloads",
+                onClick = onDownloads
             )
 
             Spacer(Modifier.height(12.dp))

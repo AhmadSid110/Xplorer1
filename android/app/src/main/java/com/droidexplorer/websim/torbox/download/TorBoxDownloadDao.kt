@@ -17,4 +17,7 @@ interface TorBoxDownloadDao {
 
     @Query("SELECT * FROM torbox_downloads WHERE id = :id")
     suspend fun get(id: String): TorBoxDownloadEntity?
+
+    @Query("DELETE FROM torbox_downloads WHERE id = :id")
+    suspend fun deleteById(id: String)
 }
