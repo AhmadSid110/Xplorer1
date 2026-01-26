@@ -1,287 +1,101 @@
-
-
-📁 Xplorer — Advanced Android File Manager
-
-Xplorer is a modern, non-root, SAF-correct, dual-pane Android file manager built with Kotlin + Jetpack Compose, designed for power users and tablets.
-
-It goes beyond traditional file managers by introducing rule-based file automation, robust foreground file operations, and a desktop-grade UX — without compromising Android security.
-
-
-
-
-
----
-
-✨ Key Highlights
-
-🚀 Foreground file operations (copy / move / delete / rename)
-
-📊 Live progress + cancel + resume
-
-🔍 Recursive, permission-aware search
-
-📂 Dual-pane + multi-tab navigation
-
-🧠 Rule-based file automation (unique feature)
-
-🔐 Correct SAF & Android/data handling
-
-🖼️ Built-in Image / PDF / ZIP / Large-Text viewers
-
-🧩 Designed for tablets & landscape
-
-❌ No root required
-
-❌ No analytics / tracking
-
-
-
----
-
-🧠 What Makes Xplorer Different?
-
-Most Android file managers stop at “browse & copy”.
-
-Xplorer introduces automation.
-
-🔥 Rule-Based File Automation (Killer Feature)
-
-Create smart rules that organize files automatically — safely and transparently.
-
-Examples:
-
-📺 Auto-move .srt subtitles next to matching videos
-
-📥 Auto-rename files in Downloads
-
-📷 Sort camera photos by year/month
-
-🧹 Clean folders based on size, type, or name
-
-
-✔ Preview before execution
-✔ Manual or contextual triggering
-✔ Undo support
-✔ SAF-safe (no hidden background actions)
-
-> Solid Explorer does not support this.
-
-
-
-
----
-
-📦 Feature Overview
-
+Xplorer — Advanced Android File Manager
+Xplorer is a modern, high-performance Android file manager built with Kotlin + Jetpack Compose, designed for power users, tablets, and large-screen workflows.
+It combines a desktop-style dual-pane interface, cloud integration, and system-level storage control — all while remaining fully SAF-compliant and Android-secure.
+🚀 Key Features
+🧭 Navigation & UI
+Dual-pane file browser
+Multi-tab navigation
+Retractable cyberpunk-styled side drawer
+Glassmorphism + neon cyber theme
+Tablet & landscape optimized
 📁 File Operations
-
-Copy / Move / Delete / Rename
-
-Foreground Service (no UI freeze)
-
-Progress notifications
-
-Cancel anytime
-
-Crash-safe execution
-
-
-🔍 Search
-
-Recursive search
-
-Filename / extension filtering
-
-SAF-aware (only searches permitted locations)
-
-User-controlled search scopes via Settings
-
-
-🧭 Navigation
-
-Dual-pane layout
-
-Independent back stacks
-
-Multi-tab per pane
-
-Breadcrumb path navigation
-
-
-👁️ Built-in Viewers
-
-🖼️ Image viewer (zoom, pan, swipe, EXIF)
-
-📄 PDF viewer (PdfRenderer)
-
-📦 ZIP browser (no extraction required)
-
-📝 Large-file text viewer (100MB+ safe, lazy loading)
-
-
-🧠 Power User Tools
-
-Advanced multi-select
-
-Select by extension
-
-Range selection
-
-Invert selection
-
-Metadata previews (image, video, audio, APK)
-
-
-
----
-
-🔐 Storage & Permissions (Done Right)
-
-Full internal storage access
-
-SAF-based Android/data & OBB access
-
-Permission persistence & recovery
-
-Graceful handling of revoked permissions
-
-No dangerous background filesystem watching
-
-
-
----
-
-⚙️ Settings
-
-Xplorer includes a real settings system, not just toggles:
-
-Search locations & exclusions
-
-Default view mode (List / Grid / Details)
-
-Per-folder view memory
-
-Storage usage & free space
-
-File operation safety controls
-
-SAF permission management
-
-
-
----
-
-🧱 Architecture
-
-Language: Kotlin
-
-UI: Jetpack Compose
-
-Architecture: MVVM (lightweight)
-
-Concurrency: Coroutines + Flow
-
-Storage: DataStore
-
-Min SDK: 26
-
-Target SDK: 34
-
-CI: GitHub Actions (headless, no Android Studio)
-
-
-Designed to be:
-
-Testable
-
-Maintainable
-
-CI-friendly
-
-Tablet-first
-
-
-
----
-
-📊 Comparison
-
-Feature	Solid Explorer	Xplorer
-
-Dual Pane	✅	✅
-Tabs	⚠️	✅
-Foreground Ops	⚠️	✅
-Rule Automation	❌	✅
-SAF Recovery UX	⚠️	✅
-Large File Viewer	⚠️	✅
-Compose UI	❌	✅
-
-
-
----
-
-🚧 Status
-
-Xplorer is actively developed and already stable for daily use.
-
-Upcoming focus:
-
-Operation resume after reboot
-
-Workspace profiles
-
-Keyboard / Chromebook support
-
-Optional recycle bin
-
-
-
----
-
-📜 Philosophy
-
-> A file manager should never:
-
-Freeze
-
-Lose your data
-
-Do things behind your back
-
-
-
-
-Xplorer is built on explicit actions, user control, and trust.
-
-
----
-
-🧑‍💻 Contributing
-
-Contributions are welcome — especially in:
-
-UI polish
-
-Automation rules
-
-Performance testing
-
-Accessibility
-
-
-Please keep changes:
-
-SAF-correct
-
-Non-blocking
-
-CI-verified
-
-
-
----
-
-📄 License
-
+Copy / Move / Rename / Delete
+Zip / Extract (ZIP archives)
+File & folder properties
+Smart long-press actions
+Fast recursive search
+📦 Built-in Viewers
+Type
+Features
+📄 PDF Viewer
+Swipe pages, pinch zoom, fast scroll, manual page entry
+🖼 Image Viewer
+Zoom, rotate, gesture navigation
+📜 Text Viewer
+Large file safe reader
+📦 ZIP Viewer
+Browse archive without extraction
+☁️ TorBox Cloud Integration
+Browse TorBox cloud files
+Background download manager
+Pause / Resume downloads
+Download notifications
+Cloud file actions (copy link, delete, stream)
+🧹 Smart Cleaner
+Inspired by Google Files, redesigned with cyber UI:
+Junk detection
+Large files finder
+APK scanner
+Media cleanup (images, videos, audio)
+Archive cleanup
+Protected folder toggle
+⚙️ Advanced Capabilities
+SAF-correct access to Android/data
+Permission-aware storage browsing
+Background downloads
+Thumbnail cache
+Video duration previews
+High-performance file listing
+🔐 Security & Architecture
+No root required
+Uses Android Storage Access Framework
+Coroutine-based background operations
+Memory-safe PDF rendering
+Optimized bitmap caching
+🛠 Tech Stack
+Layer
+Technology
+Language
+Kotlin
+UI
+Jetpack Compose
+Architecture
+State-driven + coroutine based
+Build
+Gradle
+CI/CD
+GitHub Actions
+Signing
+Release keystore automation
+📦 Releases
+Every push to main generates a signed production APK via GitHub Actions.
+👉 Check the Releases tab.
+🧪 Project Status
+Module
+Status
+File Manager Core
+✅ Stable
+PDF Viewer
+✅ Optimized
+Image Viewer
+✅ Gesture enabled
+ZIP Viewer
+✅ Functional
+Cleaner
+🚧 Improving
+TorBox
+🚧 Expanding features
+🎨 UI Design Philosophy
+“Cyberpunk utility — not toy neon.”
+Dark glass surfaces
+Subtle neon accents
+High contrast text
+Minimal clutter
+🤝 Contributing
+Pull requests are welcome for:
+Performance improvements
+UI enhancements
+Viewer upgrades
+Cleaner algorithms
+📜 License
 MIT License
-Free to use, modify, and distribute.
