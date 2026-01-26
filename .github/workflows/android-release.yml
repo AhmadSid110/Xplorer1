@@ -91,11 +91,20 @@ jobs:
       # ─────────────────────────────────────────────
       # 7️⃣ Build APK
       # ─────────────────────────────────────────────
-      - name: Build APK
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
+
+      - name: Build Signed Release APK
         working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_FILE: release.jks
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug \
+          ./gradlew assembleRelease \
             -PversionName=$VERSION_NAME \
             -PversionCode=$VERSION_CODE \
             --no-daemon
@@ -110,4 +119,4 @@ jobs:
           tag_name: release-${{ env.VERSION_CODE }}
           name: Xplorer ${{ env.VERSION_NAME }}
           prerelease: false
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/release/app-release.apk
