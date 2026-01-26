@@ -15,6 +15,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +41,7 @@ fun PdfViewerScreen(
     var rendererWrapper by remember { mutableStateOf<RendererWrapper?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showControls by remember { mutableStateOf(true) }
+    var showPageDialog by remember { mutableStateOf(false) }
 
 
 
@@ -96,11 +98,18 @@ fun PdfViewerScreen(
             // Instead, tap detection is handled inside each page (via ZoomableBitmap.onTap).
             val pagerState = rememberPagerState(pageCount = { pageCount })
             val pageZoomStates = remember { mutableStateMapOf<Int, ZoomState>() }
+            val scope = rememberCoroutineScope()
+            val userScrollEnabled by remember {
+                derivedStateOf {
+                    (pageZoomStates[pagerState.currentPage]?.scale ?: 1f) <= 1f
+                }
+            }
             
             VerticalPager(
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxSize(),
+                userScrollEnabled = userScrollEnabled,
                 beyondBoundsPageCount = 0,
                 flingBehavior = PagerDefaults.flingBehavior(state = pagerState)
             ) { index ->
@@ -197,6 +206,10 @@ fun PdfViewerScreen(
                         )
 
                         Row {
+                            IconButton(onClick = { showPageDialog = true }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Go to page", tint = Color.White)
+                            }
+
                             IconButton(onClick = {
                                 pageZoomStates[pagerState.currentPage]?.let { it.rotation = (it.rotation - 90f + 360f) % 360f }
                             }) {
@@ -216,6 +229,42 @@ fun PdfViewerScreen(
                     }
 
                 }
+            }
+
+            if (showPageDialog) {
+                var pageInput by remember { mutableStateOf("") }
+
+                AlertDialog(
+                    onDismissRequest = { showPageDialog = false },
+                    title = { Text("Go to Page") },
+                    text = {
+                        OutlinedTextField(
+                            value = pageInput,
+                            onValueChange = { pageInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Page number") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val page = pageInput.toIntOrNull()
+                            if (page != null && page in 1..pageCount) {
+                                val target = page - 1
+                                scope.launch {
+                                    pagerState.scrollToPage(target)
+                                }
+                            }
+                            showPageDialog = false
+                        }) {
+                            Text("Go")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPageDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
 

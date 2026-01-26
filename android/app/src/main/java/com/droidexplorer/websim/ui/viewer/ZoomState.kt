@@ -16,4 +16,10 @@ class ZoomState(
     var scale by mutableStateOf(scale)
     var offset by mutableStateOf(offset)
     var rotation by mutableStateOf(rotation)
+
+    fun reset() {
+        scale = 1f
+        offset = Offset.Zero
+        rotation = 0f
+    }
 }

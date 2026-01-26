@@ -3,19 +3,52 @@ package com.droidexplorer.websim.ui.viewer
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.composed
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntSize
+
+fun Modifier.pdfZoomable(zoom: ZoomState): Modifier = composed {
+    pointerInput(zoom.scale) {
+        awaitEachGesture {
+            while (true) {
+                val event = awaitPointerEvent()
+                val pointers = event.changes.size
+
+                if (pointers >= 2) {
+                    val zoomChange = event.calculateZoom()
+                    val pan = event.calculatePan()
+                    val rotationChange = event.calculateRotation()
+
+                    val newScale = (zoom.scale * zoomChange).coerceIn(1f, 4f)
+                    zoom.scale = newScale
+                    if (newScale > 1f) {
+                        zoom.offset += pan
+                    }
+                    zoom.rotation += rotationChange
+
+                    event.changes.forEach { it.consume() }
+                }
+
+                if (event.changes.all { !it.pressed }) {
+                    break
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun ZoomableBitmap(
@@ -23,47 +56,29 @@ fun ZoomableBitmap(
     zoom: ZoomState,
     onTap: (() -> Unit)? = null
 ) {
-    // SAFE transform pattern: always detect pinch (zoom) but only pan when zoomed
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            // Always listen for tap/double-tap
+            // Tap + double-tap (does not steal pager scroll)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onTap?.invoke() },
                     onDoubleTap = {
                         if (zoom.scale > 1f) {
-                            zoom.scale = 1f
-                            zoom.offset = Offset.Zero
-                            zoom.rotation = 0f
+                            zoom.reset()
                         } else {
-                            zoom.scale = 2.5f
+                            zoom.scale = 2f
                         }
                     }
                 )
             }
-            // Only run transform detection while two or more pointers are present.
-            // Keyed on zoom.scale so the pointer handler is recreated when the scale changes
-            // — this prevents lingering velocities from stealing pager flings after pinch.
+            .pdfZoomable(zoom)
             .pointerInput(zoom.scale) {
-                while (true) {
-                    val ev = awaitPointerEventScope { awaitPointerEvent() }
-                    if (ev.changes.size >= 2) {
-                        detectTransformGestures { _, pan, gestureZoom, gestureRotation ->
-                            val gz = gestureZoom
-                            val gr = gestureRotation
-                            // Always apply pinch (zoom)
-                            val newScale = (zoom.scale * gz).coerceIn(1f, 5f)
-                            // Apply pan only if resulting scale > 1f
-                            if (newScale > 1f) {
-                                zoom.offset = zoom.offset + pan
-                            }
-                            zoom.scale = newScale
-                            // Apply rotation regardless (optional)
-                            zoom.rotation = (zoom.rotation + gr) % 360f
-                        }
+                if (zoom.scale > 1f) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        zoom.offset += dragAmount
                     }
                 }
             },
@@ -75,6 +90,7 @@ fun ZoomableBitmap(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = null,
             modifier = Modifier
+                .fillMaxSize()
                 .graphicsLayer {
                     scaleX = zoom.scale
                     scaleY = zoom.scale

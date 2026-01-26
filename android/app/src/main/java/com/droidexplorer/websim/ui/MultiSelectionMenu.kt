@@ -1,6 +1,5 @@
 package com.droidexplorer.websim.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Close
@@ -25,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.file.FsNode
+import com.droidexplorer.websim.ui.glass.CyberGlassPanel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,17 +33,12 @@ fun MultiSelectionMenu(
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val menuBackground = Color(0xFF0E1420)
-    val menuText = Color.White
+    val menuText = Color.White.copy(alpha = 0.92f)
     val accent = Color(0xFF00E5FF)
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.Transparent) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-                .background(menuBackground, RoundedCornerShape(18.dp))
-                .padding(bottom = 20.dp)
+        CyberGlassPanel(
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = "${items.size} selected",

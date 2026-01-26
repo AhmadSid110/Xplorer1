@@ -1,11 +1,8 @@
 package com.droidexplorer.websim.ui
 
 import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Archive
@@ -24,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.droidexplorer.websim.ui.glass.CyberGlassPanel
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.util.ZipUtils
 import java.io.File
@@ -48,22 +46,16 @@ fun FileContextMenu(
     val context = LocalContext.current
     val isZipFile = ZipUtils.isZipFile(file)
     
-    val menuBackground = Color(0xFF0E1420)
-    val menuText = Color.White
+    val menuText = Color.White.copy(alpha = 0.92f)
     val accent = Color(0xFF00E5FF)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color.Transparent
+        containerColor = Color.Transparent,
+        scrimColor = Color.Black.copy(alpha = 0.4f)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-                .background(menuBackground, RoundedCornerShape(18.dp))
-                .border(1.dp, accent, RoundedCornerShape(18.dp))
-                .padding(horizontal = 8.dp, vertical = 12.dp)
-                .padding(bottom = 24.dp)
+        CyberGlassPanel(
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = file.name,
@@ -80,6 +72,7 @@ fun FileContextMenu(
                     icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     text = "Open",
                     textColor = menuText,
+                    tint = accent,
                     onClick = { 
                         onOpen()
                         onDismiss() 
@@ -92,6 +85,7 @@ fun FileContextMenu(
                     icon = Icons.Outlined.Edit,
                     text = "Edit",
                     textColor = menuText,
+                    tint = accent,
                     onClick = {
                         onEdit()
                         onDismiss()
@@ -103,6 +97,7 @@ fun FileContextMenu(
                 icon = Icons.Outlined.ContentCopy,
                 text = "Copy",
                 textColor = menuText,
+                tint = accent,
                 onClick = {
                     onCopy()
                     onDismiss()
@@ -113,6 +108,7 @@ fun FileContextMenu(
                 icon = Icons.Outlined.ContentCut,
                 text = "Move",
                 textColor = menuText,
+                tint = accent,
                 onClick = {
                     onMove()
                     onDismiss()
@@ -123,6 +119,7 @@ fun FileContextMenu(
                 icon = Icons.Outlined.DriveFileRenameOutline,
                 text = "Rename",
                 textColor = menuText,
+                tint = accent,
                 onClick = {
                     onRename()
                     onDismiss()
@@ -134,6 +131,7 @@ fun FileContextMenu(
                     icon = Icons.Outlined.Archive,
                     text = "Extract here",
                     textColor = menuText,
+                    tint = accent,
                     onClick = {
                         onExtractHere()
                         onDismiss()
@@ -143,6 +141,7 @@ fun FileContextMenu(
                     icon = Icons.Outlined.Archive,
                     text = "Extract to ${file.nameWithoutExtension}",
                     textColor = menuText,
+                    tint = accent,
                     onClick = {
                         onExtractToFolder()
                         onDismiss()
@@ -153,6 +152,7 @@ fun FileContextMenu(
                     icon = Icons.Outlined.Archive,
                     text = "Zip",
                     textColor = menuText,
+                    tint = accent,
                     onClick = {
                         onZip()
                         onDismiss()
@@ -164,6 +164,7 @@ fun FileContextMenu(
                 icon = Icons.Outlined.Description,
                 text = "Properties",
                 textColor = menuText,
+                tint = accent,
                 onClick = {
                     onProperties()
                     onDismiss()
@@ -175,6 +176,7 @@ fun FileContextMenu(
                     icon = Icons.Outlined.Share,
                     text = "Share",
                     textColor = menuText,
+                    tint = accent,
                     onClick = {
                         onShare(context)
                         onDismiss()
@@ -191,8 +193,8 @@ fun FileContextMenu(
                     onDelete()
                     onDismiss()
                 },
-                tint = Color(0xFFFF5252),
-                textColor = Color(0xFFFF5252)
+                tint = Color(0xFFFF4D6D),
+                textColor = Color(0xFFFF4D6D)
             )
         }
     }
