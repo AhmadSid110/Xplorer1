@@ -51,7 +51,14 @@ import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.XplorerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.io.File
+import java.util.UUID
+import android.provider.OpenableColumns
+import androidx.core.content.FileProvider
+import com.droidexplorer.websim.ui.viewer.Viewer
+import com.droidexplorer.websim.file.*
 
 class MainActivity : ComponentActivity() {
 
@@ -70,6 +77,9 @@ class MainActivity : ComponentActivity() {
             torBoxStore
         )
     }
+
+    // External viewer state for incoming VIEW intents
+    private val externalViewerState = MutableStateFlow<Viewer?>(null)
 
     // Activity-owned UI state
     private val showTorBoxSetupFlow = MutableStateFlow(false)
@@ -102,6 +112,11 @@ class MainActivity : ComponentActivity() {
 
         checkAndRequestPermissions()
 
+        // Handle files opened via VIEW intents (from file managers / browsers)
+        intent?.data?.let { uri ->
+            handleIncomingFile(uri)
+        }
+
         // Lifecycle-safe UI events
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -127,6 +142,7 @@ class MainActivity : ComponentActivity() {
             val permissionRefresh by viewModel.permissionRefresh.collectAsState()
             val storageCategoryData by viewModel.storageCategoryData.collectAsState()
             val showTorBoxSetup by showTorBoxSetupFlow.collectAsState()
+            val externalViewer by externalViewerState.collectAsState()
             val context = LocalContext.current
 
             var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -288,7 +304,8 @@ class MainActivity : ComponentActivity() {
                             onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                             onRequestSafAccess = viewModel::requestSafAccessFor,
                             onViewModeChange = viewModel::setViewMode,
-                            torBoxClient = torBoxClient
+                            torBoxClient = torBoxClient,
+                            externalViewer = externalViewer
                         )
                     }
                 } else {
@@ -318,6 +335,93 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onAllFilesAccessChanged()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.data?.let { uri ->
+            handleIncomingFile(uri)
+        }
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        val projection = arrayOf(OpenableColumns.DISPLAY_NAME)
+        contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx != -1) return cursor.getString(idx)
+            }
+        }
+        return null
+    }
+
+    private fun handleIncomingFile(uri: Uri) {
+        try {
+            // Clean up previous external-open cache files to prevent cache bloat
+            cacheDir.listFiles()?.forEach {
+                if (it.name.startsWith("ext_open_")) it.delete()
+            }
+
+            // Derive original name and extension
+            val origName = queryDisplayName(uri) ?: uri.lastPathSegment ?: "file_${UUID.randomUUID()}"
+            val origExt = origName.substringAfterLast('.', "")
+
+            // Create a new unique cache file using timestamp prefix
+            val fileName = if (origExt.isBlank()) "ext_open_${System.currentTimeMillis()}" else "ext_open_${System.currentTimeMillis()}.$origExt"
+            val target = File(cacheDir, fileName)
+
+            // Copy the content to cache
+            contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: throw Exception("Unable to read incoming URI")
+
+            // Decide which viewer to open based on extension/type
+            val ext = target.extension.lowercase()
+            val lang = when (ext) {
+                "py" -> "python"
+                "kt" -> "kotlin"
+                "java" -> "java"
+                "json" -> "json"
+                "xml" -> "xml"
+                "js" -> "javascript"
+                "ts" -> "typescript"
+                "c" -> "c"
+                "cpp" -> "cpp"
+                "h" -> "cpp"
+                "sh" -> "bash"
+                else -> "plaintext"
+            }
+
+            val viewer = when {
+                target.isImage() -> Viewer.Image(target)
+                ext == "pdf" -> Viewer.Pdf(target)
+                target.isTextFile() -> Viewer.Text(target)
+                ext == "zip" -> Viewer.Zip(target)
+                ext in setOf("py", "kt", "java", "json", "xml", "js", "ts", "c", "cpp", "h", "sh") -> Viewer.Code(target, lang)
+                else -> null
+            }
+
+            if (viewer != null) {
+                externalViewerState.value = viewer
+            } else {
+                // Fallback: attempt to open with external app
+                val uriForFile = FileProvider.getUriForFile(this, "${packageName}.provider", target)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uriForFile, contentResolver.getType(uri) ?: "*/*")
+                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Unable to open file", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to open file: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun checkAndRequestPermissions() {

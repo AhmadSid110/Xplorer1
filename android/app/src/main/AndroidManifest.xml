@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.droidexplorer.websim">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Storage permissions for file browsing -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -34,6 +33,25 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Handle files opened from other apps (file managers, browsers) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <!-- Allow opening local files -->
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+
+                <!-- Common file types -->
+                <data android:mimeType="application/pdf"/>
+                <data android:mimeType="image/*"/>
+                <data android:mimeType="video/*"/>
+                <data android:mimeType="text/plain"/>
+                <data android:mimeType="application/zip"/>
             </intent-filter>
         </activity>
 

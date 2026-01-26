@@ -75,7 +75,8 @@ fun DualPaneScreen(
     onRequestAllFilesAccess: () -> Unit,
     onRequestSafAccess: (FsNode) -> Unit,
     onViewModeChange: (com.droidexplorer.websim.settings.ViewMode) -> Unit,
-    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
+    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null,
+    externalViewer: Viewer? = null
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -98,6 +99,11 @@ fun DualPaneScreen(
 
     var activePane by remember { mutableStateOf(leftPaneState) }
     var viewer by remember { mutableStateOf<Viewer?>(null) }
+
+    // If an external viewer is supplied (e.g., from a VIEW intent), open it
+    LaunchedEffect(externalViewer) {
+        externalViewer?.let { viewer = it }
+    }
 
     var paneMode by rememberSaveable {
         mutableStateOf(if (isTablet && !singlePane) PaneMode.DUAL else PaneMode.SINGLE)
