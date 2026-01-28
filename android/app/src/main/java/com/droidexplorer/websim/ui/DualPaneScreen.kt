@@ -13,13 +13,17 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -116,6 +120,9 @@ fun DualPaneScreen(
     val accent = LocalCyberAccent.current
     val haptics = LocalHapticFeedback.current
     var selectedNode by remember { mutableStateOf<FsNode?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var searchOpenSignal by remember { mutableStateOf(0) }
+    var bottomNavIndex by remember { mutableStateOf(0) }
     var clearSelectionSignal by remember { mutableStateOf(0) }
     var renameSelectionSignal by remember { mutableStateOf(0) }
     var deleteSelectionSignal by remember { mutableStateOf(0) }
@@ -160,6 +167,8 @@ fun DualPaneScreen(
 
             /* ───────────────────── MAIN UI ───────────────────── */
 
+            val useBottomNav = settings.showBottomNav
+
             val drawerDestination = when (activePane.path) {
                 "torbox:" -> DrawerDestination.TORBOX
                 "torbox:downloads" -> DrawerDestination.DOWNLOADS
@@ -201,6 +210,7 @@ fun DualPaneScreen(
             ) {
                 Scaffold(
                     topBar = {
+                        if (!useBottomNav) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -213,7 +223,13 @@ fun DualPaneScreen(
                                 ),
                                 title = {
                                     Column {
-                                        Text("XPLORER", letterSpacing = 0.5.sp)
+                                        val folderName = remember(activePane.path) {
+                                            when (activePane.path) {
+                                                "/storage/emulated/0" -> "HOME"
+                                                else -> activePane.path.substringAfterLast('/').ifBlank { "HOME" }.uppercase()
+                                            }
+                                        }
+                                        Text(folderName, letterSpacing = 0.5.sp)
                                         BreadcrumbBar(
                                             currentPath = activePane.path,
                                             onNavigateToPath = { activePane.navigateToPath(it) }
@@ -268,6 +284,13 @@ fun DualPaneScreen(
                                     }
                                 },
                                 actions = {
+                                    IconButton(onClick = { searchOpenSignal++ }) {
+                                        Icon(
+                                            Icons.Filled.Search,
+                                            contentDescription = "Search",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                     Box {
                                         IconButton(onClick = { viewMenuExpanded = true }) {
                                             Icon(
@@ -397,6 +420,23 @@ fun DualPaneScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
+                                                text = { Text(if (selectionMode) "Exit selection" else "Select files") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.DoneAll,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    selectionMode = !selectionMode
+                                                    if (!selectionMode) {
+                                                        clearSelectionSignal++
+                                                    }
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
                                                 text = { Text("Cleaner") },
                                                 leadingIcon = {
                                                     Icon(
@@ -487,6 +527,46 @@ fun DualPaneScreen(
                                 thickness = 0.5.dp
                             )
                         }
+                        }
+                    },
+                    bottomBar = {
+                        if (useBottomNav) {
+                            NavigationBar {
+                                NavigationBarItem(
+                                    selected = bottomNavIndex == 0,
+                                    onClick = { bottomNavIndex = 0 },
+                                    icon = { Icon(Icons.Outlined.Folder, contentDescription = "Files") },
+                                    label = { Text("Files") }
+                                )
+                                NavigationBarItem(
+                                    selected = bottomNavIndex == 1,
+                                    onClick = {
+                                        bottomNavIndex = 1
+                                        searchOpenSignal++
+                                    },
+                                    icon = { Icon(Icons.Outlined.Search, contentDescription = "Search") },
+                                    label = { Text("Search") }
+                                )
+                                NavigationBarItem(
+                                    selected = bottomNavIndex == 2,
+                                    onClick = {
+                                        bottomNavIndex = 2
+                                        onOpenCleaner()
+                                    },
+                                    icon = { Icon(Icons.Outlined.CleaningServices, contentDescription = "Cleaner") },
+                                    label = { Text("Cleaner") }
+                                )
+                                NavigationBarItem(
+                                    selected = bottomNavIndex == 3,
+                                    onClick = {
+                                        bottomNavIndex = 3
+                                        onOpenSettings()
+                                    },
+                                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+                                    label = { Text("Settings") }
+                                )
+                            }
+                        }
                     }
                 ) { padding ->
                     Box(
@@ -518,6 +598,8 @@ fun DualPaneScreen(
                                 deleteSelectionSignal = deleteSelectionSignal,
                                 onRequestFocus = { activePane = leftPaneState },
                                 isActive = activePane == leftPaneState,
+                                selectionMode = selectionMode,
+                                searchOpenSignal = searchOpenSignal,
                                 sortType = sortType,
                                 sortOrder = sortOrder,
                                 showDivider = paneMode == PaneMode.DUAL,
@@ -545,6 +627,8 @@ fun DualPaneScreen(
                                     deleteSelectionSignal = deleteSelectionSignal,
                                     onRequestFocus = { activePane = rightPaneState },
                                     isActive = activePane == rightPaneState,
+                                    selectionMode = selectionMode,
+                                    searchOpenSignal = searchOpenSignal,
                                     sortType = sortType,
                                     sortOrder = sortOrder,
                                     showDivider = false,

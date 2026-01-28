@@ -182,6 +182,10 @@ class ExplorerViewModel(
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
 
+    fun setBottomNavEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setBottomNavEnabled(enabled) }
+    }
+
     // ─────────────────────────────────────────────
     // TorBox
     // ─────────────────────────────────────────────

@@ -50,6 +50,7 @@ import com.droidexplorer.websim.ui.settings.CleanerScreen
 import com.droidexplorer.websim.ui.settings.StorageScreen
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.XplorerTheme
+import com.droidexplorer.websim.ui.theme.XplorerCyberTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -186,9 +187,10 @@ class MainActivity : ComponentActivity() {
                 com.droidexplorer.websim.settings.ThemeMode.DARK -> true
                 com.droidexplorer.websim.settings.ThemeMode.LIGHT -> false
                 com.droidexplorer.websim.settings.ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                com.droidexplorer.websim.settings.ThemeMode.CYBER -> true
             }
 
-            XplorerTheme(darkTheme = useDarkTheme) {
+            val themedContent: @Composable () -> Unit = {
                 if (hasStoragePermission) {
                     if (showSettings) {
 
@@ -283,6 +285,7 @@ class MainActivity : ComponentActivity() {
                                             onRequestAllFilesAccess = viewModel::requestAllFilesAccess,
                                             onOpenStorage = { showStorage = true },
                                             onOpenCleaner = { showCleaner = true },
+                                            onToggleBottomNav = viewModel::setBottomNavEnabled,
                                             modifier = Modifier.padding(padding)
                                         )
                                 }
@@ -328,6 +331,12 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+            }
+
+            if (settingsState.themeMode == com.droidexplorer.websim.settings.ThemeMode.CYBER) {
+                XplorerCyberTheme { themedContent() }
+            } else {
+                XplorerTheme(darkTheme = useDarkTheme) { themedContent() }
             }
         }
     }

@@ -18,6 +18,7 @@ class SettingsRepository(
     private val SEARCH_SAF = booleanPreferencesKey("search_saf")
     private val TORBOX_ENABLED = booleanPreferencesKey("torbox_enabled")
     private val THEME_MODE = stringPreferencesKey("theme_mode")
+    private val BOTTOM_NAV = booleanPreferencesKey("bottom_nav")
 
     val settings: Flow<SettingsState> =
         context.dataStore.data.map { prefs ->
@@ -30,7 +31,8 @@ class SettingsRepository(
                 showHiddenFiles = prefs[SHOW_HIDDEN] ?: false,
                 searchIncludeSaf = prefs[SEARCH_SAF] ?: false,
                 torBoxEnabled = prefs[TORBOX_ENABLED] ?: false,
-                themeMode = themeMode
+                themeMode = themeMode,
+                showBottomNav = prefs[BOTTOM_NAV] ?: false
             )
         }
 
@@ -63,4 +65,11 @@ class SettingsRepository(
             it[THEME_MODE] = mode.name
         }
     }
+
+    suspend fun setBottomNavEnabled(enabled: Boolean) {
+        context.dataStore.edit {
+            it[BOTTOM_NAV] = enabled
+        }
+    }
 }
+

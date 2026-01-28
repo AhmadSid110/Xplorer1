@@ -42,6 +42,7 @@ fun SettingsScreen(
     onRequestAllFilesAccess: () -> Unit,
     onOpenStorage: () -> Unit,
     onOpenCleaner: () -> Unit,
+    onToggleBottomNav: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
@@ -103,7 +104,25 @@ fun SettingsScreen(
             }
         }
 
-        SectionHeader("Visibility")
+        SectionCard {
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                headlineContent = { Text("Bottom navigation") },
+                supportingContent = { Text("Use bottom nav bar instead of top menu") },
+                trailingContent = {
+                    Switch(
+                        checked = state.showBottomNav,
+                        onCheckedChange = null
+                    )
+                },
+                modifier = Modifier.clickable {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onToggleBottomNav(!state.showBottomNav)
+                }
+            )
+        }
+
+                SectionHeader("Visibility")
         SectionCard {
             ListItem(
                 leadingContent = { Icon(Icons.Filled.Visibility, contentDescription = null) },
@@ -196,6 +215,7 @@ private fun themeModeLabel(mode: ThemeMode) = when (mode) {
     ThemeMode.LIGHT -> "Light (recommended)"
     ThemeMode.DARK -> "Dark"
     ThemeMode.SYSTEM -> "System default"
+    ThemeMode.CYBER -> "Cyberpunk / Tesla"
 }
 
 @Composable

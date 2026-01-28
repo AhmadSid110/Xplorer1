@@ -120,8 +120,8 @@ class FileOperator(
 
     fun performClipboard(clipboardItem: ClipboardItem, destination: File): Result<File> {
         return when (clipboardItem.operation) {
-            ClipboardOperation.COPY -> copy(File(clipboardItem.sourcePath), destination)
-            ClipboardOperation.MOVE -> move(File(clipboardItem.sourcePath), destination)
+            ClipboardOperation.COPY -> copy(File(clipboardItem.sourcePaths.first()), destination)
+            ClipboardOperation.MOVE -> move(File(clipboardItem.sourcePaths.first()), destination)
         }
     }
 

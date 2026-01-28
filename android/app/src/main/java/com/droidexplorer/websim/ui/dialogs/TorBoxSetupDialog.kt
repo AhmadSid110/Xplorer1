@@ -30,8 +30,8 @@ fun TorBoxSetupDialog(
     
     AlertDialog(
         onDismissRequest = onCancel,
-        modifier = Modifier.neonGlass(),
-        containerColor = Color.Transparent,
+        modifier = Modifier.neonGlass(alpha = 0.32f),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
         title = { Text("Connect TorBox") },
         text = {
             Column(

@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 enum class ClipboardOperation { COPY, MOVE }
 
 data class ClipboardItem(
-    val sourcePath: String,
+    val sourcePaths: List<String>,
     val operation: ClipboardOperation
 )
 
@@ -16,11 +16,19 @@ object FileClipboard {
         private set
 
     fun copy(path: String) {
-        item = ClipboardItem(path, ClipboardOperation.COPY)
+        item = ClipboardItem(listOf(path), ClipboardOperation.COPY)
+    }
+
+    fun copy(paths: List<String>) {
+        item = ClipboardItem(paths, ClipboardOperation.COPY)
     }
 
     fun cut(path: String) {
-        item = ClipboardItem(path, ClipboardOperation.MOVE)
+        item = ClipboardItem(listOf(path), ClipboardOperation.MOVE)
+    }
+
+    fun cut(paths: List<String>) {
+        item = ClipboardItem(paths, ClipboardOperation.MOVE)
     }
 
     fun clear() {

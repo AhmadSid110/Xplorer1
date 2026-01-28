@@ -38,6 +38,7 @@ import com.droidexplorer.websim.file.FileManager
 import com.droidexplorer.websim.storage.StorageInfoProvider
 import com.droidexplorer.websim.ui.effects.IndeterminateArc
 import com.droidexplorer.websim.ui.theme.DividerSoft
+import com.droidexplorer.websim.ui.theme.ChamferShape
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.cyberGlow
 import kotlinx.coroutines.Dispatchers
@@ -244,11 +245,11 @@ fun CleanerScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surface, ChamferShape(24.dp))
                         .border(
                             1.dp,
                             accent.copy(alpha = 0.4f),
-                            RoundedCornerShape(24.dp)
+                            ChamferShape(24.dp)
                         )
                         .padding(20.dp)
                 ) {
@@ -276,7 +277,7 @@ fun CleanerScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
-                                .clip(RoundedCornerShape(8.dp)),
+                                .clip(ChamferShape(8.dp)),
                             color = accent,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -288,11 +289,11 @@ fun CleanerScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface, ChamferShape(20.dp))
                         .border(
                             1.dp,
                             accent.copy(alpha = 0.3f),
-                            RoundedCornerShape(20.dp)
+                            ChamferShape(20.dp)
                         )
                         .padding(16.dp)
                 ) {
@@ -318,10 +319,10 @@ fun CleanerScreen(
                                 .border(
                                     1.dp,
                                     accent.copy(alpha = 0.6f),
-                                    RoundedCornerShape(16.dp)
+                                    ChamferShape(16.dp)
                                 )
                         ) {
-                            Text("Scan smart")
+                            Text("[ INITIATE SCAN ]")
                         }
                     }
                 }
@@ -330,12 +331,12 @@ fun CleanerScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Protected folders",
+                        text = "PROTECTED FOLDERS",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Protect Android/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text("PROTECT ANDROID/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.weight(1f))
                         Switch(
                             checked = protectAndroid,
@@ -346,7 +347,7 @@ fun CleanerScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Protect DCIM/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text("PROTECT DCIM/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(Modifier.weight(1f))
                         Switch(
                             checked = protectDcim,
@@ -596,8 +597,8 @@ private fun CleanerResultsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface, ChamferShape(16.dp))
+                    .border(1.dp, accent.copy(alpha = 0.35f), ChamferShape(16.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -681,7 +682,7 @@ private fun CleanerCategoryCard(
                         MaterialTheme.colorScheme.surface
                     )
                 ),
-                RoundedCornerShape(20.dp)
+                ChamferShape(20.dp)
             )
             .then(
                 if (selected) {
@@ -689,7 +690,7 @@ private fun CleanerCategoryCard(
                         .border(
                             1.dp,
                             accent.copy(alpha = 0.5f),
-                            RoundedCornerShape(20.dp)
+                            ChamferShape(20.dp)
                         )
                         .cyberGlow(accent, intensity = 0.3f)
                 } else {
@@ -757,12 +758,12 @@ private fun CleanerFileRow(
             .fillMaxWidth()
             .background(
                 if (checked) accent.copy(alpha = 0.08f) else Color.Transparent,
-                RoundedCornerShape(12.dp)
+                ChamferShape(12.dp)
             )
             .then(
                 if (checked) {
                     Modifier
-                        .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .border(1.dp, accent.copy(alpha = 0.5f), ChamferShape(12.dp))
                         .cyberGlow(accent, intensity = 0.25f)
                 } else {
                     Modifier

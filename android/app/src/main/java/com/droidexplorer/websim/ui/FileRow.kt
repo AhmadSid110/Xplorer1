@@ -1,14 +1,11 @@
 package com.droidexplorer.websim.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
@@ -22,10 +19,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.file.safeSize
 import com.droidexplorer.websim.ui.effects.rememberPulseAlpha
+import com.droidexplorer.websim.ui.theme.ChamferShape
 import com.droidexplorer.websim.ui.theme.DividerSoft
 import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.cyberGlow
@@ -33,19 +32,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Displays a single file or directory as a row.
- * 
- * CRITICAL VISIBILITY RULE: This composable renders the file unconditionally.
- * DO NOT add any logic to skip rendering based on extension, MIME type, or category.
- * 
- * @param file The file to render
- * @param isSelected Whether the file is currently selected
- * @param onClick Callback when the row is clicked
- * @param onLongClick Callback when the row is long-pressed
- * @param requiresPermission Whether the file requires permission to access
- * @param modifier Optional modifier for the row
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileRow(
@@ -57,40 +43,27 @@ fun FileRow(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("yyyy.MM.dd // HH:mm", Locale.getDefault()) }
     val sizeText = remember(file.uniqueKey) { formatFileSize(file.safeSize()) }
-    val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())) }
+    val dateText = remember(file.uniqueKey) { dateFormat.format(Date(file.lastModified())).uppercase() }
     val accent = LocalCyberAccent.current
     val pulse = rememberPulseAlpha(isSelected)
-    
-    // Animated background with spring animation for smoother transitions
+
     val highlightColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            accent.copy(alpha = 0.08f)
-        } else {
-            Color.Transparent
-        },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = if (isSelected) accent.copy(alpha = 0.05f) else Color.Transparent,
         label = "fileRowSelection"
     )
-    val iconSize = 28.dp
+    val iconSize = 24.dp
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(highlightColor, RoundedCornerShape(12.dp))
+            .background(highlightColor, ChamferShape(8.dp))
             .then(
                 if (isSelected) {
                     Modifier
-                        .border(
-                            1.dp,
-                            accent.copy(alpha = 0.5f + (0.2f * pulse)),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .cyberGlow(accent, intensity = 0.35f + (0.25f * pulse))
+                        .border(1.dp, accent.copy(alpha = 0.6f + (0.2f * pulse)), ChamferShape(8.dp))
+                        .cyberGlow(accent, intensity = 0.2f + (0.1f * pulse))
                 } else {
                     Modifier
                 }
@@ -102,7 +75,7 @@ fun FileRow(
                     onLongClick()
                 }
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -111,61 +84,38 @@ fun FileRow(
             FileIcon(
                 file = file,
                 size = iconSize,
-                tint = null
+                tint = if (isSelected) accent else MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name.uppercase(),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        letterSpacing = 1.sp,
+                        fontSize = 14.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isSelected) accent else MaterialTheme.colorScheme.onSurface
+                )
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = file.name,
-                        style = if (file.isDirectory) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface.copy(
-                            alpha = if (file is FsNode.TorBox) 0.7f else 1f
-                        )
+                    val labelStyle = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-                    if (file is FsNode.TorBox) {
-                        Icon(
-                            imageVector = Icons.Outlined.Lock,
-                            contentDescription = "Remote file - read only",
-                            tint = accent.copy(alpha = 0.7f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (file is FsNode.TorBox) {
-                        Text(
-                            text = "Remote (read-only)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = accent.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+
                     if (!file.isDirectory) {
-                        Text(
-                            text = sizeText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text(text = "SIZE: $sizeText", style = labelStyle)
+                    } else {
+                        Text(text = "TYPE: DIR", style = labelStyle)
                     }
-                    if (file !is FsNode.TorBox) {
-                        Text(
-                            text = dateText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(text = "MOD: $dateText", style = labelStyle)
                 }
             }
 
@@ -182,7 +132,8 @@ fun FileRow(
 
         Divider(
             color = DividerSoft,
-            modifier = Modifier.padding(start = 40.dp)
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(top = 12.dp)
         )
     }
 }
@@ -192,6 +143,6 @@ fun formatFileSize(size: Long): String {
         size < 1024 -> "$size B"
         size < 1024 * 1024 -> "${size / 1024} KB"
         size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
-        else -> "${size / (1024 * 1024 * 1024)} GB"
+        else -> String.format("%.2f GB", size.toDouble() / (1024 * 1024 * 1024))
     }
 }

@@ -244,7 +244,7 @@ object FileManager {
         destinationPath: String
     ): Result<File> =
         try {
-            val src = File(clipboardItem.sourcePath)
+            val src = File(clipboardItem.sourcePaths.first())
             val dest = File(destinationPath, src.name)
 
             when (clipboardItem.operation) {

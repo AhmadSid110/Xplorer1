@@ -15,7 +15,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -52,6 +54,7 @@ import com.droidexplorer.websim.file.openFile
 import com.droidexplorer.websim.file.FsNode
 import com.droidexplorer.websim.file.asFile
 import com.droidexplorer.websim.file.isImage
+import com.droidexplorer.websim.file.lastModified
 import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.storage.SafPermissionManager
 import com.droidexplorer.websim.settings.SettingsState
@@ -95,11 +98,15 @@ fun FileListPane(
     deleteSelectionSignal: Int,
     onRequestFocus: () -> Unit,
     isActive: Boolean,
+    selectionMode: Boolean = false,
     sortType: SortType,
     sortOrder: SortOrder,
     showDivider: Boolean = false,
     onOpenViewer: (Viewer) -> Unit = {},
-    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null
+    torBoxClient: com.droidexplorer.websim.torbox.TorBoxClient? = null,
+    recentItems: List<FsNode> = emptyList(),
+    onRecordRecent: (FsNode) -> Unit = {},
+    searchOpenSignal: Int = 0
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -112,7 +119,13 @@ fun FileListPane(
     val operationProgress by FileOperationService.observe().collectAsState(initial = null)
 
 
-    LaunchedEffect(searchQuery) {
+        LaunchedEffect(searchOpenSignal) {
+        if (searchOpenSignal > 0) {
+            isSearching = true
+        }
+    }
+
+LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
             isSearching = true
         }
@@ -128,7 +141,13 @@ fun FileListPane(
     var propertiesTarget by remember { mutableStateOf<File?>(null) }
     val selectionController = remember { SelectionController<FsNode> { it.uniqueKey } }
     val writeProbeCache = remember { mutableStateMapOf<String, Boolean>() }
-    LaunchedEffect(permissionRefresh) {
+        LaunchedEffect(currentPath) {
+        if (!currentPath.startsWith("torbox:")) {
+            onRecordRecent(FsNode.Local(File(currentPath)))
+        }
+    }
+
+LaunchedEffect(permissionRefresh) {
         writeProbeCache.clear()
         if (permissionRefresh > 0) {
             refreshTrigger++
@@ -154,8 +173,16 @@ fun FileListPane(
         }
     }
 
-    LaunchedEffect(selectedFile, showContextMenu) {
-        onSelectionChange(selectedFile?.takeIf { showContextMenu })
+    
+    LaunchedEffect(selectionMode) {
+        if (!selectionMode && !showContextMenu) {
+            selectedFile = null
+            selectionController.clear()
+        }
+    }
+LaunchedEffect(selectedFile, showContextMenu, selectionMode) {
+        val inSelectionMode = showContextMenu || selectionMode
+        onSelectionChange(selectedFile?.takeIf { inSelectionMode })
     }
 
     // Snackbar state
@@ -188,6 +215,15 @@ fun FileListPane(
             )
         } else {
             emptyList()
+        }
+    }
+
+    LaunchedEffect(files) {
+        if (!currentPath.startsWith("torbox:")) {
+            val recentModified = files.filter { !it.isDirectory }
+                .sortedByDescending { it.lastModified() }
+                .take(5)
+            recentModified.forEach { onRecordRecent(it) }
         }
     }
 
@@ -323,7 +359,11 @@ fun FileListPane(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(File(tab.path).name.ifBlank { tab.path })
+                                    val tabLabel = when (tab.path) {
+                                        "/storage/emulated/0" -> "Home"
+                                        else -> File(tab.path).name.ifBlank { tab.path }
+                                    }
+                                    Text(tabLabel)
                                     if (tabs.size > 1) {
                                         IconButton(
                                             onClick = { paneState.closeTab(index) },
@@ -362,6 +402,26 @@ fun FileListPane(
                     )
                 }
 
+                if (recentItems.isNotEmpty()) {
+                    RecentFilesRow(
+                        items = recentItems.take(10),
+                        onOpen = { item ->
+                            if (item.isDirectory) {
+                                paneState.navigateTo(item.path)
+                                onSearchQueryChange("")
+                            } else if (item is FsNode.TorBox) {
+                                selectedFile = item
+                                selectionController.clear()
+                                selectionController.select(item)
+                                showContextMenu = true
+                            } else {
+                                handleOpen(item.asFile())
+                            }
+                            onRecordRecent(item)
+                        }
+                    )
+                }
+
                 Surface(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.0f),
                     tonalElevation = 0.dp
@@ -373,16 +433,6 @@ fun FileListPane(
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                isSearching = !isSearching
-                            }) {
-                                Icon(
-                                    if (isSearching) Icons.Filled.Close else Icons.Filled.Search,
-                                    contentDescription = "Search"
-                                )
-                            }
-
                             Spacer(modifier = Modifier.weight(1f))
 
                             if (FileClipboard.hasItem()) {
@@ -390,18 +440,19 @@ fun FileListPane(
                                     onClick = {
                                         FileClipboard.item?.let { item ->
                                             val destination = NodeRef.from(File(paneState.path))
-                                            val operation = when (item.operation) {
-                                                ClipboardOperation.COPY -> FileOperation.Copy(
-                                                    NodeRef.from(File(item.sourcePath)),
-                                                    destination
-                                                )
-
-                                                ClipboardOperation.MOVE -> FileOperation.Move(
-                                                    NodeRef.from(File(item.sourcePath)),
-                                                    destination
-                                                )
+                                            item.sourcePaths.forEach { sourcePath ->
+                                                val operation = when (item.operation) {
+                                                    ClipboardOperation.COPY -> FileOperation.Copy(
+                                                        NodeRef.from(File(sourcePath)),
+                                                        destination
+                                                    )
+                                                    ClipboardOperation.MOVE -> FileOperation.Move(
+                                                        NodeRef.from(File(sourcePath)),
+                                                        destination
+                                                    )
+                                                }
+                                                FileOperationService.enqueue(context, operation)
                                             }
-                                            FileOperationService.enqueue(context, operation)
                                             FileClipboard.clear()
                                             snackbarMessage = "Operation started"
                                         }
@@ -429,6 +480,14 @@ fun FileListPane(
                                             onSearchQueryChange("")
                                         }) {
                                             Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                                        }
+                                    } else {
+                                        IconButton(onClick = {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            isSearching = false
+                                            onSearchQueryChange("")
+                                        }) {
+                                            Icon(Icons.Filled.Close, contentDescription = "Close search")
                                         }
                                     }
                                 },
@@ -487,8 +546,11 @@ fun FileListPane(
                     if (requiresPermission(node)) {
                         handleRestricted(node)
                     } else {
-                        if (showContextMenu && node !is FsNode.TorBox) {
+                        val inSelectionMode = showContextMenu || selectionMode
+                        if (inSelectionMode && node !is FsNode.TorBox) {
                             selectionController.toggle(node)
+                            val selected = selectionController.currentSelection(activeFiles)
+                            selectedFile = if (selected.isEmpty()) null else node
                         } else {
                             when (node) {
                                 is FsNode.TorBox -> {
@@ -575,13 +637,13 @@ fun FileListPane(
                                 if (searchLoading) {
                                     SearchLoadingState()
                                 } else if (activeFiles.isEmpty()) {
-                                    EmptyState(searchQuery.isNotEmpty())
+                                    EmptyState(searchQuery.isNotEmpty(), onGoBack = if (paneState.canGoBack()) ({ paneState.goBack(); onSearchQueryChange("") }) else null)
                                 } else {
                                     FileListView(
                                         files = activeFiles,
                                         onClick = handleItemClick,
                                         onLongClick = handleItemLongClick,
-                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        isSelected = { selectionController.isSelected(it) && (showContextMenu || selectionMode) },
                                         requiresPermission = { requiresPermission(it) }
                                     )
                                 }
@@ -590,13 +652,13 @@ fun FileListPane(
                                 if (searchLoading) {
                                     SearchLoadingState()
                                 } else if (activeFiles.isEmpty()) {
-                                    EmptyState(searchQuery.isNotEmpty())
+                                    EmptyState(searchQuery.isNotEmpty(), onGoBack = if (paneState.canGoBack()) ({ paneState.goBack(); onSearchQueryChange("") }) else null)
                                 } else {
                                     FileGridView(
                                         files = activeFiles,
                                         onClick = handleItemClick,
                                         onLongClick = handleItemLongClick,
-                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        isSelected = { selectionController.isSelected(it) && (showContextMenu || selectionMode) },
                                         requiresPermission = { requiresPermission(it) }
                                     )
                                 }
@@ -605,13 +667,13 @@ fun FileListPane(
                                 if (searchLoading) {
                                     SearchLoadingState()
                                 } else if (activeFiles.isEmpty()) {
-                                    EmptyState(searchQuery.isNotEmpty())
+                                    EmptyState(searchQuery.isNotEmpty(), onGoBack = if (paneState.canGoBack()) ({ paneState.goBack(); onSearchQueryChange("") }) else null)
                                 } else {
                                     FileDetailsView(
                                         files = activeFiles,
                                         onClick = handleItemClick,
                                         onLongClick = handleItemLongClick,
-                                        isSelected = { selectionController.isSelected(it) && showContextMenu },
+                                        isSelected = { selectionController.isSelected(it) && (showContextMenu || selectionMode) },
                                         requiresPermission = { requiresPermission(it) }
                                     )
                                 }
@@ -634,6 +696,63 @@ fun FileListPane(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        if (selectionMode) {
+            val selectedItems = selectionController.currentSelection(activeFiles)
+                .filter { it !is FsNode.TorBox }
+            if (selectedItems.isNotEmpty()) {
+                SelectionActionBar(
+                    count = selectedItems.size,
+                    onCopy = {
+                        FileClipboard.copy(selectedItems.map { it.path })
+                        snackbarMessage = "Copied selection"
+                    },
+                    onCut = {
+                        FileClipboard.cut(selectedItems.map { it.path })
+                        snackbarMessage = "Cut selection"
+                    },
+                    onPaste = {
+                        FileClipboard.item?.let { item ->
+                            val destination = NodeRef.from(File(paneState.path))
+                            item.sourcePaths.forEach { sourcePath ->
+                                val operation = when (item.operation) {
+                                    ClipboardOperation.COPY -> FileOperation.Copy(
+                                        NodeRef.from(File(sourcePath)),
+                                        destination
+                                    )
+                                    ClipboardOperation.MOVE -> FileOperation.Move(
+                                        NodeRef.from(File(sourcePath)),
+                                        destination
+                                    )
+                                }
+                                FileOperationService.enqueue(context, operation)
+                            }
+                            FileClipboard.clear()
+                            snackbarMessage = "Operation started"
+                        }
+                    },
+                    onZip = {
+                        val filesToZip = selectedItems.map { it.asFile() }
+                        ZipUtils.zipFiles(filesToZip, "selection").fold(
+                            onSuccess = {
+                                snackbarMessage = "Zipped selection"
+                                refreshTrigger++
+                            },
+                            onFailure = { snackbarMessage = "Failed to zip: ${it.message}" }
+                        )
+                        selectionController.clear()
+                        selectedFile = null
+                    },
+                    onClear = {
+                        selectionController.clear()
+                        selectedFile = null
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 72.dp, start = 16.dp, end = 16.dp)
+                )
+            }
+        }
 
         // Debug overlay removed
     }
@@ -841,7 +960,7 @@ fun PermissionExplanationDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun EmptyState(hasSearchQuery: Boolean) {
+private fun EmptyState(hasSearchQuery: Boolean, onGoBack: (() -> Unit)? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -869,6 +988,11 @@ private fun EmptyState(hasSearchQuery: Boolean) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
+            if (!hasSearchQuery && onGoBack != null) {
+                TextButton(onClick = onGoBack) {
+                    Text("Go Back")
+                }
+            }
         }
     }
 }
@@ -934,5 +1058,53 @@ private fun openApk(context: android.content.Context, file: File) {
         Toast.makeText(context, "Permission denied opening APK", Toast.LENGTH_SHORT).show()
     } catch (_: IllegalArgumentException) {
         Toast.makeText(context, "Unable to open APK", Toast.LENGTH_SHORT).show()
+    }
+}
+
+
+@Composable
+private fun RecentFilesRow(
+    items: List<FsNode>,
+    onOpen: (FsNode) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Recent",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 6.dp)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(items, key = { it.uniqueKey }) { item ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    tonalElevation = 0.dp,
+                    modifier = Modifier
+                        .widthIn(min = 120.dp)
+                        .clickable { onOpen(item) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FileIcon(
+                            file = item,
+                            size = 22.dp,
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (item.name.isBlank()) item.path.substringAfterLast('/') else item.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
     }
 }

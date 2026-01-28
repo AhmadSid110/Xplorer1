@@ -2,15 +2,12 @@ package com.droidexplorer.websim.ui.settings
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,22 +15,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.droidexplorer.websim.storage.StorageInfo
 import com.droidexplorer.websim.ui.formatFileSize
+import com.droidexplorer.websim.ui.theme.ChamferShape
+import com.droidexplorer.websim.ui.theme.LocalCyberAccent
 import com.droidexplorer.websim.ui.theme.backgroundGradient
 import kotlin.math.min
 
 /**
  * Data class for storage category information.
- * Contains byte totals for different file categories.
  */
 data class StorageCategoryData(
     val images: Long = 0,
@@ -59,11 +56,8 @@ fun StorageScreen(
         label = "storageProgress"
     )
 
-    // ✅ MUST be outside Canvas
-    val progressColor =
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+    val accent = LocalCyberAccent.current
 
-    // Dynamic gradient background
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -76,11 +70,11 @@ fun StorageScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Storage",
+                text = "STORAGE",
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
-                text = "Overview of your device space",
+                text = "OVERVIEW OF DEVICE SPACE",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -88,8 +82,8 @@ fun StorageScreen(
             Spacer(Modifier.height(20.dp))
 
             Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                shape = ChamferShape(10.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.30f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(20.dp)) {
@@ -100,16 +94,17 @@ fun StorageScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Used space",
+                                text = "CAPACITY",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = formatFileSize(info.used),
-                                style = MaterialTheme.typography.headlineSmall
+                                text = (animatedProgress * 100).toInt().toString() + "% // CRITICAL",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = accent
                             )
                             Text(
-                                text = "of ${formatFileSize(info.total)}",
+                                text = formatFileSize(info.used) + " / " + formatFileSize(info.total),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -120,7 +115,7 @@ fun StorageScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Canvas(modifier = Modifier.size(110.dp)) {
-                                val strokeWidth = 14.dp.toPx()
+                                val strokeWidth = 10.dp.toPx()
                                 val diameter = min(size.width, size.height)
                                 val arcSize = Size(diameter - strokeWidth, diameter - strokeWidth)
                                 val topLeft = Offset(
@@ -128,82 +123,72 @@ fun StorageScreen(
                                     (size.height - arcSize.height) / 2
                                 )
 
+                                val dash = floatArrayOf(8f, 6f)
+                                val pathEffect = PathEffect.dashPathEffect(dash, 0f)
+
                                 drawArc(
-                                    color = Color.Gray.copy(alpha = 0.18f),
+                                    color = Color(0xFF333333),
                                     startAngle = -90f,
                                     sweepAngle = 360f,
                                     useCenter = false,
                                     topLeft = topLeft,
                                     size = arcSize,
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt, pathEffect = pathEffect)
                                 )
 
                                 drawArc(
-                                    color = progressColor,
+                                    color = accent,
                                     startAngle = -90f,
                                     sweepAngle = animatedProgress * 360f,
                                     useCenter = false,
                                     topLeft = topLeft,
                                     size = arcSize,
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt, pathEffect = pathEffect)
                                 )
                             }
                             Text(
-                                text = "${(animatedProgress * 100).toInt()}%",
+                                text = (animatedProgress * 100).toInt().toString() + "%",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
+                                color = accent
                             )
                         }
                     }
 
                     Spacer(Modifier.height(12.dp))
 
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = progressColor,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    )
+                    SegmentedBar(progress = animatedProgress, accent = accent)
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = if (categoryData != null) "Storage by category" else "Estimated categories",
+                text = if (categoryData != null) "STORAGE BY CATEGORY" else "ESTIMATED CATEGORIES",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(12.dp))
 
-        // ─────────────────────────────
-        // PHASE-2: REAL DATA FROM MEDIASTORE
-        // Data is provided by the ViewModel
-        // ─────────────────────────────
-        val categories = remember(categoryData) {
-            if (categoryData != null) {
-                // Use real data from MediaStore
-                listOf(
-                    StorageCategory("Images", categoryData.images, Color(0xFF5AC8FA)),
-                    StorageCategory("Videos", categoryData.videos, Color(0xFFB388FF)),
-                    StorageCategory("Audio", categoryData.audio, Color(0xFF00E5A8)),
-                    StorageCategory("APKs", categoryData.apks, Color(0xFFFFD166)),
-                    StorageCategory("Archives", categoryData.archives, Color(0xFF9EA7B8))
-                )
-            } else {
-                // Fallback to placeholder data
-                listOf(
-                    StorageCategory("Images", (info.total * 0.25f).toLong(), Color(0xFF5AC8FA)),
-                    StorageCategory("Videos", (info.total * 0.20f).toLong(), Color(0xFFB388FF)),
-                    StorageCategory("Audio", (info.total * 0.15f).toLong(), Color(0xFF00E5A8)),
-                    StorageCategory("APKs", (info.total * 0.18f).toLong(), Color(0xFFFFD166)),
-                    StorageCategory("Archives", (info.total * 0.12f).toLong(), Color(0xFF9EA7B8))
-                )
+            val categories = remember(categoryData) {
+                if (categoryData != null) {
+                    listOf(
+                        StorageCategory("IMAGES", categoryData.images, Color(0xFF00F3FF)),
+                        StorageCategory("VIDEOS", categoryData.videos, Color(0xFFE82127)),
+                        StorageCategory("AUDIO", categoryData.audio, Color(0xFF00E5A8)),
+                        StorageCategory("APKS", categoryData.apks, Color(0xFFFFD166)),
+                        StorageCategory("ARCHIVES", categoryData.archives, Color(0xFF9EA7B8))
+                    )
+                } else {
+                    listOf(
+                        StorageCategory("IMAGES", (info.total * 0.25f).toLong(), Color(0xFF00F3FF)),
+                        StorageCategory("VIDEOS", (info.total * 0.20f).toLong(), Color(0xFFE82127)),
+                        StorageCategory("AUDIO", (info.total * 0.15f).toLong(), Color(0xFF00E5A8)),
+                        StorageCategory("APKS", (info.total * 0.18f).toLong(), Color(0xFFFFD166)),
+                        StorageCategory("ARCHIVES", (info.total * 0.12f).toLong(), Color(0xFF9EA7B8))
+                    )
+                }
             }
-        }
 
             categories.forEach { category ->
                 CategoryItem(category, info.total)
@@ -213,19 +198,13 @@ fun StorageScreen(
     }
 }
 
-// ─────────────────────────────
 // MODELS
-// ─────────────────────────────
 
 data class StorageCategory(
     val name: String,
     val bytes: Long,
     val color: Color
 )
-
-// ─────────────────────────────
-// CATEGORY ROW
-// ─────────────────────────────
 
 @Composable
 private fun CategoryItem(
@@ -237,7 +216,7 @@ private fun CategoryItem(
     } else {
         0f
     }
-    
+
     val animatedFraction by animateFloatAsState(
         targetValue = percentage,
         animationSpec = tween(600),
@@ -245,10 +224,9 @@ private fun CategoryItem(
     )
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+        modifier = Modifier.fillMaxWidth(),
+        shape = ChamferShape(8.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.25f),
         tonalElevation = 0.dp
     ) {
         Column(Modifier.padding(12.dp)) {
@@ -269,13 +247,26 @@ private fun CategoryItem(
 
             Spacer(Modifier.height(8.dp))
 
-            LinearProgressIndicator(
-                progress = { animatedFraction },
+            SegmentedBar(progress = animatedFraction, accent = category.color)
+        }
+    }
+}
+
+@Composable
+private fun SegmentedBar(progress: Float, accent: Color) {
+    val segments = 24
+    val active = (segments * progress).toInt()
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        repeat(segments) { index ->
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp),
-                color = category.color,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    .height(6.dp)
+                    .weight(1f)
+                    .background(if (index < active) accent else Color(0xFF333333))
             )
         }
     }

@@ -39,6 +39,8 @@ val WarningAmber = Color(0xFFFFC400)
 val ErrorRed = Color(0xFFFF5252)
 
 val DividerSoft = Color.White.copy(alpha = 0.06f)
+val BorderGrey = Color(0xFF333333)
+
 
 /**
  * Glass theme colors for translucent surfaces

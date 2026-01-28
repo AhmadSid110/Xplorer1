@@ -5,7 +5,8 @@ data class SettingsState(
     val showHiddenFiles: Boolean = false,
     val searchIncludeSaf: Boolean = false,
     val torBoxEnabled: Boolean = false,
-    val themeMode: ThemeMode = ThemeMode.LIGHT
+    val themeMode: ThemeMode = ThemeMode.LIGHT,
+    val showBottomNav: Boolean = false
 )
 
 enum class ViewMode {
@@ -17,5 +18,6 @@ enum class ViewMode {
 enum class ThemeMode {
     LIGHT,
     DARK,
-    SYSTEM
+    SYSTEM,
+    CYBER
 }
