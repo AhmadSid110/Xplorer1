@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.droidexplorer.websim
 
@@ -131,6 +131,9 @@ class MainActivity : ComponentActivity() {
 
                         is UiEvent.ShowTorBoxSetup ->
                             showTorBoxSetupFlow.value = true
+                        
+                        is UiEvent.ShowCreateFileDialog -> Unit
+                        is UiEvent.ShowCreateFolderDialog -> Unit
                     }
                 }
             }
@@ -240,7 +243,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     )
-                                    Divider(
+                                    HorizontalDivider(
                                         color = accent.copy(alpha = 0.3f),
                                         thickness = 0.5.dp
                                     )

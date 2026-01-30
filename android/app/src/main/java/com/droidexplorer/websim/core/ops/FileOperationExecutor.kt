@@ -50,6 +50,8 @@ class FileOperationExecutor(
             is FileOperation.Move -> performMove(operation, cancellationToken, emit)
             is FileOperation.Delete -> performDelete(operation, cancellationToken, emit)
             is FileOperation.Rename -> performRename(operation, cancellationToken, emit)
+            is FileOperation.CreateFile -> performCreateFile(operation, cancellationToken, emit)
+            is FileOperation.CreateDirectory -> performCreateDirectory(operation, cancellationToken, emit)
         }
     }
 
@@ -156,11 +158,47 @@ class FileOperationExecutor(
         )
     }
 
+    private suspend fun performCreateFile(
+        operation: FileOperation.CreateFile,
+        cancellationToken: OperationCancellationToken,
+        emit: suspend (OperationProgress) -> Unit
+    ): OperationResult {
+        val parent = operation.parentDir.asFile()
+        emit(OperationProgress.Running(operation.id, 0, null, "Creating file ${operation.name}"))
+        val result = fileOperator.createFile(parent, operation.name)
+        return result.fold(
+            onSuccess = { file ->
+                emit(OperationProgress.Running(operation.id, 1, 1, "File created"))
+                OperationResult.Success(NodeRef.from(file))
+            },
+            onFailure = { OperationResult.Failure(it.message ?: "Failed to create file") }
+        )
+    }
+
+    private suspend fun performCreateDirectory(
+        operation: FileOperation.CreateDirectory,
+        cancellationToken: OperationCancellationToken,
+        emit: suspend (OperationProgress) -> Unit
+    ): OperationResult {
+        val parent = operation.parentDir.asFile()
+        emit(OperationProgress.Running(operation.id, 0, null, "Creating folder ${operation.name}"))
+        val result = fileOperator.createDirectory(parent, operation.name)
+        return result.fold(
+            onSuccess = { dir ->
+                emit(OperationProgress.Running(operation.id, 1, 1, "Folder created"))
+                OperationResult.Success(NodeRef.from(dir))
+            },
+            onFailure = { OperationResult.Failure(it.message ?: "Failed to create folder") }
+        )
+    }
+
     private fun describe(operation: FileOperation): String = when (operation) {
         is FileOperation.Copy -> "Copy ${operation.source.path}"
         is FileOperation.Move -> "Move ${operation.source.path}"
         is FileOperation.Delete -> "Delete ${operation.target.path}"
         is FileOperation.Rename -> "Rename ${operation.target.path}"
+        is FileOperation.CreateFile -> "Create file ${operation.name}"
+        is FileOperation.CreateDirectory -> "Create folder ${operation.name}"
     }
 
     private fun estimateSize(file: File): Long {

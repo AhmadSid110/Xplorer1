@@ -64,7 +64,7 @@ fun FileContextMenu(
                 maxLines = 1
             )
 
-            Divider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
 
             if (!file.isDirectory && onOpen != null) {
                 ContextMenuItem(
@@ -183,7 +183,7 @@ fun FileContextMenu(
                 )
             }
 
-            Divider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DividerSoft, modifier = Modifier.padding(vertical = 8.dp))
 
             ContextMenuItem(
                 icon = Icons.Outlined.Delete,
@@ -201,7 +201,10 @@ fun FileContextMenu(
 
 private fun File.isTextLike(): Boolean {
     val ext = extension.lowercase()
-    return ext in setOf("txt", "md", "json", "xml", "csv", "log")
+    return ext in setOf(
+        "txt", "md", "json", "xml", "csv", "log", 
+        "py", "html", "css", "js", "ts", "kt", "java", "c", "cpp", "h", "sh", "yaml", "yml"
+    )
 }
 
 @Composable

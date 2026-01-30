@@ -10,4 +10,7 @@ sealed interface UiEvent {
     data object RequestAllFilesAccess : UiEvent
     
     data object ShowTorBoxSetup : UiEvent
+
+    data class ShowCreateFileDialog(val parentPath: String) : UiEvent
+    data class ShowCreateFolderDialog(val parentPath: String) : UiEvent
 }

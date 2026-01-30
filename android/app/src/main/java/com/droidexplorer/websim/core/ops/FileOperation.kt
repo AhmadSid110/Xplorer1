@@ -60,6 +60,18 @@ sealed class FileOperation(open val id: OperationId = OperationId()) : Serializa
         override val id: OperationId = OperationId()
     ) : FileOperation(id)
 
+    data class CreateFile(
+        val parentDir: NodeRef,
+        val name: String,
+        override val id: OperationId = OperationId()
+    ) : FileOperation(id)
+
+    data class CreateDirectory(
+        val parentDir: NodeRef,
+        val name: String,
+        override val id: OperationId = OperationId()
+    ) : FileOperation(id)
+
     companion object {
         fun copy(source: FsNode, destinationDir: File): Copy =
             Copy(NodeRef.from(source), NodeRef.from(destinationDir))
@@ -71,10 +83,6 @@ sealed class FileOperation(open val id: OperationId = OperationId()) : Serializa
 
         fun delete(target: File): Delete = Delete(NodeRef.from(target))
 
-        fun rename(target: FsNode, newName: String): Rename =
-            Rename(NodeRef.from(target), newName)
-
-        fun rename(target: File, newName: String): Rename =
-            Rename(NodeRef.from(target), newName)
+        fun rename(target: FsNode, newName: String): Rename = Rename(NodeRef.from(target), newName)
     }
 }

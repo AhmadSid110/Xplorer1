@@ -25,6 +25,8 @@ import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.ViewList
@@ -46,6 +48,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.droidexplorer.websim.file.*
+import com.droidexplorer.websim.core.ops.*
+import com.droidexplorer.websim.service.FileOperationService
 import com.droidexplorer.websim.search.SearchResult
 import com.droidexplorer.websim.settings.SettingsState
 import com.droidexplorer.websim.storage.DataStoreSafStore
@@ -64,6 +68,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +131,8 @@ fun DualPaneScreen(
     var clearSelectionSignal by remember { mutableStateOf(0) }
     var renameSelectionSignal by remember { mutableStateOf(0) }
     var deleteSelectionSignal by remember { mutableStateOf(0) }
+    var showCreateFileDialog by remember { mutableStateOf<String?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf<String?>(null) }
 
     val drawerBlur by animateDpAsState(
         targetValue = if (drawerState.isOpen) 6.dp else 0.dp,
@@ -303,6 +310,34 @@ fun DualPaneScreen(
                                             expanded = viewMenuExpanded,
                                             onDismissRequest = { viewMenuExpanded = false }
                                         ) {
+                                            DropdownMenuItem(
+                                                text = { Text("New File") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.Description,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showCreateFileDialog = activePane.path
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("New Folder") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Outlined.CreateNewFolder,
+                                                        contentDescription = null,
+                                                        tint = accent
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showCreateFolderDialog = activePane.path
+                                                    viewMenuExpanded = false
+                                                }
+                                            )
                                             DropdownMenuItem(
                                                 text = { Text("Sort") },
                                                 leadingIcon = {
@@ -522,7 +557,7 @@ fun DualPaneScreen(
                                     )
                                 }
                             )
-                            Divider(
+                            HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                                 thickness = 0.5.dp
                             )
@@ -638,6 +673,32 @@ fun DualPaneScreen(
                             }
                         }
                         ScanlineOverlay()
+                    }
+
+                    showCreateFileDialog?.let { parentPath ->
+                        CreateItemDialog(
+                            isFolder = false,
+                            onDismiss = { showCreateFileDialog = null },
+                            onCreate = { name ->
+                                FileOperationService.enqueue(
+                                    context,
+                                    FileOperation.CreateFile(NodeRef.from(File(parentPath)), name)
+                                )
+                            }
+                        )
+                    }
+
+                    showCreateFolderDialog?.let { parentPath ->
+                        CreateItemDialog(
+                            isFolder = true,
+                            onDismiss = { showCreateFolderDialog = null },
+                            onCreate = { name ->
+                                FileOperationService.enqueue(
+                                    context,
+                                    FileOperation.CreateDirectory(NodeRef.from(File(parentPath)), name)
+                                )
+                            }
+                        )
                     }
                 }
             }

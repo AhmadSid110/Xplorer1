@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.documentfile.provider.DocumentFile
 import com.droidexplorer.websim.data.ClipboardItem
 import com.droidexplorer.websim.data.ClipboardOperation
@@ -94,6 +95,52 @@ class FileOperator(
                 context.contentResolver.openOutputStream(doc.uri, "wt")?.use { stream ->
                     stream.write(content.toByteArray())
                 } ?: throw FileWriteFailed("Unable to write via SAF")
+            } else {
+                throw e
+            }
+        }
+    }
+
+    fun createFile(parentDir: File, name: String): Result<File> = runCatching {
+        val newFile = File(parentDir, name)
+        try {
+            if (newFile.createNewFile()) {
+                newFile
+            } else {
+                throw FileWriteFailed("File already exists")
+            }
+        } catch (e: Exception) {
+            if (e.isPermissionError()) {
+                val uri = saf.getOrRequest(parentDir)
+                val dirDoc = DocumentFile.fromTreeUri(context, uri)
+                    ?: throw SafRequired(parentDir)
+                val ext = name.substringAfterLast('.', "")
+                val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "text/plain"
+                dirDoc.createFile(mime, name)
+                    ?: throw FileWriteFailed("Unable to create file via SAF", e)
+                newFile
+            } else {
+                throw e
+            }
+        }
+    }
+
+    fun createDirectory(parentDir: File, name: String): Result<File> = runCatching {
+        val newDir = File(parentDir, name)
+        try {
+            if (newDir.mkdir()) {
+                newDir
+            } else {
+                throw FileWriteFailed("Failed to create directory")
+            }
+        } catch (e: Exception) {
+            if (e.isPermissionError()) {
+                val uri = saf.getOrRequest(parentDir)
+                val dirDoc = DocumentFile.fromTreeUri(context, uri)
+                    ?: throw SafRequired(parentDir)
+                dirDoc.createDirectory(name)
+                    ?: throw FileWriteFailed("Unable to create directory via SAF", e)
+                newDir
             } else {
                 throw e
             }
